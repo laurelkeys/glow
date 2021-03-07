@@ -9,12 +9,6 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-# if(MSVC)
-#     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
-# else()
-#     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic)
-# endif()
-
 set(DEFAULT_BUILD_TYPE "Release")
 
 # ----------------------------------------------------------------------------------------
@@ -28,13 +22,13 @@ set(FILE_HEADERS
 
 # ----------------------------------------------------------------------------------------
 
+# Note: keep `add_subdirectory` after `include_directories`.
+
 include_directories(
     ext/glfw/include/
     ext/glad/include/)
 
-add_subdirectory(ext/)  # Note: keep this after `include_directories`
-
-# ----------------------------------------------------------------------------------------
+add_subdirectory(ext/)
 
 add_executable(
     ${PROJECT_NAME}
@@ -43,4 +37,6 @@ add_executable(
 
 # ----------------------------------------------------------------------------------------
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
+target_link_libraries(${PROJECT_NAME} glfw glad)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_INCLUDE_NONE)
