@@ -1,3 +1,8 @@
-ext/glfw/
+.vscode/
 
 .clang-format
+
+ext/*
+!ext/CMakeLists.txt
+
+build/
