@@ -46,6 +46,13 @@ typedef unsigned int uint;
 // Miscellaneous.
 //
 
+typedef enum {
+    Err_None = 0, // EXIT_SUCCESS
+    Err_Unkown = 1, // EXIT_FAILURE
+    Err_Glfw,
+    Err_Glad,
+} Err;
+
 /* Notes:
  *
  *  - OpenGL 3.3 specs:

@@ -1,75 +1,46 @@
 #include "prelude.h"
 
 #include "maths.h"
-
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
+#include "opengl.h"
 
 #include <stdio.h>
 
-typedef enum {
-    glow_Error_None = 0,
-    glow_Error_Glfw,
-    glow_Error_Glad,
-} glow_Error;
-
-typedef struct {
-    glow_Error err;
-    GLFWwindow *window;
-} init_opengl_Return;
-
-init_opengl_Return init_opengl(int render_width, int render_height);
+void process_input(GLFWwindow *window) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+}
 
 int main(int argc, char *argv[]) {
-    init_opengl_Return ret = init_opengl(800, 600);
-    if (ret.err) { return EXIT_FAILURE; }
+    Err err = Err_None;
 
-    GLFWwindow *const window = ret.window;
+    GLFWwindow *const window = init_opengl(800, 600, &err);
+    if (err) { goto glow_err_main; }
+
     while (!glfwWindowShouldClose(window)) {
+        process_input(window);
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     glfwTerminate();
     return EXIT_SUCCESS;
-}
 
-//
-// OpenGL initialization.
-//
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-
-init_opengl_Return init_opengl(int render_width, int render_height) {
-    glfwInit();
-
-    // https://www.glfw.org/docs/latest/window.html#window_hints
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow *window =
-        glfwCreateWindow(render_width, render_height, "glow", NULL, NULL);
-
-    if (!window) {
-        fprintf(stderr, "[glow] Error: failed to create glfw window.\n");
-        glfwTerminate();
-        return (init_opengl_Return) { .err = glow_Error_Glfw };
+glow_err_main:
+    switch (err) {
+        case Err_Glfw:
+            fprintf(stderr, "[glow] Error: failed to create glfw window.\n");
+            glfwTerminate();
+            break;
+        case Err_Glad:
+            fprintf(stderr, "[glow] Error: failed to initialize glad.\n");
+            break;
+        // case Err_Unkown: break;
+        default: assert(false);
     }
-
-    glfwMakeContextCurrent(window);
-
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        fprintf(stderr, "[glow] Error: failed to initialize glad.\n");
-        return (init_opengl_Return) { .err = glow_Error_Glad };
-    }
-
-    glViewport(0, 0, render_width, render_height);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-    return (init_opengl_Return) { .window = window };
-}
-
-void framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
-    glViewport(0, 0, render_width, render_height);
+    return EXIT_FAILURE;
 }

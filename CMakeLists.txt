@@ -14,10 +14,12 @@ set(DEFAULT_BUILD_TYPE "Release")
 # ----------------------------------------------------------------------------------------
 
 set(FILE_SOURCES
+    src/opengl.c
     src/main.c)
 
 set(FILE_HEADERS
     src/maths.h
+    src/opengl.h
     src/prelude.h)
 
 # ----------------------------------------------------------------------------------------
