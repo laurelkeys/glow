@@ -1,7 +1,6 @@
-#include "prelude.h"
+#include "opengl.h"
 
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
+#include "maths.h"
 
 static void
 framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
@@ -20,14 +19,39 @@ GLFWwindow *init_opengl(int render_width, int render_height, Err *err) {
         glfwCreateWindow(render_width, render_height, "glow", NULL, NULL);
 
     if (!window) { return (*err = Err_Glfw, NULL); }
+
     glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         return (*err = Err_Glad, NULL);
     }
 
-    glViewport(0, 0, render_width, render_height);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
     return window;
+}
+
+bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH]) {
+    int success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        int length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+        glGetShaderInfoLog(shader, INFO_LOG_LENGTH, NULL, info_log);
+        info_log[CLAMP(length - 1, 0, INFO_LOG_LENGTH - 1)] = '\0';
+        return false;
+    }
+    return true;
+}
+
+bool program_link_success(uint program, char info_log[INFO_LOG_LENGTH]) {
+    int success;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        int length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+        glGetProgramInfoLog(program, INFO_LOG_LENGTH, NULL, info_log);
+        info_log[CLAMP(length - 1, 0, INFO_LOG_LENGTH - 1)] = '\0';
+        return false;
+    }
+    return true;
 }
