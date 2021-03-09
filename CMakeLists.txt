@@ -18,6 +18,7 @@ set(FILE_SOURCES
     src/main.c)
 
 set(FILE_HEADERS
+    src/console.h
     src/maths.h
     src/opengl.h
     src/prelude.h)

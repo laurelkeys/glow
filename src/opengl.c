@@ -8,7 +8,7 @@ framebuffer_size_callback(GLFWwindow *window, int render_width, int render_heigh
 }
 
 GLFWwindow *init_opengl(int render_width, int render_height, Err *err) {
-    glfwInit();
+    if (!glfwInit()) { return (*err = Err_Glfw_Init, NULL); }
 
     // https://www.glfw.org/docs/latest/window.html#window_hints
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -18,13 +18,13 @@ GLFWwindow *init_opengl(int render_width, int render_height, Err *err) {
     GLFWwindow *window =
         glfwCreateWindow(render_width, render_height, "glow", NULL, NULL);
 
-    if (!window) { return (*err = Err_Glfw, NULL); }
+    if (!window) { return (*err = Err_Glfw_Window, NULL); }
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        return (*err = Err_Glad, NULL);
+        return (*err = Err_Glad_Init, NULL);
     }
 
     return window;

@@ -49,8 +49,9 @@ typedef unsigned int uint;
 typedef enum {
     Err_None = 0, // EXIT_SUCCESS
     Err_Unkown = 1, // EXIT_FAILURE
-    Err_Glfw,
-    Err_Glad,
+    Err_Glfw_Init,
+    Err_Glfw_Window,
+    Err_Glad_Init,
 } Err;
 
 /* Notes:
