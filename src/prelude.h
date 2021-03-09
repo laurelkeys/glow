@@ -17,8 +17,8 @@
 typedef int8_t i8;
 typedef uint8_t u8;
 
-// typedef float f32;
-// typedef double f64;
+typedef float f32;
+typedef double f64;
 
 typedef size_t usize;
 typedef unsigned int uint;
@@ -30,8 +30,6 @@ typedef unsigned int uint;
 #define LOOP while (true)
 
 #define UNUSED(a) ((void) (a))
-
-// #define IMPLIES(a, b) (!(a) || (b))
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(*(a)))
 
@@ -46,12 +44,20 @@ typedef unsigned int uint;
 // Miscellaneous.
 //
 
-typedef enum {
+typedef enum Err {
     Err_None = 0, // EXIT_SUCCESS
     Err_Unkown = 1, // EXIT_FAILURE
+
     Err_Glfw_Init,
     Err_Glfw_Window,
+
     Err_Glad_Init,
+
+    Err_Shader_Compile,
+    Err_Shader_Link,
+
+    Err_Fopen,
+    Err_Malloc,
 } Err;
 
 /* Notes:
