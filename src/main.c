@@ -4,12 +4,14 @@
 #include "maths.h"
 #include "opengl.h"
 #include "shader.h"
+#include "texture.h"
 
 #include <stdio.h>
 
 #include <stb_image.h>
 
-#define RENDER_WIREFRAME false
+#define SHADERS_ "src/shaders/"
+#define TEXTURES_ "res/textures/"
 
 void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
@@ -23,8 +25,7 @@ int main(int argc, char *argv[]) {
     GLFWwindow *const window = init_opengl((WindowSettings) { 800, 600 }, &err);
     if (err) { goto main_err; }
 
-    Shader shader =
-        new_shader_from_filepath("src/shaders/default.vs", "src/shaders/default.fs", &err);
+    Shader shader = new_shader_from_filepath(SHADERS_ "default.vs", SHADERS_ "default.fs", &err);
     if (err) { goto main_err; }
 
     // clang-format off
@@ -37,10 +38,6 @@ int main(int argc, char *argv[]) {
     };
 
     uint const indices[] = {
-        /*
-        0, 1, 3, // bottom-left triangle
-        1, 2, 3, // top-right triangle
-        */
         0, 1, 2, // bottom-right triangle
         0, 2, 3, // top-left triangle
     };
@@ -69,33 +66,14 @@ int main(int argc, char *argv[]) {
     }
     glBindVertexArray(0);
 
-    // @Cleanup: create a Texture struct and move this to a self-contained file.
-    uint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    {
-        int width, height, channels;
-        u8 *data = stbi_load("res/textures/container.jpg", &width, &height, &channels, 0);
-        if (!data) {
-            err = Err_Stbi_Load;
-            goto main_err;
-        }
-        if (channels != 3) {
-            GLOW_WARNING("expected an RGB image, but got %d channels instead", channels);
-            assert(false);
-        }
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        stbi_image_free(data);
-    }
-
-#if RENDER_WIREFRAME
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-#endif
+    stbi_set_flip_vertically_on_load(true);
+    Texture const texture1 = new_texture_from_filepath(TEXTURES_ "container.jpg", &err);
+    if (err) { goto main_err; }
+    Texture const texture2 = new_texture_from_filepath(TEXTURES_ "awesomeface.png", &err);
+    if (err) { goto main_err; }
+    use_shader(shader);
+    set_shader_int(shader, "texture1", 0);
+    set_shader_int(shader, "texture2", 1);
 
     while (!glfwWindowShouldClose(window)) {
         process_input(window);
@@ -103,7 +81,8 @@ int main(int argc, char *argv[]) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glBindTexture(GL_TEXTURE_2D, texture);
+        bind_texture_to_unit(texture1, GL_TEXTURE0);
+        bind_texture_to_unit(texture2, GL_TEXTURE1);
 
         use_shader(shader);
         glBindVertexArray(vao);
@@ -127,9 +106,9 @@ main_err:
         case Err_Glad_Init: GLOW_ERROR("failed to initialize glad"); break;
         case Err_Shader_Compile: GLOW_ERROR("failed to compile shader"); break;
         case Err_Shader_Link: GLOW_ERROR("failed to link shader program"); break;
-        case Err_Stbi_Load: GLOW_ERROR("stbi_load() fail"); break;
-        case Err_Fopen: GLOW_ERROR("fopen() fail"); break;
-        case Err_Malloc: GLOW_ERROR("malloc() fail"); break;
+        case Err_Stbi_Load: GLOW_ERROR("stbi_load() failed"); break;
+        case Err_Fopen: GLOW_ERROR("fopen() failed"); break;
+        case Err_Malloc: GLOW_ERROR("malloc() failed"); break;
         default: assert(false);
     }
 

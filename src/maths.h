@@ -31,9 +31,8 @@
 #define MAX4(a, b, c, d) (MAX(MAX((a), (b)), MAX((c), (d))))
 
 #define IS_ZERO(a) (((double) (a) == 0.0) || (fabs((double) (a)) < (double) FLT_EPSILON))
-#define IS_EQ(a, b)                 \
-    (((double) (a) == (double) (b)) \
-     || (fabs((double) ((a) - (b))) < (double) FLT_EPSILON))
+#define IS_EQ(a, b) \
+    (((double) (a) == (double) (b)) || (fabs((double) ((a) - (b))) < (double) FLT_EPSILON))
 
 #define CLAMP(x, a, b) (((x) < (a)) ? (a) : ((x) > (b)) ? (b) : (x))
 #define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))

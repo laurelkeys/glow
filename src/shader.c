@@ -5,8 +5,7 @@
 
 #include <stdio.h>
 
-Shader
-new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err) {
+Shader new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err) {
     char info_log[INFO_LOG_LENGTH];
 
     uint const vertex_id = glCreateShader(GL_VERTEX_SHADER);
@@ -37,8 +36,7 @@ new_shader_from_source(char const *vertex_source, char const *fragment_source, E
     return (Shader) { program_id };
 }
 
-Shader
-new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err) {
+Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err) {
 #define READ_SHADER(fp, shader_path, shader_source) \
     char *shader_source = NULL;                     \
     FILE *fp = fopen(shader_path, "rb");            \
@@ -61,9 +59,7 @@ new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err
 
 #undef READ_SHADER
 
-    if (!vertex_source || !fragment_source) {
-        return (*err = Err_Malloc, (Shader) { 0 });
-    }
+    if (!vertex_source || !fragment_source) { return (*err = Err_Malloc, (Shader) { 0 }); }
 
     return new_shader_from_source(vertex_source, fragment_source, err);
 }
@@ -74,7 +70,7 @@ void use_shader(Shader const shader) {
 
 static int get_uniform_location(Shader const shader, char const *name) {
     int const loc = glGetUniformLocation(shader.program_id, name);
-    if (loc == -1) { GLOW_WARNING("failed to find uniform '%s' location", name); }
+    if (loc == -1) { GLOW_WARNING("failed to find uniform location for: '%s'", name); }
     return loc;
 }
 

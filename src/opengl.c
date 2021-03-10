@@ -7,8 +7,7 @@ static void error_callback(int error, char const *description) {
     GLOW_WARNING("glfw error %d: %s", error, description);
 }
 
-static void
-framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
+static void framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
     glViewport(0, 0, render_width, render_height);
 }
 

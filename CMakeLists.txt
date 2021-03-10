@@ -16,6 +16,7 @@ set(DEFAULT_BUILD_TYPE "Release")
 set(FILE_SOURCES
     src/opengl.c
     src/shader.c
+    src/texture.c
     src/main.c)
 
 set(FILE_HEADERS
@@ -23,6 +24,7 @@ set(FILE_HEADERS
     src/maths.h
     src/opengl.h
     src/shader.h
+    src/texture.h
     src/prelude.h)
 
 # ----------------------------------------------------------------------------------------
