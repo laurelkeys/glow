@@ -27,12 +27,6 @@ set(FILE_HEADERS
 
 # ----------------------------------------------------------------------------------------
 
-# Note: keep `add_subdirectory` after `include_directories`.
-
-include_directories(
-    ext/glfw/include/
-    ext/glad/include/)
-
 add_subdirectory(ext/)
 
 add_executable(
@@ -42,6 +36,6 @@ add_executable(
 
 # ----------------------------------------------------------------------------------------
 
-target_link_libraries(${PROJECT_NAME} glfw glad)
+target_link_libraries(${PROJECT_NAME} glfw glad stb)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_INCLUDE_NONE)
