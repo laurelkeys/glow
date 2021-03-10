@@ -68,7 +68,7 @@ new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err
     return new_shader_from_source(vertex_source, fragment_source, err);
 }
 
-void use_shader(Shader shader) {
+void use_shader(Shader const shader) {
     glUseProgram(shader.program_id);
 }
 

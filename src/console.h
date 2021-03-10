@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-inline void glow_log(char const* fmt, ...) {
+inline void glow_log(char const *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);

@@ -2,6 +2,7 @@
 
 #include "prelude.h"
 
+#include <float.h>
 #include <math.h>
 
 //
@@ -16,7 +17,7 @@
 //
 
 #define COMPARE(a, b) (((b) < (a)) - ((a) < (b)))
-#define SIGN_OF(a) COMPARE(a, 0)
+#define SIGN_OF(a) COMPARE((a), 0)
 
 #define RADIANS(degrees) ((degrees) * (M_TAU / 360.0))
 #define DEGREES(radians) ((radians) * (360.0 / M_TAU))

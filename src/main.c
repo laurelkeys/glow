@@ -18,7 +18,7 @@ void process_input(GLFWwindow *window) {
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    GLFWwindow *const window = init_opengl(800, 600, &err);
+    GLFWwindow *const window = init_opengl((WindowSettings) { 800, 600 }, &err);
     if (err) { goto main_err; }
 
     Shader shader = new_shader_from_filepath(
@@ -84,8 +84,8 @@ main_err:
         case Err_Glad_Init: GLOW_ERROR("failed to initialize glad"); break;
         case Err_Shader_Compile: GLOW_ERROR("failed to compile shader"); break;
         case Err_Shader_Link: GLOW_ERROR("failed to link shader program"); break;
-        case Err_Fopen: GLOW_ERROR("failed on call to fopen()"); break;
-        case Err_Malloc: GLOW_ERROR("failed on call to malloc()"); break;
+        case Err_Fopen: GLOW_ERROR("fopen() fail"); break;
+        case Err_Malloc: GLOW_ERROR("malloc() fail"); break;
         default: assert(false);
     }
 
