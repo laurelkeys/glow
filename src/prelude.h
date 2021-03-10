@@ -56,6 +56,8 @@ typedef enum Err {
     Err_Shader_Compile,
     Err_Shader_Link,
 
+    Err_Stbi_Load,
+
     Err_Fopen,
     Err_Malloc,
 } Err;

@@ -15,5 +15,7 @@ target_include_directories(glad PUBLIC glad/include/)
 
 # ----------------------------------------------------------------------------------------
 
-add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE stb/)
+# add_library(stb INTERFACE)
+# target_include_directories(stb INTERFACE stb/)
+add_library(stb STATIC stb/stb_image.c)
+target_include_directories(stb PUBLIC stb/)
