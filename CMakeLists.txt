@@ -14,6 +14,7 @@ set(DEFAULT_BUILD_TYPE "Release")
 # ----------------------------------------------------------------------------------------
 
 set(FILE_SOURCES
+    src/maths.c
     src/opengl.c
     src/shader.c
     src/texture.c

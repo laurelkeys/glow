@@ -24,9 +24,7 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
 
     GLFWwindow *window = NULL;
     if (settings.fullscreen) {
@@ -50,6 +48,9 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         return (*err = Err_Glad_Init, NULL);
     }
+
+    GLOW_LOG("GL_VERSION = %s", (char *) glGetString(GL_VERSION));
+    GLOW_LOG("GL_RENDERER = %s", (char *) glGetString(GL_RENDERER));
 
     return window;
 }
