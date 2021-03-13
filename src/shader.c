@@ -74,12 +74,15 @@ static int get_uniform_location(Shader const shader, char const *name) {
     return loc;
 }
 
-void set_shader_int(Shader const shader, char const *name, int value) {
-    glUniform1i(get_uniform_location(shader, name), value);
-}
-void set_shader_bool(Shader const shader, char const *name, bool value) {
-    glUniform1i(get_uniform_location(shader, name), (int) value);
-}
-void set_shader_float(Shader const shader, char const *name, f32 value) {
-    glUniform1f(get_uniform_location(shader, name), value);
-}
+// clang-format off
+void set_shader_int(Shader const shader, char const *name, int value) { glUniform1i(get_uniform_location(shader, name), value); }
+void set_shader_bool(Shader const shader, char const *name, bool value) { glUniform1i(get_uniform_location(shader, name), (int) value); }
+void set_shader_float(Shader const shader, char const *name, f32 value) { glUniform1f(get_uniform_location(shader, name), value); }
+
+void set_shader_vec2(Shader const shader, char const *name, vec2 const vec) { glUniform2fv(get_uniform_location(shader, name), 1, (f32 *) &vec); }
+void set_shader_vec3(Shader const shader, char const *name, vec3 const vec) { glUniform3fv(get_uniform_location(shader, name), 1, (f32 *) &vec); }
+void set_shader_vec4(Shader const shader, char const *name, vec4 const vec) { glUniform4fv(get_uniform_location(shader, name), 1, (f32 *) &vec); }
+
+void set_shader_mat3(Shader const shader, char const *name, mat3 const mat) { glUniformMatrix3fv(get_uniform_location(shader, name), 1, GL_FALSE, &mat.m[0][0]); }
+void set_shader_mat4(Shader const shader, char const *name, mat4 const mat) { glUniformMatrix4fv(get_uniform_location(shader, name), 1, GL_FALSE, &mat.m[0][0]); }
+// clang-format on

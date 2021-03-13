@@ -84,6 +84,11 @@ int main(int argc, char *argv[]) {
         bind_texture_to_unit(texture1, GL_TEXTURE0);
         bind_texture_to_unit(texture2, GL_TEXTURE1);
 
+        set_shader_mat4(
+            shader,
+            "transform",
+            mat4_mul(mat4_translate((vec3) { 0.5, -0.5, 0.0 }), mat4_rotate_z(glfwGetTime())));
+
         use_shader(shader);
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

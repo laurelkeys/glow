@@ -63,6 +63,8 @@ typedef struct { f32 m[4][4]; } mat4;
 //
 
 #define COMMON_VECTOR_MATH_FOR(vec)      \
+    vec vec##_zero(void);                \
+    vec vec##_ones(void);                \
     vec vec##_of(f32 value);             \
     vec vec##_neg(vec v);                \
     vec vec##_min(vec a, vec b);         \
@@ -82,15 +84,6 @@ COMMON_VECTOR_MATH_FOR(vec2)
 COMMON_VECTOR_MATH_FOR(vec3)
 COMMON_VECTOR_MATH_FOR(vec4)
 
-/*
-vec2 vec2_map(vec2 v, f32 (*f)(f32));
-vec3 vec3_map(vec3 v, f32 (*f)(f32));
-vec4 vec4_map(vec4 v, f32 (*f)(f32));
-vec2 vec2_zip(vec2 a, vec2 b, f32 (*f)(f32, f32));
-vec3 vec3_zip(vec3 a, vec3 b, f32 (*f)(f32, f32));
-vec4 vec4_zip(vec4 a, vec4 b, f32 (*f)(f32, f32));
-*/
-
 #undef COMMON_VECTOR_MATH_FOR
 
 //
@@ -101,6 +94,9 @@ vec2 vec2_new(f32 x, f32 y);
 vec2 vec2_from_vec3(vec3 v);
 void vec2_print(char const *name, vec2 v);
 
+vec2 vec2_unit_x(void);
+vec2 vec2_unit_y(void);
+
 //
 // 3D vector specific.
 //
@@ -109,6 +105,10 @@ vec3 vec3_new(f32 x, f32 y, f32 z);
 vec3 vec3_from_vec2(vec2 v, f32 z);
 vec3 vec3_from_vec4(vec4 v);
 void vec3_print(char const *name, vec3 v);
+
+vec3 vec3_unit_x(void);
+vec3 vec3_unit_y(void);
+vec3 vec3_unit_z(void);
 
 vec3 vec3_cross(vec3 a, vec3 b);
 
@@ -120,6 +120,11 @@ vec4 vec4_new(f32 x, f32 y, f32 z, f32 w);
 vec4 vec4_from_vec3(vec3 v, f32 w);
 void vec4_print(char const *name, vec4 v);
 
+vec4 vec4_unit_x(void);
+vec4 vec4_unit_y(void);
+vec4 vec4_unit_z(void);
+vec4 vec4_unit_w(void);
+
 //
 // 3x3 matrix math.
 //
@@ -130,8 +135,7 @@ mat3 mat3_from_mat4(mat4 m);
 void mat3_print(char const *name, mat3 m);
 
 mat3 mat3_scl(mat3 m, f32 factor);
-vec3 mat3_mul_vec3(mat3 m, vec3 v);
-mat3 mat3_mul_mat3(mat3 a, mat3 b);
+mat3 mat3_mul(mat3 a, mat3 b);
 
 mat3 mat3_inverse(mat3 m);
 mat3 mat3_transpose(mat3 m);
@@ -145,9 +149,43 @@ mat4 mat4_id(void);
 void mat4_print(char const *name, mat4 m);
 
 mat4 mat4_scl(mat4 m, f32 factor);
-vec4 mat4_mul_vec4(mat4 m, vec4 v);
-mat4 mat4_mul_mat4(mat4 a, mat4 b);
+mat4 mat4_mul(mat4 a, mat4 b);
 
 mat4 mat4_inverse(mat4 m);
 mat4 mat4_transpose(mat4 m);
 mat4 mat4_inverse_transpose(mat4 m);
+
+//
+// Matrix-vector multiplication (considers column vectors).
+//
+
+vec3 mat3_mul_vec3(mat3 m, vec3 v);
+vec4 mat4_mul_vec4(mat4 m, vec4 v);
+
+//
+// Vector-matrix multiplication (considers row vectors).
+//
+
+vec3 vec3_mul_mat3(vec3 v, mat3 m);
+vec4 vec4_mul_mat4(vec4 v, mat4 m);
+
+//
+// 4x4 transformation matrices.
+//
+
+mat4 mat4_scale(vec3 v);
+mat4 mat4_translate(vec3 v);
+mat4 mat4_rotate(f32 angle_in_radians, vec3 v);
+mat4 mat4_rotate_x(f32 angle_in_radians);
+mat4 mat4_rotate_y(f32 angle_in_radians);
+mat4 mat4_rotate_z(f32 angle_in_radians);
+
+/*
+mat4 mat4_lookat(vec3 eye, vec3 target, vec3 up);
+
+mat4 mat4_ortho(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far);
+mat4 mat4_frustum(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far);
+
+mat4 mat4_orthographic(f32 right, f32 top, f32 near, f32 far);
+mat4 mat4_perspective(f32 fovy, f32 aspect, f32 near, f32 far);
+*/
