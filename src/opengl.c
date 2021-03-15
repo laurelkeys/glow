@@ -49,6 +49,8 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
         return (*err = Err_Glad_Init, NULL);
     }
 
+    glEnable(GL_DEPTH_TEST);
+
     GLOW_LOG("GL_VERSION = %s", (char *) glGetString(GL_VERSION));
     GLOW_LOG("GL_RENDERER = %s", (char *) glGetString(GL_RENDERER));
 

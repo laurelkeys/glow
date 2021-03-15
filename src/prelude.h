@@ -31,7 +31,7 @@ typedef unsigned int uint;
 
 #define UNUSED(a) ((void) (a))
 
-#define ARRAY_COUNT(a) (sizeof(a) / sizeof(*(a)))
+#define ARRAY_LEN(a) (sizeof(a) / sizeof(*(a)))
 
 #define SWAP(type, a, b) \
     do {                 \
