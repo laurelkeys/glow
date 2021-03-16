@@ -7,15 +7,6 @@ static void error_callback(int error, char const *description) {
     GLOW_WARNING("glfw error %d: %s", error, description);
 }
 
-static void framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
-    glViewport(0, 0, render_width, render_height);
-}
-
-static void set_window_callbacks(GLFWwindow *window) {
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    // ...
-}
-
 GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     glfwSetErrorCallback(error_callback);
     if (!glfwInit()) { return (*err = Err_Glfw_Init, NULL); }
@@ -42,8 +33,8 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     if (!window) { return (*err = Err_Glfw_Window, NULL); }
 
     glfwMakeContextCurrent(window);
-    set_window_callbacks(window);
     if (settings.vsync) { glfwSwapInterval(1); }
+    if (settings.set_callbacks_fn) { settings.set_callbacks_fn(window); }
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         return (*err = Err_Glad_Init, NULL);
