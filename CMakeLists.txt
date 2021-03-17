@@ -14,6 +14,7 @@ set(DEFAULT_BUILD_TYPE "Release")
 # ----------------------------------------------------------------------------------------
 
 set(FILE_SOURCES
+    src/camera.c
     src/maths.c
     src/opengl.c
     src/shader.c
@@ -21,6 +22,7 @@ set(FILE_SOURCES
     src/main.c)
 
 set(FILE_HEADERS
+    src/camera.h
     src/console.h
     src/maths.h
     src/opengl.h

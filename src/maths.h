@@ -43,10 +43,11 @@
 // Scalar math.
 //
 
-f32 lerp(f32 a, f32 b, f32 t);
 f32 fract(f32 x);
+f32 lerp(f32 a, f32 b, f32 t);
 f32 clamp(f32 x, f32 x_min, f32 x_max);
 f32 saturate(f32 x);
+f32 move_toward(f32 a, f32 b, f32 amount);
 
 //
 // Vector and matrix typedefs.

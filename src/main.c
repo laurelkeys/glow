@@ -1,5 +1,6 @@
 #include "prelude.h"
 
+#include "camera.h"
 #include "console.h"
 #include "maths.h"
 #include "opengl.h"
@@ -14,16 +15,10 @@
 #define TEXTURES_ "res/textures/"
 
 // Global variables.
-vec3 camera_position = { 0, 0, 3 };
-vec3 camera_forward = { 0, 0, -1 };
+Camera camera;
 vec2 mouse_last = { 400, 300 };
-
-bool first_mouse_event = true;
-
+bool mouse_is_first = true;
 f32 delta_time = 0;
-f32 fovy = 45;
-f32 pitch = 0;
-f32 yaw = -90;
 
 // Forward declarations.
 void process_input(GLFWwindow *window);
@@ -136,10 +131,12 @@ int main(int argc, char *argv[]) {
     };
     // clang-format on
 
-    f32 last_frame = 0;
     f32 const aspect_ratio = (f32) window_settings.width / (f32) window_settings.height;
     f32 const near = 0.1f;
     f32 const far = 100.0f;
+
+    f32 last_frame = 0;
+    camera = new_camera_at((vec3) { 0, 0, 3 });
 
     while (!glfwWindowShouldClose(window)) {
         f32 curr_frame = glfwGetTime();
@@ -154,10 +151,8 @@ int main(int argc, char *argv[]) {
         bind_texture_to_unit(texture1, GL_TEXTURE0);
         bind_texture_to_unit(texture2, GL_TEXTURE1);
 
-        vec3 const target = vec3_add(camera_position, camera_forward);
-
-        mat4 projection = mat4_perspective(RADIANS(fovy), aspect_ratio, near, far);
-        mat4 const view = mat4_lookat(camera_position, target, vec3_unit_y());
+        mat4 const projection = mat4_perspective(RADIANS(camera.fovy), aspect_ratio, near, far);
+        mat4 const view = get_camera_matrix(&camera);
 
         use_shader(shader);
         set_shader_mat4(shader, "world_to_view", view);
@@ -169,6 +164,7 @@ int main(int argc, char *argv[]) {
             mat4 const model = mat4_mul(
                 mat4_translate(cube_positions[i]),
                 mat4_rotate(angle, (vec3) { 1.0f, 0.3f, 0.5f }));
+
             set_shader_mat4(shader, "local_to_world", model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -208,17 +204,13 @@ main_exit:
 #define PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
 
 void process_input(GLFWwindow *window) {
-    if PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
+    if (PRESSED(ESCAPE)) { glfwSetWindowShouldClose(window, true); }
 
-    f32 const camera_speed = 2.5f * delta_time;
-    vec3 const forward_backward = vec3_scl(camera_forward, camera_speed);
-    vec3 const right_left =
-        vec3_scl(vec3_normalize(vec3_cross(camera_forward, vec3_unit_y())), camera_speed);
-
-    if PRESSED (W) { camera_position = vec3_add(camera_position, forward_backward); }
-    if PRESSED (S) { camera_position = vec3_sub(camera_position, forward_backward); }
-    if PRESSED (A) { camera_position = vec3_sub(camera_position, right_left); }
-    if PRESSED (D) { camera_position = vec3_add(camera_position, right_left); }
+    if (PRESSED(W)) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
+    if (PRESSED(S)) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
+    if (PRESSED(A)) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
+    if (PRESSED(D)) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
+    // @Todo: use E and Q for up and down.
 }
 
 #undef PRESSED
@@ -231,30 +223,22 @@ static void framebuffer_size_callback(GLFWwindow *window, int render_width, int 
     glViewport(0, 0, render_width, render_height);
 }
 static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
-    if (first_mouse_event) {
+    if (mouse_is_first) {
         mouse_last.x = xpos;
         mouse_last.y = ypos;
-        first_mouse_event = false;
+        mouse_is_first = false;
     }
 
+    // Reverse y since 0, 0 is the top-left.
     f32 const xoffset = xpos - mouse_last.x;
     f32 const yoffset = mouse_last.y - ypos;
+    update_camera_angles(&camera, (CameraMouseEvent) { xoffset, yoffset });
+
     mouse_last.x = xpos;
     mouse_last.y = ypos;
-
-    pitch += yoffset * 0.1f;
-    pitch = CLAMP(pitch, -89.0f, 89.0f);
-    yaw += xoffset * 0.1f;
-
-    camera_forward = vec3_normalize((vec3) {
-        .x = cosf(RADIANS(yaw)) * cosf(RADIANS(pitch)),
-        .y = sinf(RADIANS(pitch)),
-        .z = sinf(RADIANS(yaw)) * cosf(RADIANS(pitch)),
-    });
 }
 static void scroll_callback(GLFWwindow *window, f64 xoffset, f64 yoffset) {
-    fovy -= (f32) yoffset;
-    fovy = CLAMP(fovy, 1.0f, 45.0f);
+    update_camera_fovy(&camera, (f32) yoffset);
 }
 
 void set_window_callbacks(GLFWwindow *window) {

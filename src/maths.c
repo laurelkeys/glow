@@ -8,10 +8,19 @@
 // Scalar math.
 //
 
-f32 lerp(f32 a, f32 b, f32 t) { return (1 - t) * a + t * b; }
 f32 fract(f32 x) { return x - floorf(x); }
+f32 lerp(f32 a, f32 b, f32 t) { return (1 - t) * a + t * b; }
 f32 clamp(f32 x, f32 x_min, f32 x_max) { return CLAMP(x, x_min, x_max); }
 f32 saturate(f32 x) { return CLAMP(x, 0, 1); }
+f32 move_toward(f32 a, f32 b, f32 amount) {
+    if (a > b) {
+        a -= amount;
+        return CLAMP_MIN(a, b);
+    } else {
+        a += amount;
+        return CLAMP_MAX(a, b);
+    }
+}
 
 //
 // 2D vector math.
