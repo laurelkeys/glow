@@ -5,12 +5,14 @@
 #include "maths.h"
 #include "opengl.h"
 
+static vec3 const CAMERA_WORLD_UP = { 0, 1, 0 };
 static f32 const CAMERA_FOVY_MIN = 1.0f;
 static f32 const CAMERA_FOVY_MAX = 90.0f;
 
 typedef struct Camera {
     vec3 world_up;
     vec3 position;
+    // Camera coordinate system.
     vec3 forward;
     vec3 right;
     vec3 up;
@@ -28,6 +30,8 @@ typedef enum CameraMovement {
     CameraMovement_Backward,
     CameraMovement_Left,
     CameraMovement_Right,
+    CameraMovement_Up,
+    CameraMovement_Down,
 } CameraMovement;
 
 typedef struct CameraMouseEvent {
@@ -35,10 +39,9 @@ typedef struct CameraMouseEvent {
     f32 yoffset;
 } CameraMouseEvent;
 
-Camera new_camera(vec3 const world_up, vec3 const position);
-Camera new_camera_at(vec3 const position);
+Camera new_camera(vec3 const position);
 
-mat4 get_camera_matrix(Camera const *camera);
+mat4 get_camera_view_matrix(Camera const *camera);
 
 void update_camera_fovy(Camera *camera, f32 yoffset);
 void update_camera_angles(Camera *camera, CameraMouseEvent const mouse_event);

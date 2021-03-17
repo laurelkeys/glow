@@ -18,7 +18,7 @@
 Camera camera;
 vec2 mouse_last = { 400, 300 };
 bool mouse_is_first = true;
-f32 delta_time = 0;
+f32 delta_time = 0; // time between consecutive frames
 
 // Forward declarations.
 void process_input(GLFWwindow *window);
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
     f32 const far = 100.0f;
 
     f32 last_frame = 0;
-    camera = new_camera_at((vec3) { 0, 0, 3 });
+    camera = new_camera((vec3) { 0, 0, 3 });
 
     while (!glfwWindowShouldClose(window)) {
         f32 curr_frame = glfwGetTime();
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
         bind_texture_to_unit(texture2, GL_TEXTURE1);
 
         mat4 const projection = mat4_perspective(RADIANS(camera.fovy), aspect_ratio, near, far);
-        mat4 const view = get_camera_matrix(&camera);
+        mat4 const view = get_camera_view_matrix(&camera);
 
         use_shader(shader);
         set_shader_mat4(shader, "world_to_view", view);
@@ -204,13 +204,14 @@ main_exit:
 #define PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
 
 void process_input(GLFWwindow *window) {
-    if (PRESSED(ESCAPE)) { glfwSetWindowShouldClose(window, true); }
+    if PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
 
-    if (PRESSED(W)) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
-    if (PRESSED(S)) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
-    if (PRESSED(A)) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
-    if (PRESSED(D)) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
-    // @Todo: use E and Q for up and down.
+    if PRESSED (W) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
+    if PRESSED (S) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
+    if PRESSED (A) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
+    if PRESSED (D) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
+    if PRESSED (E) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
+    if PRESSED (Q) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
 }
 
 #undef PRESSED
