@@ -26,111 +26,91 @@ f32 move_toward(f32 a, f32 b, f32 amount) {
 // 2D vector math.
 //
 
-vec2 vec2_new(f32 x, f32 y) { return (vec2) { x, y }; }
-vec2 vec2_from_vec3(vec3 const v) { return vec2_new(v.x, v.y); }
+vec2 vec2_from_vec3(vec3 const v) { return (vec2) { v.x, v.y }; }
 void vec2_print(char const *name, vec2 const v) { printf("%s = vec2 { %3f, %3f }\n", name, v.x, v.y); }
 
-vec2 vec2_zero(void) { return vec2_new(0, 0); }
-vec2 vec2_ones(void) { return vec2_new(1, 1); }
-vec2 vec2_unit_x(void) { return vec2_new(1, 0); }
-vec2 vec2_unit_y(void) { return vec2_new(0, 1); }
+vec2 vec2_rot_90cw(vec3 const v) { return (vec2) { v.y, -v.x }; }
+vec2 vec2_rot_90ccw(vec3 const v) { return (vec2) { -v.y, v.x }; }
 
-vec2 vec2_rot_90cw(vec3 const v) { return vec2_new(v.y, -v.x); }
-vec2 vec2_rot_90ccw(vec3 const v) { return vec2_new(-v.y, v.x); }
+vec2 vec2_of(f32 value) { return (vec2) { value, value }; }
+vec2 vec2_neg(vec2 const v) { return (vec2) { -v.x, -v.y }; }
 
-vec2 vec2_of(f32 value) { return vec2_new(value, value); }
-vec2 vec2_neg(vec2 const v) { return vec2_new(-v.x, -v.y); }
+vec2 vec2_min(vec2 const a, vec2 const b) { return (vec2) { MIN(a.x, b.x), MIN(a.y, b.y) }; }
+vec2 vec2_max(vec2 const a, vec2 const b) { return (vec2) { MAX(a.x, b.x), MAX(a.y, b.y) }; }
 
-vec2 vec2_min(vec2 const a, vec2 const b) { return vec2_new(MIN(a.x, b.x), MIN(a.y, b.y)); }
-vec2 vec2_max(vec2 const a, vec2 const b) { return vec2_new(MAX(a.x, b.x), MAX(a.y, b.y)); }
-
-vec2 vec2_add(vec2 const a, vec2 const b) { return vec2_new(a.x + b.x, a.y + b.y); }
-vec2 vec2_sub(vec2 const a, vec2 const b) { return vec2_new(a.x - b.x, a.y - b.y); }
-vec2 vec2_mul(vec2 const a, vec2 const b) { return vec2_new(a.x * b.x, a.y * b.y); }
-vec2 vec2_scl(vec2 const v, f32 factor) { return vec2_new(v.x * factor, v.y * factor); }
-vec2 vec2_rcp(vec2 const v) { return vec2_new(1 / v.x, 1 / v.y); }
+vec2 vec2_add(vec2 const a, vec2 const b) { return (vec2) { a.x + b.x, a.y + b.y }; }
+vec2 vec2_sub(vec2 const a, vec2 const b) { return (vec2) { a.x - b.x, a.y - b.y }; }
+vec2 vec2_mul(vec2 const a, vec2 const b) { return (vec2) { a.x * b.x, a.y * b.y }; }
+vec2 vec2_scl(vec2 const v, f32 factor) { return (vec2) { v.x * factor, v.y * factor }; }
+vec2 vec2_rcp(vec2 const v) { return (vec2) { 1 / v.x, 1 / v.y }; }
 
 f32 vec2_dot(vec2 const a, vec2 const b) { return a.x * b.x + a.y * b.y; }
 f32 vec2_length(vec2 const v) { return sqrtf(vec2_dot(v, v)); }
 vec2 vec2_normalize(vec2 const v) { return vec2_scl(v, 1 / vec2_length(v)); }
 
-vec2 vec2_lerp(vec2 const a, vec2 const b, f32 t) { return vec2_new(lerp(a.x, b.x, t), lerp(a.y, b.y, t)); }
-vec2 vec2_saturate(vec2 const v) { return vec2_new(saturate(v.x), saturate(v.y)); }
+vec2 vec2_lerp(vec2 const a, vec2 const b, f32 t) { return (vec2) { lerp(a.x, b.x, t), lerp(a.y, b.y, t) }; }
+vec2 vec2_saturate(vec2 const v) { return (vec2) { saturate(v.x), saturate(v.y) }; }
 
 //
 // 3D vector math.
 //
 
-vec3 vec3_new(f32 x, f32 y, f32 z) { return (vec3) { x, y, z }; }
-vec3 vec3_from_vec2(vec2 const v, f32 z) { return vec3_new(v.x, v.y, z); }
-vec3 vec3_from_vec4(vec4 const v) { return vec3_new(v.x, v.y, v.z); }
+vec3 vec3_from_vec2(vec2 const v, f32 z) { return (vec3) { v.x, v.y, z }; }
+vec3 vec3_from_vec4(vec4 const v) { return (vec3) { v.x, v.y, v.z }; }
 void vec3_print(char const *name, vec3 const v) { printf("%s = vec3 { %3f, %3f, %3f }\n", name, v.x, v.y, v.z); }
 
-vec3 vec3_zero(void) { return vec3_new(0, 0, 0); }
-vec3 vec3_ones(void) { return vec3_new(1, 1, 1); }
-vec3 vec3_unit_x(void) { return vec3_new(1, 0, 0); }
-vec3 vec3_unit_y(void) { return vec3_new(0, 1, 0); }
-vec3 vec3_unit_z(void) { return vec3_new(0, 0, 1); }
-
 vec3 vec3_cross(vec3 const a, vec3 const b) {
-    return vec3_new(
-        a.y * b.z - a.z * b.y,
-        a.z * b.x - a.x * b.z,
-        a.x * b.y - a.y * b.x);
+    return (vec3) {
+        .x = a.y * b.z - a.z * b.y,
+        .y = a.z * b.x - a.x * b.z,
+        .z = a.x * b.y - a.y * b.x,
+    };
 }
 
-vec3 vec3_of(f32 value) { return vec3_new(value, value, value); }
-vec3 vec3_neg(vec3 const v) { return vec3_new(-v.x, -v.y, -v.z); }
+vec3 vec3_of(f32 value) { return (vec3) { value, value, value }; }
+vec3 vec3_neg(vec3 const v) { return (vec3) { -v.x, -v.y, -v.z }; }
 
-vec3 vec3_min(vec3 const a, vec3 const b) { return vec3_new(MIN(a.x, b.x), MIN(a.y, b.y), MIN(a.z, b.z)); }
-vec3 vec3_max(vec3 const a, vec3 const b) { return vec3_new(MAX(a.x, b.x), MAX(a.y, b.y), MAX(a.z, b.z)); }
+vec3 vec3_min(vec3 const a, vec3 const b) { return (vec3) { MIN(a.x, b.x), MIN(a.y, b.y), MIN(a.z, b.z) }; }
+vec3 vec3_max(vec3 const a, vec3 const b) { return (vec3) { MAX(a.x, b.x), MAX(a.y, b.y), MAX(a.z, b.z) }; }
 
-vec3 vec3_add(vec3 const a, vec3 const b) { return vec3_new(a.x + b.x, a.y + b.y, a.z + b.z); }
-vec3 vec3_sub(vec3 const a, vec3 const b) { return vec3_new(a.x - b.x, a.y - b.y, a.z - b.z); }
-vec3 vec3_mul(vec3 const a, vec3 const b) { return vec3_new(a.x * b.x, a.y * b.y, a.z * b.z); }
-vec3 vec3_scl(vec3 const v, f32 factor) { return vec3_new(v.x * factor, v.y * factor, v.z * factor); }
-vec3 vec3_rcp(vec3 const v) { return vec3_new(1 / v.x, 1 / v.y, 1 / v.z); }
+vec3 vec3_add(vec3 const a, vec3 const b) { return (vec3) { a.x + b.x, a.y + b.y, a.z + b.z }; }
+vec3 vec3_sub(vec3 const a, vec3 const b) { return (vec3) { a.x - b.x, a.y - b.y, a.z - b.z }; }
+vec3 vec3_mul(vec3 const a, vec3 const b) { return (vec3) { a.x * b.x, a.y * b.y, a.z * b.z }; }
+vec3 vec3_scl(vec3 const v, f32 factor) { return (vec3) { v.x * factor, v.y * factor, v.z * factor }; }
+vec3 vec3_rcp(vec3 const v) { return (vec3) { 1 / v.x, 1 / v.y, 1 / v.z }; }
 
 f32 vec3_dot(vec3 const a, vec3 const b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 f32 vec3_length(vec3 const v) { return sqrtf(vec3_dot(v, v)); }
 vec3 vec3_normalize(vec3 const v) { return vec3_scl(v, 1 / vec3_length(v)); }
 
-vec3 vec3_lerp(vec3 const a, vec3 const b, f32 t) { return vec3_new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t)); }
-vec3 vec3_saturate(vec3 const v) { return vec3_new(saturate(v.x), saturate(v.y), saturate(v.z)); }
+vec3 vec3_lerp(vec3 const a, vec3 const b, f32 t) { return (vec3) { lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t) }; }
+vec3 vec3_saturate(vec3 const v) { return (vec3) { saturate(v.x), saturate(v.y), saturate(v.z) }; }
 
 //
 // 4D vector math.
 //
 
-vec4 vec4_new(f32 x, f32 y, f32 z, f32 w) { return (vec4) { x, y, z, w }; }
-vec4 vec4_from_vec3(vec3 const v, f32 w) { return vec4_new(v.x, v.y, v.z, w); }
+vec4 vec4_from_vec3(vec3 const v, f32 w) { return (vec4) { v.x, v.y, v.z, w }; }
 void vec4_print(char const *name, vec4 const v) { printf("%s = vec4 { %3f, %3f, %3f, %3f }\n", name, v.x, v.y, v.z, v.w); }
 
-vec4 vec4_zero(void) { return vec4_new(0, 0, 0, 0); }
-vec4 vec4_ones(void) { return vec4_new(1, 1, 1, 1); }
-vec4 vec4_unit_x(void) { return vec4_new(1, 0, 0, 0); }
-vec4 vec4_unit_y(void) { return vec4_new(0, 1, 0, 0); }
-vec4 vec4_unit_z(void) { return vec4_new(0, 0, 1, 0); }
-vec4 vec4_unit_w(void) { return vec4_new(0, 0, 0, 1); }
+vec4 vec4_of(f32 value) { return (vec4) { value, value, value, value }; }
+vec4 vec4_neg(vec4 const v) { return (vec4) { -v.x, -v.y, -v.z, -v.w }; }
 
-vec4 vec4_of(f32 value) { return vec4_new(value, value, value, value); }
-vec4 vec4_neg(vec4 const v) { return vec4_new(-v.x, -v.y, -v.z, -v.w); }
+vec4 vec4_min(vec4 const a, vec4 const b) { return (vec4) { MIN(a.x, b.x), MIN(a.y, b.y), MIN(a.z, b.z), MIN(a.w, b.w) }; }
+vec4 vec4_max(vec4 const a, vec4 const b) { return (vec4) { MAX(a.x, b.x), MAX(a.y, b.y), MAX(a.z, b.z), MAX(a.w, b.w) }; }
 
-vec4 vec4_min(vec4 const a, vec4 const b) { return vec4_new(MIN(a.x, b.x), MIN(a.y, b.y), MIN(a.z, b.z), MIN(a.w, b.w)); }
-vec4 vec4_max(vec4 const a, vec4 const b) { return vec4_new(MAX(a.x, b.x), MAX(a.y, b.y), MAX(a.z, b.z), MAX(a.w, b.w)); }
-
-vec4 vec4_add(vec4 const a, vec4 const b) { return vec4_new(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w); }
-vec4 vec4_sub(vec4 const a, vec4 const b) { return vec4_new(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w); }
-vec4 vec4_mul(vec4 const a, vec4 const b) { return vec4_new(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w); }
-vec4 vec4_scl(vec4 const v, f32 factor) { return vec4_new(v.x * factor, v.y * factor, v.z * factor, v.w * factor); }
-vec4 vec4_rcp(vec4 const v) { return vec4_new(1 / v.x, 1 / v.y, 1 / v.z, 1 / v.w); }
+vec4 vec4_add(vec4 const a, vec4 const b) { return (vec4) { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w }; }
+vec4 vec4_sub(vec4 const a, vec4 const b) { return (vec4) { a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w }; }
+vec4 vec4_mul(vec4 const a, vec4 const b) { return (vec4) { a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w }; }
+vec4 vec4_scl(vec4 const v, f32 factor) { return (vec4) { v.x * factor, v.y * factor, v.z * factor, v.w * factor }; }
+vec4 vec4_rcp(vec4 const v) { return (vec4) { 1 / v.x, 1 / v.y, 1 / v.z, 1 / v.w }; }
 
 f32 vec4_dot(vec4 const a, vec4 const b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
 f32 vec4_length(vec4 const v) { return sqrtf(vec4_dot(v, v)); }
 vec4 vec4_normalize(vec4 const v) { return vec4_scl(v, 1 / vec4_length(v)); }
 
-vec4 vec4_lerp(vec4 const a, vec4 const b, f32 t) { return vec4_new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), lerp(a.w, b.w, t)); }
-vec4 vec4_saturate(vec4 const v) { return vec4_new(saturate(v.x), saturate(v.y), saturate(v.z), saturate(v.w)); }
+vec4 vec4_lerp(vec4 const a, vec4 const b, f32 t) { return (vec4) { lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), lerp(a.w, b.w, t) }; }
+vec4 vec4_saturate(vec4 const v) { return (vec4) { saturate(v.x), saturate(v.y), saturate(v.z), saturate(v.w) }; }
 
 //
 // 3x3 matrix math.
@@ -331,7 +311,7 @@ vec3 mat3_mul_vec3(mat3 const m, vec3 const v) {
                      m.m[i][1] * v.y +
                      m.m[i][2] * v.z;
     }
-    return vec3_new(product[0], product[1], product[2]);
+    return (vec3) { product[0], product[1], product[2] };
 }
 vec4 mat4_mul_vec4(mat4 const m, vec4 const v) {
     f32 product[4];
@@ -341,7 +321,7 @@ vec4 mat4_mul_vec4(mat4 const m, vec4 const v) {
                      m.m[i][2] * v.z +
                      m.m[i][3] * v.w;
     }
-    return vec4_new(product[0], product[1], product[2], product[3]);
+    return (vec4) { product[0], product[1], product[2], product[3] };
 }
 
 //
@@ -355,7 +335,7 @@ vec3 vec3_mul_mat3(vec3 const v, mat3 const m) {
                      v.y * m.m[1][j] +
                      v.z * m.m[2][j];
     }
-    return vec3_new(product[0], product[1], product[2]);
+    return (vec3) { product[0], product[1], product[2] };
 }
 vec4 vec4_mul_mat4(vec4 const v, mat4 const m) {
     f32 product[4];
@@ -365,7 +345,7 @@ vec4 vec4_mul_mat4(vec4 const v, mat4 const m) {
                      v.z * m.m[2][j] +
                      v.w * m.m[3][j];
     }
-    return vec4_new(product[0], product[1], product[2], product[3]);
+    return (vec4) { product[0], product[1], product[2], product[3] };
 }
 
 //

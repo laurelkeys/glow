@@ -67,8 +67,6 @@ typedef struct { f32 m[4][4]; } mat4;
 //
 
 #define COMMON_VECTOR_MATH_FOR(vec)      \
-    vec vec##_zero(void);                \
-    vec vec##_ones(void);                \
     vec vec##_of(f32 value);             \
     vec vec##_neg(vec v);                \
     vec vec##_min(vec a, vec b);         \
@@ -94,12 +92,8 @@ COMMON_VECTOR_MATH_FOR(vec4)
 // 2D vector specific.
 //
 
-vec2 vec2_new(f32 x, f32 y);
 vec2 vec2_from_vec3(vec3 const v);
 void vec2_print(char const *name, vec2 v);
-
-vec2 vec2_unit_x(void);
-vec2 vec2_unit_y(void);
 
 vec2 vec2_rot_90cw(vec3 const v);
 vec2 vec2_rot_90ccw(vec3 const v);
@@ -108,14 +102,9 @@ vec2 vec2_rot_90ccw(vec3 const v);
 // 3D vector specific.
 //
 
-vec3 vec3_new(f32 x, f32 y, f32 z);
 vec3 vec3_from_vec2(vec2 const v, f32 z);
 vec3 vec3_from_vec4(vec4 const v);
 void vec3_print(char const *name, vec3 const v);
-
-vec3 vec3_unit_x(void);
-vec3 vec3_unit_y(void);
-vec3 vec3_unit_z(void);
 
 vec3 vec3_cross(vec3 const a, vec3 const b);
 
@@ -123,14 +112,8 @@ vec3 vec3_cross(vec3 const a, vec3 const b);
 // 4D vector specific.
 //
 
-vec4 vec4_new(f32 x, f32 y, f32 z, f32 w);
 vec4 vec4_from_vec3(vec3 const v, f32 w);
 void vec4_print(char const *name, vec4 const v);
-
-vec4 vec4_unit_x(void);
-vec4 vec4_unit_y(void);
-vec4 vec4_unit_z(void);
-vec4 vec4_unit_w(void);
 
 //
 // 3x3 matrix math.
@@ -194,3 +177,26 @@ mat4 mat4_frustum(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far);
 
 mat4 mat4_orthographic(f32 right, f32 top, f32 near, f32 far);
 mat4 mat4_perspective(f32 fovy, f32 aspect, f32 near, f32 far);
+
+//
+// Quaternions (w, x, y, z) = w + xi + yj + zk.
+//
+
+#if 0
+typedef struct quat {
+    f32 re; // Real / scalar part (w).
+    vec3 im; // Imaginary part (x, y, z).
+} quat;
+
+quat quat_conjugate(quat const q) {
+    return (quat) { q.re, vec3_neg(q.im) };
+}
+
+f32 quat_dot(quat const a, quat const b) {
+    return a.re * b.re + vec3_dot(a.im, b.im);
+}
+
+f32 quat_length(quat const q) {
+    return sqrtf(quat_dot(q, q));
+}
+#endif
