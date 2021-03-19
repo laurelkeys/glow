@@ -66,21 +66,21 @@ typedef struct { f32 m[4][4]; } mat4;
 // Common vector math.
 //
 
-#define COMMON_VECTOR_MATH_FOR(vec)      \
-    vec vec##_of(f32 value);             \
-    vec vec##_neg(vec v);                \
-    vec vec##_min(vec a, vec b);         \
-    vec vec##_max(vec a, vec b);         \
-    vec vec##_add(vec a, vec b);         \
-    vec vec##_sub(vec a, vec b);         \
-    vec vec##_mul(vec a, vec b);         \
-    vec vec##_scl(vec v, f32 factor);    \
-    vec vec##_rcp(vec v);                \
-    f32 vec##_dot(vec a, vec b);         \
-    f32 vec##_length(vec v);             \
-    vec vec##_normalize(vec v);          \
-    vec vec##_lerp(vec a, vec b, f32 t); \
-    vec vec##_saturate(vec v);
+#define COMMON_VECTOR_MATH_FOR(vec)                  \
+    vec vec##_of(f32 value);                         \
+    vec vec##_neg(vec const v);                      \
+    vec vec##_min(vec const a, vec const b);         \
+    vec vec##_max(vec const a, vec const b);         \
+    vec vec##_add(vec const a, vec const b);         \
+    vec vec##_sub(vec const a, vec const b);         \
+    vec vec##_mul(vec const a, vec const b);         \
+    vec vec##_scl(vec const v, f32 factor);          \
+    vec vec##_rcp(vec const v);                      \
+    f32 vec##_dot(vec const a, vec const b);         \
+    f32 vec##_length(vec const v);                   \
+    vec vec##_normalize(vec const v);                \
+    vec vec##_lerp(vec const a, vec const b, f32 t); \
+    vec vec##_saturate(vec const v);
 
 COMMON_VECTOR_MATH_FOR(vec2)
 COMMON_VECTOR_MATH_FOR(vec3)
@@ -92,8 +92,8 @@ COMMON_VECTOR_MATH_FOR(vec4)
 // 2D vector specific.
 //
 
+void vec2_print(char const *name, vec2 const v);
 vec2 vec2_from_vec3(vec3 const v);
-void vec2_print(char const *name, vec2 v);
 
 vec2 vec2_rot_90cw(vec3 const v);
 vec2 vec2_rot_90ccw(vec3 const v);
@@ -102,27 +102,32 @@ vec2 vec2_rot_90ccw(vec3 const v);
 // 3D vector specific.
 //
 
+void vec3_print(char const *name, vec3 const v);
 vec3 vec3_from_vec2(vec2 const v, f32 z);
 vec3 vec3_from_vec4(vec4 const v);
-void vec3_print(char const *name, vec3 const v);
 
 vec3 vec3_cross(vec3 const a, vec3 const b);
+
+#if 0
+f32 scalar_triple_product(vec3 const a, vec3 const b, vec3 const c); // a . (b x c)
+vec3 vector_triple_product(vec3 const a, vec3 const b, vec3 const c); // a x (b x c)
+#endif
 
 //
 // 4D vector specific.
 //
 
-vec4 vec4_from_vec3(vec3 const v, f32 w);
 void vec4_print(char const *name, vec4 const v);
+vec4 vec4_from_vec3(vec3 const v, f32 w);
 
 //
 // 3x3 matrix math.
 //
 
+void mat3_print(char const *name, mat3 const m);
 mat3 mat3_id(void);
 mat3 mat3_from_cols(vec3 const c0, vec3 const c1, vec3 const c2);
 mat3 mat3_from_mat4(mat4 const m);
-void mat3_print(char const *name, mat3 const m);
 
 mat3 mat3_scl(mat3 const m, f32 factor);
 mat3 mat3_mul(mat3 const a, mat3 const b);
@@ -135,8 +140,8 @@ mat3 mat3_inverse_transpose(mat3 const m);
 // 4x4 matrix math.
 //
 
-mat4 mat4_id(void);
 void mat4_print(char const *name, mat4 const m);
+mat4 mat4_id(void);
 
 mat4 mat4_scl(mat4 const m, f32 factor);
 mat4 mat4_mul(mat4 const a, mat4 const b);
@@ -188,15 +193,20 @@ typedef struct quat {
     vec3 im; // Imaginary part (x, y, z).
 } quat;
 
-quat quat_conjugate(quat const q) {
-    return (quat) { q.re, vec3_neg(q.im) };
-}
+void quat_print(char const *name, quat const q);
+quat quat_id(void);
 
-f32 quat_dot(quat const a, quat const b) {
-    return a.re * b.re + vec3_dot(a.im, b.im);
-}
+quat quat_conjugate(quat const q);
+quat quat_neg(quat const q);
 
-f32 quat_length(quat const q) {
-    return sqrtf(quat_dot(q, q));
-}
+quat quat_add(quat const a, quat const b);
+quat quat_sub(quat const a, quat const b);
+quat quat_mul(quat const a, quat const b);
+quat quat_scl(quat const q, f32 factor);
+
+f32 quat_dot(quat const a, quat const b);
+f32 quat_length(quat const q);
+quat quat_normalize(quat const q);
+
+quat quat_lerp(quat const a, quat const b, f32 t);
 #endif

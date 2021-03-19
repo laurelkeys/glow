@@ -26,8 +26,10 @@ f32 move_toward(f32 a, f32 b, f32 amount) {
 // 2D vector math.
 //
 
+void vec2_print(char const *name, vec2 const v) {
+    printf("%s = vec2 { %3f, %3f }\n", name, v.x, v.y);
+}
 vec2 vec2_from_vec3(vec3 const v) { return (vec2) { v.x, v.y }; }
-void vec2_print(char const *name, vec2 const v) { printf("%s = vec2 { %3f, %3f }\n", name, v.x, v.y); }
 
 vec2 vec2_rot_90cw(vec3 const v) { return (vec2) { v.y, -v.x }; }
 vec2 vec2_rot_90ccw(vec3 const v) { return (vec2) { -v.y, v.x }; }
@@ -55,9 +57,11 @@ vec2 vec2_saturate(vec2 const v) { return (vec2) { saturate(v.x), saturate(v.y) 
 // 3D vector math.
 //
 
+void vec3_print(char const *name, vec3 const v) {
+    printf("%s = vec3 { %3f, %3f, %3f }\n", name, v.x, v.y, v.z);
+}
 vec3 vec3_from_vec2(vec2 const v, f32 z) { return (vec3) { v.x, v.y, z }; }
 vec3 vec3_from_vec4(vec4 const v) { return (vec3) { v.x, v.y, v.z }; }
-void vec3_print(char const *name, vec3 const v) { printf("%s = vec3 { %3f, %3f, %3f }\n", name, v.x, v.y, v.z); }
 
 vec3 vec3_cross(vec3 const a, vec3 const b) {
     return (vec3) {
@@ -86,12 +90,23 @@ vec3 vec3_normalize(vec3 const v) { return vec3_scl(v, 1 / vec3_length(v)); }
 vec3 vec3_lerp(vec3 const a, vec3 const b, f32 t) { return (vec3) { lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t) }; }
 vec3 vec3_saturate(vec3 const v) { return (vec3) { saturate(v.x), saturate(v.y), saturate(v.z) }; }
 
+#if 0
+f32 scalar_triple_product(vec3 const a, vec3 const b, vec3 const c) {
+    return vec3_dot(a, vec3_cross(b, c));
+}
+vec3 vector_triple_product(vec3 const a, vec3 const b, vec3 const c) {
+    return vec3_cross(a, vec3_cross(b, c));
+}
+#endif
+
 //
 // 4D vector math.
 //
 
+void vec4_print(char const *name, vec4 const v) {
+    printf("%s = vec4 { %3f, %3f, %3f, %3f }\n", name, v.x, v.y, v.z, v.w);
+}
 vec4 vec4_from_vec3(vec3 const v, f32 w) { return (vec4) { v.x, v.y, v.z, w }; }
-void vec4_print(char const *name, vec4 const v) { printf("%s = vec4 { %3f, %3f, %3f, %3f }\n", name, v.x, v.y, v.z, v.w); }
 
 vec4 vec4_of(f32 value) { return (vec4) { value, value, value, value }; }
 vec4 vec4_neg(vec4 const v) { return (vec4) { -v.x, -v.y, -v.z, -v.w }; }
@@ -116,6 +131,15 @@ vec4 vec4_saturate(vec4 const v) { return (vec4) { saturate(v.x), saturate(v.y),
 // 3x3 matrix math.
 //
 
+void mat3_print(char const *name, mat3 const m) {
+    printf("%s = mat3 { {\n", name);
+    for (int i = 0; i < 3; ++i) {
+        printf("{ ");
+        for (int j = 0; j < 3; ++j) { printf("%3f, ", m.m[i][j]); }
+        printf("},\n");
+    }
+    printf("} }\n");
+}
 mat3 mat3_id(void) {
     return (mat3) { {
         { 1, 0, 0 },
@@ -136,15 +160,6 @@ mat3 mat3_from_mat4(mat4 const m) {
         { m.m[1][0], m.m[1][1], m.m[1][2] },
         { m.m[2][0], m.m[2][1], m.m[2][2] },
     } };
-}
-void mat3_print(char const *name, mat3 const m) {
-    printf("%s = mat3 { {\n", name);
-    for (int i = 0; i < 3; ++i) {
-        printf("{ ");
-        for (int j = 0; j < 3; ++j) { printf("%3f, ", m.m[i][j]); }
-        printf("},\n");
-    }
-    printf("} }\n");
 }
 
 mat3 mat3_scl(mat3 const m, f32 factor) {
@@ -213,14 +228,6 @@ mat3 mat3_inverse_transpose(mat3 const m) {
 // 4x4 matrix math.
 //
 
-mat4 mat4_id(void) {
-    return (mat4) { {
-        { 1, 0, 0, 0 },
-        { 0, 1, 0, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 0, 1 },
-    } };
-}
 void mat4_print(char const *name, mat4 const m) {
     printf("%s = mat4 { {\n", name);
     for (int i = 0; i < 4; ++i) {
@@ -229,6 +236,14 @@ void mat4_print(char const *name, mat4 const m) {
         printf("},\n");
     }
     printf("} }\n");
+}
+mat4 mat4_id(void) {
+    return (mat4) { {
+        { 1, 0, 0, 0 },
+        { 0, 1, 0, 0 },
+        { 0, 0, 1, 0 },
+        { 0, 0, 0, 1 },
+    } };
 }
 
 mat4 mat4_scl(mat4 const m, f32 factor) {
@@ -503,3 +518,37 @@ mat4 mat4_perspective(f32 fovy, f32 aspect, f32 near, f32 far) {
         { 0, 0, -1, 0 },
     } };
 }
+
+// clang-format off
+
+//
+// Quaternion math.
+//
+
+#if 0
+void quat_print(char const *name, quat const q) {
+    printf("%s = quat { %3f, { %3f, %3f, %3f } }\n", name, q.re, q.im.x, q.im.y, q.im.z);
+}
+quat quat_id(void) { return (quat) { .re = 1, .im = { 0, 0, 0 } }; }
+
+quat quat_conjugate(quat const q) { return (quat) { q.re, vec3_neg(q.im) }; }
+quat quat_neg(quat const q) { return (quat) { -q.re, vec3_neg(q.im) }; }
+
+quat quat_add(quat const a, quat const b) { return (quat) { a.re + b.re, vec3_add(a.im, b.im) }; }
+quat quat_sub(quat const a, quat const b) { return (quat) { a.re - b.re, vec3_sub(a.im, b.im) }; }
+quat quat_mul(quat const a, quat const b) {
+    return (quat) {
+        .re = /*.w*/ b.re * a.re - b.im.x * a.im.x - b.im.y * a.im.y - b.im.z * a.im.z,
+        .im = { .x = b.re * a.im.x + b.im.x * a.re - b.im.y * a.im.z + b.im.z * a.im.y,
+                .y = b.re * a.im.y + b.im.x * a.im.z + b.im.y * a.re - b.im.z * a.im.x,
+                .z = b.re * a.im.z - b.im.x * a.im.y + b.im.y * a.im.x + b.im.z * a.re },
+    };
+}
+quat quat_scl(quat const q, f32 factor) { return (quat) { q.re * factor, vec3_scl(q.im, factor) }; }
+
+f32 quat_dot(quat const a, quat const b) { return a.re * b.re + vec3_dot(a.im, b.im); }
+f32 quat_length(quat const q) { return sqrtf(quat_dot(q, q)); }
+quat quat_normalize(quat const q) { return quat_scl(q, 1 / quat_length(q)); }
+
+quat quat_lerp(quat const a, quat const b, f32 t) { return (quat) { lerp(a.re, b.re, t), vec3_lerp(a.im, b.im, t) }; }
+#endif
