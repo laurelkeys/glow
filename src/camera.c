@@ -2,7 +2,7 @@
 
 #include "maths.h"
 
-Camera new_camera(vec3 const position) {
+Camera new_camera_at(vec3 const position) {
     vec3 const forward = { 0, 0, -1 }; // pitch = 0, yaw = -90
     vec3 const right = vec3_normalize(vec3_cross(forward, CAMERA_WORLD_UP));
     vec3 const up = vec3_cross(right, forward);
