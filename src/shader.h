@@ -7,7 +7,6 @@
 typedef struct Shader {
     uint program_id;
     uint vertex_id;
-    /* uint geometry_id; */
     uint fragment_id;
 } Shader;
 

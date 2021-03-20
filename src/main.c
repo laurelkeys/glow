@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
     }
     glBindVertexArray(0);
 
+    // @Fixme: update aspect ratio on the render loop to reflect viewport resizing.
     f32 const aspect_ratio = (f32) window_settings.width / (f32) window_settings.height;
     f32 const near = 0.1f;
     f32 const far = 100.0f;
@@ -232,7 +233,7 @@ static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
         mouse_is_first = false;
     }
 
-    // Reverse y since 0, 0 is the top-left.
+    // Reverse y since 0, 0 is the top left.
     f32 const xoffset = xpos - mouse_last.x;
     f32 const yoffset = mouse_last.y - ypos;
     update_camera_angles(&camera, (CameraMouseEvent) { xoffset, yoffset });
