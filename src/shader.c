@@ -5,22 +5,28 @@
 
 #include <stdio.h>
 
+#define SHADER_TYPE(shader_type)                        \
+    ((shader_type) == GL_VERTEX_SHADER     ? "vertex"   \
+     : (shader_type) == GL_FRAGMENT_SHADER ? "fragment" \
+                                           : "????")
+
+static uint init_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
+    uint const id = glCreateShader(type);
+    glShaderSource(id, 1, &source, NULL);
+    glCompileShader(id);
+    if (!shader_compile_success(id, info_log, err)) {
+        GLOW_WARNING("%s shader compilation failed with ```\n%s```", SHADER_TYPE(type), info_log);
+    }
+    return id;
+}
+
+#undef SHADER_TYPE
+
 Shader new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err) {
-    char info_log[INFO_LOG_LENGTH];
+    char info_log[INFO_LOG_LENGTH] = { 0 };
 
-    uint const vertex_id = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_id, 1, &vertex_source, NULL);
-    glCompileShader(vertex_id);
-    if (!shader_compile_success(vertex_id, info_log, err)) {
-        GLOW_WARNING("vertex shader compilation failed with ```\n%s```", info_log);
-    }
-
-    uint const fragment_id = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_id, 1, &fragment_source, NULL);
-    glCompileShader(fragment_id);
-    if (!shader_compile_success(fragment_id, info_log, err)) {
-        GLOW_WARNING("fragment shader compilation failed with ```\n%s```", info_log);
-    }
+    uint const vertex_id = init_shader(GL_VERTEX_SHADER, vertex_source, info_log, err);
+    uint const fragment_id = init_shader(GL_FRAGMENT_SHADER, fragment_source, info_log, err);
 
     uint const program_id = glCreateProgram();
     glAttachShader(program_id, vertex_id);
@@ -33,7 +39,7 @@ Shader new_shader_from_source(char const *vertex_source, char const *fragment_so
     glDeleteShader(vertex_id);
     glDeleteShader(fragment_id);
 
-    return (Shader) { program_id };
+    return (Shader) { program_id, vertex_id, fragment_id };
 }
 
 Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err) {
@@ -55,13 +61,43 @@ Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_pa
     }
 
     READ_SHADER(vs, vertex_path, vertex_source);
+    if (!vertex_source) { return (*err = Err_Malloc, (Shader) { 0 }); }
+
     READ_SHADER(fs, fragment_path, fragment_source);
+    if (!fragment_source) { return (*err = Err_Malloc, (Shader) { 0 }); }
 
 #undef READ_SHADER
 
-    if (!vertex_source || !fragment_source) { return (*err = Err_Malloc, (Shader) { 0 }); }
+    Shader const shader = new_shader_from_source(vertex_source, fragment_source, err);
+    free(fragment_source);
+    free(vertex_source);
+    return shader;
+}
 
-    return new_shader_from_source(vertex_source, fragment_source, err);
+static bool reload_shader(
+    Shader *shader,
+    Shader (*new_shader_fn)(char const *, char const *, Err *),
+    char const *vertex,
+    char const *fragment) {
+    Err err = Err_None;
+    Shader const new_shader = new_shader_fn(vertex, fragment, &err);
+    if (err) { return false; }
+
+    glDeleteProgram(shader->program_id);
+    shader->program_id = new_shader.program_id;
+    // @Todo: accept NULL args to reuse old ids.
+    shader->vertex_id = new_shader.vertex_id;
+    shader->fragment_id = new_shader.fragment_id;
+
+    return true;
+}
+bool reload_shader_from_source(
+    Shader *shader, char const *vertex_source, char const *fragment_source) {
+    return reload_shader(shader, new_shader_from_source, vertex_source, fragment_source);
+}
+bool reload_shader_from_filepath(
+    Shader *shader, char const *vertex_path, char const *fragment_path) {
+    return reload_shader(shader, new_shader_from_filepath, vertex_path, fragment_path);
 }
 
 void use_shader(Shader const shader) {

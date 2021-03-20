@@ -11,13 +11,18 @@
 
 #include <stb_image.h>
 
+// @Cleanup: set paths using CMake's PROJECT_SOURCE_DIR
 #define SHADERS_ "src/shaders/"
 #define TEXTURES_ "res/textures/"
 
 // Global variables.
 Camera camera;
+
 vec2 mouse_last;
 bool mouse_is_first = true;
+
+Shader cube_shader;
+Shader light_cube_shader;
 
 // Forward declarations.
 void process_input(GLFWwindow *window, f32 const delta_time);
@@ -34,58 +39,59 @@ int main(int argc, char *argv[]) {
     GLFWwindow *const window = init_opengl(window_settings, &err);
     if (err) { goto main_err; }
 
-    Shader cube_shader = new_shader_from_filepath(SHADERS_ "cube.vs", SHADERS_ "cube.fs", &err);
+    // @Volatile: use these same files in `key_callback`.
+    cube_shader = new_shader_from_filepath(SHADERS_ "cube.vs", SHADERS_ "cube.fs", &err);
     if (err) { goto main_err; }
-
-    Shader light_cube_shader =
+    light_cube_shader =
         new_shader_from_filepath(SHADERS_ "light_cube.vs", SHADERS_ "light_cube.fs", &err);
     if (err) { goto main_err; }
 
-    vec3 const light_position = { 1.2f, 1.0f, 2.0f };
+    vec3 const light_pos = { 1.2f, 1.0f, 2.0f };
 
     // clang-format off
     f32 const cube_vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
+        // positions            // normals
+        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
 
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
 
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
 
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
 
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
 
-        -0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f
     };
     // clang-format on
 
@@ -100,14 +106,18 @@ int main(int argc, char *argv[]) {
     // and since it's now bound (and we do not bind any other VBOs) we don't
     // need to rebind it after the VAOs to link it with glVertexAttribPointer.
 
+    uint const stride = sizeof(f32) * 6;
+
     glBindVertexArray(vao_cube);
     {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *) 0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
         glEnableVertexAttribArray(0); // position attribute
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
+        glEnableVertexAttribArray(1); // normal attribute
     }
     glBindVertexArray(vao_light_cube);
     {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *) 0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
         glEnableVertexAttribArray(0); // position attribute
     }
     glBindVertexArray(0);
@@ -135,6 +145,7 @@ int main(int argc, char *argv[]) {
 
         use_shader(cube_shader);
         {
+            set_shader_vec3(cube_shader, "light_pos", light_pos);
             set_shader_vec3(cube_shader, "light_color", (vec3) { 1, 1, 1 });
             set_shader_vec3(cube_shader, "object_color", (vec3) { 1.0f, 0.5f, 0.31f });
 
@@ -148,8 +159,7 @@ int main(int argc, char *argv[]) {
 
         use_shader(light_cube_shader);
         {
-            mat4 const model =
-                mat4_mul(mat4_translate(light_position), mat4_scale(vec3_of(0.2f)));
+            mat4 const model = mat4_mul(mat4_translate(light_pos), mat4_scale(vec3_of(0.2f)));
 
             set_shader_mat4(light_cube_shader, "local_to_world", model);
             set_shader_mat4(light_cube_shader, "world_to_view", view);
@@ -233,9 +243,20 @@ static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
 static void scroll_callback(GLFWwindow *window, f64 xoffset, f64 yoffset) {
     update_camera_fovy(&camera, (f32) yoffset);
 }
+static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+        // @Volatile: use the same files as in `main`.
+        GLOW_LOG("Hot swapping 'cube' shaders");
+        reload_shader_from_filepath(&cube_shader, SHADERS_ "cube.vs", SHADERS_ "cube.fs");
+        GLOW_LOG("Hot swapping 'light_cube' shaders");
+        reload_shader_from_filepath(
+            &light_cube_shader, SHADERS_ "light_cube.vs", SHADERS_ "light_cube.fs");
+    }
+}
 
 void set_window_callbacks(GLFWwindow *window) {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_pos_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
 }

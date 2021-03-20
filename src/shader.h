@@ -6,10 +6,18 @@
 
 typedef struct Shader {
     uint program_id;
+    uint vertex_id;
+    /* uint geometry_id; */
+    uint fragment_id;
 } Shader;
 
 Shader new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err);
 Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err);
+
+bool reload_shader_from_source(
+    Shader *shader, char const *vertex_source, char const *fragment_source);
+bool reload_shader_from_filepath(
+    Shader *shader, char const *vertex_path, char const *fragment_path);
 
 void use_shader(Shader const shader);
 

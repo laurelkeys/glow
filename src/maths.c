@@ -537,6 +537,10 @@ quat quat_neg(quat const q) { return (quat) { -q.re, vec3_neg(q.im) }; }
 quat quat_add(quat const a, quat const b) { return (quat) { a.re + b.re, vec3_add(a.im, b.im) }; }
 quat quat_sub(quat const a, quat const b) { return (quat) { a.re - b.re, vec3_sub(a.im, b.im) }; }
 quat quat_mul(quat const a, quat const b) {
+    // return (quat) {
+    //     .re = a.re * b.re - vec3_dot(a.im, b.im),
+    //     .im = vec3_add(vec3_add(vec3_scl(b.im, a.re), vec3_scl(a.im, b.re)), vec3_cross(a.im, b.im)),
+    // };
     return (quat) {
         .re = /*.w*/ b.re * a.re - b.im.x * a.im.x - b.im.y * a.im.y - b.im.z * a.im.z,
         .im = { .x = b.re * a.im.x + b.im.x * a.re - b.im.y * a.im.z + b.im.z * a.im.y,
