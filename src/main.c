@@ -155,7 +155,6 @@ int main(int argc, char *argv[]) {
             set_shader_vec3(cube_shader, "light_color", (vec3) { 1, 1, 1 });
             set_shader_vec3(cube_shader, "object_color", (vec3) { 1.0f, 0.5f, 0.31f });
             set_shader_vec3(cube_shader, "light_in_world", light_pos);
-            set_shader_vec3(cube_shader, "eye_in_world", camera.position);
 
             set_shader_mat4(cube_shader, "local_to_world", mat4_id());
             set_shader_mat4(cube_shader, "world_to_view", view);
