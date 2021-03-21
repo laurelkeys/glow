@@ -42,35 +42,37 @@ Shader new_shader_from_source(char const *vertex_source, char const *fragment_so
     return (Shader) { program_id, vertex_id, fragment_id };
 }
 
-Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err) {
-#define READ_SHADER(fp, shader_path, shader_source) \
-    char *shader_source = NULL;                     \
-    FILE *fp = fopen(shader_path, "rb");            \
-    if (fp) {                                       \
-        fseek(fp, 0, SEEK_END);                     \
-        long fsize = ftell(fp);                     \
-        fseek(fp, 0, SEEK_SET);                     \
-        shader_source = malloc(fsize + 1);          \
-        if (shader_source) {                        \
-            fread(shader_source, 1, fsize, fp);     \
-            shader_source[fsize] = '\0';            \
-        }                                           \
-        fclose(fp);                                 \
-    } else {                                        \
-        return (*err = Err_Fopen, (Shader) { 0 });  \
+static char *alloc_data_from_filepath(char const *path, Err *err) {
+    FILE *fp = fopen(path, "rb");
+    if (!fp) { return (*err = Err_Fopen, NULL); }
+
+    fseek(fp, 0, SEEK_END);
+    long const fsize = ftell(fp);
+    rewind(fp); // fseek(fp, 0, SEEK_SET);
+    char *data = calloc(fsize + 1, sizeof(char));
+
+    if (data) {
+        fread(data, 1, fsize, fp);
+    } else {
+        *err = Err_Calloc;
     }
 
-    READ_SHADER(vs, vertex_path, vertex_source);
-    if (!vertex_source) { return (*err = Err_Malloc, (Shader) { 0 }); }
+    fclose(fp);
+    return data;
+}
 
-    READ_SHADER(fs, fragment_path, fragment_source);
-    if (!fragment_source) { return (*err = Err_Malloc, (Shader) { 0 }); }
+Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err) {
+    char *vertex_source = alloc_data_from_filepath(vertex_path, err);
+    if (*err) { return (Shader) { 0 }; }
 
-#undef READ_SHADER
+    char *fragment_source = alloc_data_from_filepath(fragment_path, err);
+    if (*err) { return (Shader) { 0 }; }
 
     Shader const shader = new_shader_from_source(vertex_source, fragment_source, err);
+
     free(fragment_source);
     free(vertex_source);
+
     return shader;
 }
 

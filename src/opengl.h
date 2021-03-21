@@ -10,8 +10,8 @@
 typedef struct WindowSettings {
     int width;
     int height;
-    bool fullscreen; // (windowed mode)
     bool vsync;
+    bool fullscreen; // (windowed mode)
     void (*set_callbacks_fn)(GLFWwindow *window);
 } WindowSettings;
 

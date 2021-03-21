@@ -63,6 +63,7 @@ typedef enum Err {
 
     Err_Fopen,
     Err_Malloc,
+    Err_Calloc,
 } Err;
 
 /* Notes:

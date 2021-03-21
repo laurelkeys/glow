@@ -31,8 +31,10 @@ void vec2_print(char const *name, vec2 const v) {
 }
 vec2 vec2_from_vec3(vec3 const v) { return (vec2) { v.x, v.y }; }
 
-vec2 vec2_rot_90cw(vec3 const v) { return (vec2) { v.y, -v.x }; }
-vec2 vec2_rot_90ccw(vec3 const v) { return (vec2) { -v.y, v.x }; }
+
+vec2 vec2_rot_90cw(vec2 const v) { return (vec2) { v.y, -v.x }; }
+vec2 vec2_rot_90ccw(vec2 const v) { return (vec2) { -v.y, v.x }; }
+f32 vec2_perp_dot(vec2 const a, vec2 const b) { return a.x * b.y - a.y * b.x; }
 
 vec2 vec2_of(f32 value) { return (vec2) { value, value }; }
 vec2 vec2_neg(vec2 const v) { return (vec2) { -v.x, -v.y }; }

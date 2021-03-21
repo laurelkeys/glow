@@ -24,6 +24,7 @@
 #define RADIANS(degrees) ((degrees) * (M_TAU / 360.0))
 #define DEGREES(radians) ((radians) * (360.0 / M_TAU))
 
+#define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -95,8 +96,9 @@ COMMON_VECTOR_MATH_FOR(vec4)
 void vec2_print(char const *name, vec2 const v);
 vec2 vec2_from_vec3(vec3 const v);
 
-vec2 vec2_rot_90cw(vec3 const v);
-vec2 vec2_rot_90ccw(vec3 const v);
+vec2 vec2_rot_90cw(vec2 const v);
+vec2 vec2_rot_90ccw(vec2 const v);
+f32 vec2_perp_dot(vec2 const a, vec2 const b);
 
 //
 // 3D vector specific.

@@ -18,8 +18,10 @@
 // Global variables.
 Camera camera;
 
+vec2 viewport = { 800, 600 };
 vec2 mouse_last;
 bool mouse_is_first = true;
+bool is_tab_pressed = false;
 
 Shader cube_shader;
 Shader light_cube_shader;
@@ -31,15 +33,20 @@ void set_window_callbacks(GLFWwindow *window);
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    WindowSettings const window_settings = { 800, 600, .set_callbacks_fn = set_window_callbacks };
-    mouse_last.x = (f32) window_settings.width / 2.0f;
-    mouse_last.y = (f32) window_settings.height / 2.0f;
     camera = new_camera_at((vec3) { 0, 0, 3 });
+    mouse_last.x = viewport.x / 2.0f;
+    mouse_last.y = viewport.y / 2.0f;
 
-    GLFWwindow *const window = init_opengl(window_settings, &err);
+    GLFWwindow *const window = init_opengl(
+        (WindowSettings) {
+            .width = (int) viewport.x,
+            .height = (int) viewport.y,
+            .set_callbacks_fn = set_window_callbacks,
+        },
+        &err);
     if (err) { goto main_err; }
 
-    // @Volatile: use these same files in `key_callback`.
+    // @Volatile: use these same files in `process_input`.
     cube_shader = new_shader_from_filepath(SHADERS_ "cube.vs", SHADERS_ "cube.fs", &err);
     if (err) { goto main_err; }
     light_cube_shader =
@@ -122,8 +129,6 @@ int main(int argc, char *argv[]) {
     }
     glBindVertexArray(0);
 
-    // @Fixme: update aspect ratio on the render loop to reflect viewport resizing.
-    f32 const aspect_ratio = (f32) window_settings.width / (f32) window_settings.height;
     f32 const near = 0.1f;
     f32 const far = 100.0f;
 
@@ -141,14 +146,16 @@ int main(int argc, char *argv[]) {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        f32 const aspect_ratio = viewport.x / viewport.y;
         mat4 const projection = mat4_perspective(RADIANS(camera.fovy), aspect_ratio, near, far);
         mat4 const view = get_camera_view_matrix(&camera);
 
         use_shader(cube_shader);
         {
-            set_shader_vec3(cube_shader, "light_pos", light_pos);
             set_shader_vec3(cube_shader, "light_color", (vec3) { 1, 1, 1 });
             set_shader_vec3(cube_shader, "object_color", (vec3) { 1.0f, 0.5f, 0.31f });
+            set_shader_vec3(cube_shader, "light_in_world", light_pos);
+            set_shader_vec3(cube_shader, "eye_in_world", camera.position);
 
             set_shader_mat4(cube_shader, "local_to_world", mat4_id());
             set_shader_mat4(cube_shader, "world_to_view", view);
@@ -192,6 +199,7 @@ main_err:
         case Err_Stbi_Load: GLOW_ERROR("stbi_load() failed"); break;
         case Err_Fopen: GLOW_ERROR("fopen() failed"); break;
         case Err_Malloc: GLOW_ERROR("malloc() failed"); break;
+        case Err_Calloc: GLOW_ERROR("calloc() failed"); break;
         default: assert(false);
     }
 
@@ -204,20 +212,34 @@ main_exit:
 // Input processing.
 //
 
-#define PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
+#define IS_PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
+
+#define ON_PRESS(key, is_key_pressed)                                              \
+    (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
+    else if (!is_key_pressed && (is_key_pressed = true))
 
 void process_input(GLFWwindow *window, f32 const delta_time) {
-    if PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
+    if IS_PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
 
-    if PRESSED (W) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
-    if PRESSED (S) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
-    if PRESSED (A) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
-    if PRESSED (D) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
-    if PRESSED (E) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
-    if PRESSED (Q) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
+    if IS_PRESSED (W) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
+    if IS_PRESSED (S) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
+    if IS_PRESSED (A) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
+    if IS_PRESSED (D) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
+    if IS_PRESSED (E) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
+    if IS_PRESSED (Q) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
+
+    if ON_PRESS (TAB, is_tab_pressed) {
+        // @Volatile: use the same files as in `main`.
+        GLOW_LOG("Hot swapping 'cube' shaders");
+        reload_shader_from_filepath(&cube_shader, SHADERS_ "cube.vs", SHADERS_ "cube.fs");
+        GLOW_LOG("Hot swapping 'light_cube' shaders");
+        reload_shader_from_filepath(
+            &light_cube_shader, SHADERS_ "light_cube.vs", SHADERS_ "light_cube.fs");
+    }
 }
 
-#undef PRESSED
+#undef ON_PRESS
+#undef IS_PRESSED
 
 //
 // Window callbacks.
@@ -225,6 +247,8 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
 
 static void framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
     glViewport(0, 0, render_width, render_height);
+    viewport.x = (f32) render_width;
+    viewport.y = (f32) render_height;
 }
 static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
     if (mouse_is_first) {
@@ -244,20 +268,9 @@ static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
 static void scroll_callback(GLFWwindow *window, f64 xoffset, f64 yoffset) {
     update_camera_fovy(&camera, (f32) yoffset);
 }
-static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
-        // @Volatile: use the same files as in `main`.
-        GLOW_LOG("Hot swapping 'cube' shaders");
-        reload_shader_from_filepath(&cube_shader, SHADERS_ "cube.vs", SHADERS_ "cube.fs");
-        GLOW_LOG("Hot swapping 'light_cube' shaders");
-        reload_shader_from_filepath(
-            &light_cube_shader, SHADERS_ "light_cube.vs", SHADERS_ "light_cube.fs");
-    }
-}
 
 void set_window_callbacks(GLFWwindow *window) {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_pos_callback);
     glfwSetScrollCallback(window, scroll_callback);
-    glfwSetKeyCallback(window, key_callback);
 }
