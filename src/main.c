@@ -152,8 +152,15 @@ int main(int argc, char *argv[]) {
 
         use_shader(cube_shader);
         {
-            set_shader_vec3(cube_shader, "light_color", (vec3) { 1, 1, 1 });
-            set_shader_vec3(cube_shader, "object_color", (vec3) { 1.0f, 0.5f, 0.31f });
+            set_shader_vec3(cube_shader, "light.ambient", vec3_of(0.2f));
+            set_shader_vec3(cube_shader, "light.diffuse", vec3_of(1.0f));
+            set_shader_vec3(cube_shader, "light.specular", vec3_of(1.0f));
+
+            set_shader_vec3(cube_shader, "material.ambient", (vec3) { 1.0f, 0.5f, 0.31f });
+            set_shader_vec3(cube_shader, "material.diffuse", (vec3) { 1.0f, 0.5f, 0.31f });
+            set_shader_vec3(cube_shader, "material.specular", vec3_of(0.5f));
+            set_shader_float(cube_shader, "material.shininess", 32.0f);
+
             set_shader_vec3(cube_shader, "light_in_world", light_pos);
 
             set_shader_mat4(cube_shader, "local_to_world", mat4_id());
@@ -167,7 +174,6 @@ int main(int argc, char *argv[]) {
         use_shader(light_cube_shader);
         {
             mat4 const model = mat4_mul(mat4_translate(light_pos), mat4_scale(vec3_of(0.2f)));
-
             set_shader_mat4(light_cube_shader, "local_to_world", model);
             set_shader_mat4(light_cube_shader, "world_to_view", view);
             set_shader_mat4(light_cube_shader, "view_to_clip", projection);

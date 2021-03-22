@@ -2,30 +2,40 @@
 
 out vec4 fragColor;
 
+struct Light {
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+struct Material {
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float shininess;
+};
+
 in vec3 light_in_view;
 in vec3 frag_in_view;
 in vec3 frag_normal;
 
-uniform vec3 light_color;
-uniform vec3 object_color;
+uniform Light light;
+uniform Material material;
 
 void main() {
-    float ambient_strength = 0.1;
-    float specular_strength = 0.5;
-    int shininess = 32;
+    // Ambient light.
+    vec3 ambient = light.ambient * material.ambient;
 
-    vec3 view_dir = -normalize(frag_in_view); // eye_in_view = vec3(0, 0, 0)
+    // Diffuse light.
+    vec3 normal = normalize(frag_normal);
     vec3 light_dir = normalize(light_in_view - frag_in_view);
-    // @Note: `reflect` expects the incident vector to point from the
-    // light source towards the fragment position, so we negate `light_dir`.
-    vec3 reflect_dir = reflect(-light_dir, frag_normal);
+    float diff = max(dot(normal, light_dir), 0.0);
+    vec3 diffuse = light.diffuse * diff * material.diffuse;
 
-    // Compute ambient, diffuse and specular light components.
-    vec3 ambient = ambient_strength * light_color;
-    float diff = max(dot(frag_normal, light_dir), 0.0);
-    vec3 diffuse = diff * light_color;
-    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
-    vec3 specular = specular_strength * spec * light_color;
+    // Specular light.
+    vec3 view_dir = normalize(-frag_in_view);
+    vec3 reflect_dir = reflect(-light_dir, normal);
+    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+    vec3 specular = light.specular * spec * material.specular;
 
-    fragColor = vec4((ambient + diffuse + specular) * object_color, 1.0);
+    fragColor = vec4(ambient + diffuse + specular, 1.0);
 }

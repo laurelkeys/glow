@@ -557,4 +557,5 @@ f32 quat_length(quat const q) { return sqrtf(quat_dot(q, q)); }
 quat quat_normalize(quat const q) { return quat_scl(q, 1 / quat_length(q)); }
 
 quat quat_lerp(quat const a, quat const b, f32 t) { return (quat) { lerp(a.re, b.re, t), vec3_lerp(a.im, b.im, t) }; }
+quat quat_nlerp(quat const a, quat const b, f32 t) { return quat_normalize(quat_lerp(a, b, t)); }
 #endif

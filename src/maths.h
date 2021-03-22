@@ -211,4 +211,5 @@ f32 quat_length(quat const q);
 quat quat_normalize(quat const q);
 
 quat quat_lerp(quat const a, quat const b, f32 t);
+quat quat_nlerp(quat const a, quat const b, f32 t);
 #endif

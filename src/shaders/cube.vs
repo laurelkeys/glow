@@ -18,7 +18,7 @@ void main() {
 
     light_in_view = vec3(vec4(light_in_world, 1.0) * world_to_view);
     frag_in_view = vec3(vec4(aPos, 1.0) * local_to_view);
-    frag_normal = normalize(aNormal * mat3(transpose(inverse(local_to_view))));
+    frag_normal = aNormal * mat3(transpose(inverse(local_to_view)));
 
     gl_Position = vec4(frag_in_view, 1.0) * view_to_clip;
 }
