@@ -10,9 +10,9 @@
 typedef struct WindowSettings {
     int width;
     int height;
+    void (*set_callbacks_fn)(GLFWwindow *window);
     bool vsync;
     bool fullscreen; // (windowed mode)
-    void (*set_callbacks_fn)(GLFWwindow *window);
 } WindowSettings;
 
 GLFWwindow *init_opengl(WindowSettings settings, Err *err);

@@ -19,6 +19,7 @@ Camera new_camera_at(vec3 const position) {
         .movement_speed = 2.5f,
         .mouse_sensitivity = 0.1f,
         .fovy = 45.0f,
+        .aspect = 1.0f,
     };
 }
 

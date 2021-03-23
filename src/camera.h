@@ -23,6 +23,7 @@ typedef struct Camera {
     f32 movement_speed;
     f32 mouse_sensitivity;
     f32 fovy;
+    f32 aspect;
 } Camera;
 
 typedef enum CameraMovement {

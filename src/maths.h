@@ -191,8 +191,8 @@ mat4 mat4_perspective(f32 fovy, f32 aspect, f32 near, f32 far);
 
 #if 0
 typedef struct quat {
-    f32 re; // Real / scalar part (w).
-    vec3 im; // Imaginary part (x, y, z).
+    f32 re; // scalar part (real)
+    vec3 im; // vector part (imaginary)
 } quat;
 
 void quat_print(char const *name, quat const q);

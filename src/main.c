@@ -15,10 +15,17 @@
 #define SHADERS_ "src/shaders/"
 #define TEXTURES_ "res/textures/"
 
+#define TRY_NEW_SHADER(name, err_ptr)                                            \
+    new_shader_from_filepath(SHADERS_ name ".vs", SHADERS_ name ".fs", err_ptr); \
+    if (*(err_ptr)) { goto main_err; }
+
+#define TRY_NEW_TEXTURE(filename, err_ptr)                  \
+    new_texture_from_filepath(TEXTURES_ filename, err_ptr); \
+    if (*(err_ptr)) { goto main_err; }
+
 // Global variables.
 Camera camera;
 
-vec2 viewport = { 800, 600 };
 vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
@@ -33,72 +40,67 @@ void set_window_callbacks(GLFWwindow *window);
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    camera = new_camera_at((vec3) { 0, 0, 3 });
-    mouse_last.x = viewport.x / 2.0f;
-    mouse_last.y = viewport.y / 2.0f;
+    WindowSettings const window_settings = { 800, 600, set_window_callbacks };
+    mouse_last.x = (f32) window_settings.width / 2.0f;
+    mouse_last.y = (f32) window_settings.height / 2.0f;
 
-    GLFWwindow *const window = init_opengl(
-        (WindowSettings) {
-            .width = (int) viewport.x,
-            .height = (int) viewport.y,
-            .set_callbacks_fn = set_window_callbacks,
-        },
-        &err);
+    camera = new_camera_at((vec3) { 0, 0, 3 });
+    camera.aspect = (f32) window_settings.width / (f32) window_settings.height;
+
+    GLFWwindow *const window = init_opengl(window_settings, &err);
     if (err) { goto main_err; }
 
     // @Volatile: use these same files in `process_input`.
-    cube_shader = new_shader_from_filepath(SHADERS_ "cube.vs", SHADERS_ "cube.fs", &err);
-    if (err) { goto main_err; }
-    light_cube_shader =
-        new_shader_from_filepath(SHADERS_ "light_cube.vs", SHADERS_ "light_cube.fs", &err);
-    if (err) { goto main_err; }
+    cube_shader = TRY_NEW_SHADER("cube", &err);
+    light_cube_shader = TRY_NEW_SHADER("light_cube", &err);
 
-    vec3 const light_pos = { 1.2f, 1.0f, 2.0f };
+    Texture const diffuse_map = TRY_NEW_TEXTURE("container2.png", &err);
+    Texture const specular_map = TRY_NEW_TEXTURE("container2_specular.png", &err);
 
     // clang-format off
     f32 const cube_vertices[] = {
-        // positions            // normals
-        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-         0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-        -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
+        // positions            // normals             // texture coords
+        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 0.0f,
 
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     0.0f, 0.0f,
 
-        -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,    0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,    0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,    0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 0.0f,
 
-         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,    1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,    1.0f,  0.0f,  0.0f,    1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,    0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,    0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,    1.0f,  0.0f,  0.0f,    0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,    1.0f, 0.0f,
 
-        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,    0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,    1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,    1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,    1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,    0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,    0.0f, 1.0f,
 
-        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f
+        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,    1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 1.0f,
     };
     // clang-format on
 
@@ -113,7 +115,7 @@ int main(int argc, char *argv[]) {
     // and since it's now bound (and we do not bind any other VBOs) we don't
     // need to rebind it after the VAOs to link it with glVertexAttribPointer.
 
-    uint const stride = sizeof(f32) * 6;
+    uint const stride = sizeof(f32) * 8;
 
     glBindVertexArray(vao_cube);
     {
@@ -121,6 +123,8 @@ int main(int argc, char *argv[]) {
         glEnableVertexAttribArray(0); // position attribute
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
         glEnableVertexAttribArray(1); // normal attribute
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
+        glEnableVertexAttribArray(2); // texcoord attribute
     }
     glBindVertexArray(vao_light_cube);
     {
@@ -146,26 +150,29 @@ int main(int argc, char *argv[]) {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        f32 const aspect_ratio = viewport.x / viewport.y;
-        mat4 const projection = mat4_perspective(RADIANS(camera.fovy), aspect_ratio, near, far);
+        mat4 const projection = mat4_perspective(RADIANS(camera.fovy), camera.aspect, near, far);
         mat4 const view = get_camera_view_matrix(&camera);
+
+        vec3 const light_pos = { 1.2f, 1.0f, 2.0f };
 
         use_shader(cube_shader);
         {
+            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
+            set_shader_mat4(cube_shader, "world_to_view", view);
+            set_shader_mat4(cube_shader, "view_to_clip", projection);
+
+            set_shader_vec3(cube_shader, "light_in_world", light_pos);
+
             set_shader_vec3(cube_shader, "light.ambient", vec3_of(0.2f));
             set_shader_vec3(cube_shader, "light.diffuse", vec3_of(1.0f));
             set_shader_vec3(cube_shader, "light.specular", vec3_of(1.0f));
 
-            set_shader_vec3(cube_shader, "material.ambient", (vec3) { 1.0f, 0.5f, 0.31f });
-            set_shader_vec3(cube_shader, "material.diffuse", (vec3) { 1.0f, 0.5f, 0.31f });
-            set_shader_vec3(cube_shader, "material.specular", vec3_of(0.5f));
+            set_shader_int(cube_shader, "material.diffuse", 0);
+            set_shader_int(cube_shader, "material.specular", 1);
             set_shader_float(cube_shader, "material.shininess", 32.0f);
 
-            set_shader_vec3(cube_shader, "light_in_world", light_pos);
-
-            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
-            set_shader_mat4(cube_shader, "world_to_view", view);
-            set_shader_mat4(cube_shader, "view_to_clip", projection);
+            bind_texture_to_unit(diffuse_map, GL_TEXTURE0);
+            bind_texture_to_unit(specular_map, GL_TEXTURE1);
 
             glBindVertexArray(vao_cube);
             glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -252,8 +259,7 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
 
 static void framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
     glViewport(0, 0, render_width, render_height);
-    viewport.x = (f32) render_width;
-    viewport.y = (f32) render_height;
+    camera.aspect = (f32) render_width / (f32) render_height;
 }
 static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
     if (mouse_is_first) {
