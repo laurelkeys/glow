@@ -11,16 +11,18 @@
 
 #include <stb_image.h>
 
-// @Cleanup: set paths using CMake's PROJECT_SOURCE_DIR
-#define SHADERS_ "src/shaders/"
-#define TEXTURES_ "res/textures/"
-
-#define TRY_NEW_SHADER(name, err_ptr)                                            \
-    new_shader_from_filepath(SHADERS_ name ".vs", SHADERS_ name ".fs", err_ptr); \
+#ifndef GLOW_SHADERS_
+#define GLOW_SHADERS_ ""
+#endif
+#define TRY_NEW_SHADER(name, err_ptr)                                                      \
+    new_shader_from_filepath(GLOW_SHADERS_ name ".vs", GLOW_SHADERS_ name ".fs", err_ptr); \
     if (*(err_ptr)) { goto main_err; }
 
-#define TRY_NEW_TEXTURE(filename, err_ptr)                  \
-    new_texture_from_filepath(TEXTURES_ filename, err_ptr); \
+#ifndef GLOW_TEXTURES_
+#define GLOW_TEXTURES_ ""
+#endif
+#define TRY_NEW_TEXTURE(filename, err_ptr)                       \
+    new_texture_from_filepath(GLOW_TEXTURES_ filename, err_ptr); \
     if (*(err_ptr)) { goto main_err; }
 
 // Global variables.
@@ -39,6 +41,11 @@ void set_window_callbacks(GLFWwindow *window);
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
+
+    printf("GLOW_SHADERS_ = " GLOW_SHADERS_ "\n");
+    printf("GLOW_TEXTURES_ = " GLOW_TEXTURES_ "\n");
+
+    return 0;
 
     WindowSettings const window_settings = { 800, 600, set_window_callbacks };
     mouse_last.x = (f32) window_settings.width / 2.0f;
@@ -67,12 +74,12 @@ int main(int argc, char *argv[]) {
         -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 1.0f,
         -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 0.0f,
 
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f, 1.0f,     0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 0.0f,
 
         -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 1.0f,
@@ -242,11 +249,14 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
+
         GLOW_LOG("Hot swapping 'cube' shaders");
-        reload_shader_from_filepath(&cube_shader, SHADERS_ "cube.vs", SHADERS_ "cube.fs");
+        reload_shader_from_filepath(
+            &cube_shader, GLOW_SHADERS_ "cube.vs", GLOW_SHADERS_ "cube.fs");
+
         GLOW_LOG("Hot swapping 'light_cube' shaders");
         reload_shader_from_filepath(
-            &light_cube_shader, SHADERS_ "light_cube.vs", SHADERS_ "light_cube.fs");
+            &light_cube_shader, GLOW_SHADERS_ "light_cube.vs", GLOW_SHADERS_ "light_cube.fs");
     }
 }
 
