@@ -5,14 +5,46 @@
 
 #include <stb_image.h>
 
+static int const MAG_FILTER[] = {
+    [TextureFilter_Nearest] = GL_NEAREST,
+    [TextureFilter_Linear] = GL_LINEAR,
+};
+static int const MIN_FILTER[] = {
+    [TextureFilter_Nearest] = GL_NEAREST,
+    [TextureFilter_Linear] = GL_LINEAR,
+};
+static int const MIN_MIPMAP_FILTER[2][2] = {
+    [TextureFilter_Nearest][TextureFilter_Nearest] = GL_NEAREST_MIPMAP_NEAREST,
+    [TextureFilter_Nearest][TextureFilter_Linear] = GL_NEAREST_MIPMAP_LINEAR,
+    [TextureFilter_Linear][TextureFilter_Nearest] = GL_LINEAR_MIPMAP_NEAREST,
+    [TextureFilter_Linear][TextureFilter_Linear] = GL_LINEAR_MIPMAP_LINEAR,
+};
+
+static int const WRAP[] = {
+    [TextureWrap_ClampToEdge] = GL_CLAMP_TO_EDGE,
+    [TextureWrap_ClampToBorder] = GL_CLAMP_TO_BORDER,
+    [TextureWrap_MirroredRepeat] = GL_MIRRORED_REPEAT,
+    [TextureWrap_Repeat] = GL_REPEAT,
+};
+
+static TextureSettings const DEFAULT_SETTINGS = {
+    .generate_mipmap = true,
+    .min_filter = TextureFilter_Linear,
+    .mag_filter = TextureFilter_Linear,
+    .mipmap_filter = TextureFilter_Linear,
+    .wrap_s = TextureWrap_Repeat,
+    .wrap_t = TextureWrap_Repeat,
+};
+
 Texture new_texture_from_image(TextureImage const texture_image) {
+    return new_texture_from_image_with_settings(DEFAULT_SETTINGS, texture_image);
+}
+Texture new_texture_from_image_with_settings(
+    TextureSettings const settings, TextureImage const texture_image) {
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
     glTexImage2D(
         /*target*/ GL_TEXTURE_2D,
         /*level*/ 0,
@@ -23,11 +55,26 @@ Texture new_texture_from_image(TextureImage const texture_image) {
         /*format*/ texture_image.channels == 3 ? GL_RGB : GL_RGBA,
         /*type*/ GL_UNSIGNED_BYTE,
         /*data*/ texture_image.data);
-    glGenerateMipmap(GL_TEXTURE_2D);
+
+    int min_filter = MIN_FILTER[settings.min_filter];
+    if (settings.generate_mipmap) {
+        min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap_s]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap_t]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, MAG_FILTER[settings.mag_filter]);
+
     return (Texture) { texture_id };
 }
 
 Texture new_texture_from_filepath(char const *image_path, Err *err) {
+    return new_texture_from_filepath_with_settings(DEFAULT_SETTINGS, image_path, err);
+}
+Texture new_texture_from_filepath_with_settings(
+    TextureSettings const settings, char const *image_path, Err *err) {
     int width, height, channels;
     u8 *data = stbi_load(image_path, &width, &height, &channels, 0);
     if (!data) {
