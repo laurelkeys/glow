@@ -16,4 +16,4 @@ typedef struct Texture {
 Texture new_texture_from_image(TextureImage const texture_image);
 Texture new_texture_from_filepath(char const *image_path, Err *err);
 
-void bind_texture_to_unit(Texture const texture, uint const texture_unit);
+void bind_texture_to_unit(Texture const texture, uint texture_unit);

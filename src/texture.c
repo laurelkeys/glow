@@ -43,7 +43,7 @@ Texture new_texture_from_filepath(char const *image_path, Err *err) {
     return texture;
 }
 
-void bind_texture_to_unit(Texture const texture, uint const texture_unit) {
+void bind_texture_to_unit(Texture const texture, uint texture_unit) {
     glActiveTexture(texture_unit);
     glBindTexture(GL_TEXTURE_2D, texture.id);
 }

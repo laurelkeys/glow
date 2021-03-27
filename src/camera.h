@@ -5,7 +5,6 @@
 #include "maths.h"
 #include "opengl.h"
 
-static vec3 const CAMERA_WORLD_UP = { 0, 1, 0 };
 static f32 const CAMERA_FOVY_MIN = 1.0f;
 static f32 const CAMERA_FOVY_MAX = 90.0f;
 
@@ -24,6 +23,9 @@ typedef struct Camera {
     f32 mouse_sensitivity;
     f32 fovy;
     f32 aspect;
+    // Near and far clipping planes.
+    f32 near;
+    f32 far;
 } Camera;
 
 typedef enum CameraMovement {
@@ -43,6 +45,7 @@ typedef struct CameraMouseEvent {
 Camera new_camera_at(vec3 const position);
 
 mat4 get_camera_view_matrix(Camera const *camera);
+mat4 get_camera_projection_matrix(Camera const *camera);
 
 void update_camera_fovy(Camera *camera, f32 yoffset);
 void update_camera_angles(Camera *camera, CameraMouseEvent const mouse_event);

@@ -111,6 +111,11 @@ void set_shader_int(Shader const shader, char const *name, int value) { glUnifor
 void set_shader_bool(Shader const shader, char const *name, bool value) { glUniform1i(get_uniform_location(shader.program_id, name), (int) value); }
 void set_shader_float(Shader const shader, char const *name, f32 value) { glUniform1f(get_uniform_location(shader.program_id, name), value); }
 
+void set_shader_sampler2D(Shader const shader, char const *name, uint texture_unit) {
+    assert(texture_unit >= GL_TEXTURE0);
+    glUniform1i(get_uniform_location(shader.program_id, name), (int) (texture_unit - GL_TEXTURE0));
+}
+
 void set_shader_vec2(Shader const shader, char const *name, vec2 const vec) { glUniform2fv(get_uniform_location(shader.program_id, name), 1, (f32 *) &vec); }
 void set_shader_vec3(Shader const shader, char const *name, vec3 const vec) { glUniform3fv(get_uniform_location(shader.program_id, name), 1, (f32 *) &vec); }
 void set_shader_vec4(Shader const shader, char const *name, vec4 const vec) { glUniform4fv(get_uniform_location(shader.program_id, name), 1, (f32 *) &vec); }

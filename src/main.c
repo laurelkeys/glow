@@ -42,11 +42,6 @@ void set_window_callbacks(GLFWwindow *window);
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    printf("GLOW_SHADERS_ = " GLOW_SHADERS_ "\n");
-    printf("GLOW_TEXTURES_ = " GLOW_TEXTURES_ "\n");
-
-    return 0;
-
     WindowSettings const window_settings = { 800, 600, set_window_callbacks };
     mouse_last.x = (f32) window_settings.width / 2.0f;
     mouse_last.y = (f32) window_settings.height / 2.0f;
@@ -74,12 +69,12 @@ int main(int argc, char *argv[]) {
         -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 1.0f,
         -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,    0.0f, 0.0f,
 
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,     0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,    0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,    1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,    1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,    1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,    0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,    0.0f, 0.0f,
 
         -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,    1.0f, 1.0f,
@@ -109,6 +104,26 @@ int main(int argc, char *argv[]) {
         -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 1.0f,
     };
+
+    vec3 const cube_positions[] = {
+        {  0.0f,  0.0f,   0.0f },
+        {  2.0f,  5.0f, -15.0f },
+        { -1.5f, -2.2f,  -2.5f },
+        { -3.8f, -2.0f, -12.3f },
+        {  2.4f, -0.4f,  -3.5f },
+        { -1.7f,  3.0f,  -7.5f },
+        {  1.3f, -2.0f,  -2.5f },
+        {  1.5f,  2.0f,  -2.5f },
+        {  1.5f,  0.2f,  -1.5f },
+        { -1.3f,  1.0f,  -1.5f },
+    };
+
+    vec3 const point_light_positions[] = {
+        { 0.7f,  0.2f,   2.0f },
+        { 2.3f, -3.3f,  -4.0f },
+        {-4.0f,  2.0f, -12.0f },
+        { 0.0f,  0.0f,  -3.0f },
+    };
     // clang-format on
 
     uint vao_cube, vao_light_cube, vbo;
@@ -126,22 +141,28 @@ int main(int argc, char *argv[]) {
 
     glBindVertexArray(vao_cube);
     {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
         glEnableVertexAttribArray(0); // position attribute
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
+
         glEnableVertexAttribArray(1); // normal attribute
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
+
         glEnableVertexAttribArray(2); // texcoord attribute
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
     }
     glBindVertexArray(vao_light_cube);
     {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
         glEnableVertexAttribArray(0); // position attribute
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
     }
     glBindVertexArray(0);
 
-    f32 const near = 0.1f;
-    f32 const far = 100.0f;
+    use_shader(cube_shader);
+    {
+        set_shader_sampler2D(cube_shader, "material.diffuse", GL_TEXTURE0);
+        set_shader_sampler2D(cube_shader, "material.specular", GL_TEXTURE1);
+        set_shader_float(cube_shader, "material.shininess", 32.0f);
+    }
 
     f32 last_frame = 0; // time of last frame
     f32 delta_time = 0; // time between consecutive frames
@@ -157,43 +178,102 @@ int main(int argc, char *argv[]) {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        mat4 const projection = mat4_perspective(RADIANS(camera.fovy), camera.aspect, near, far);
+        mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
 
-        vec3 const light_pos = { 1.2f, 1.0f, 2.0f };
+        // clang-format off
+        use_shader(cube_shader);
+        {
+            { // Directional light.
+                set_shader_vec3(
+                    cube_shader, "directional_light.direction", (vec3) { -0.2f, -1.0f, -0.3f });
+
+                set_shader_vec3(cube_shader, "directional_light.k.ambient", vec3_of(0.05f));
+                set_shader_vec3(cube_shader, "directional_light.k.diffuse", vec3_of(0.4f));
+                set_shader_vec3(cube_shader, "directional_light.k.specular", vec3_of(0.5f));
+            }
+
+            { // Point lights.
+                #define POINT_LIGHT(i) "point_lights[" STRINGIFY(i) "]"
+
+                #define SET_SHADER_POINT_LIGHT(i)                                              \
+                    assert((i) < ARRAY_LEN(point_light_positions));                            \
+                                                                                               \
+                    set_shader_vec3(                                                           \
+                        cube_shader, POINT_LIGHT(i) ".position", point_light_positions[(i)]);  \
+                                                                                               \
+                    set_shader_vec3(cube_shader, POINT_LIGHT(i) ".k.ambient", vec3_of(0.05f)); \
+                    set_shader_vec3(cube_shader, POINT_LIGHT(i) ".k.diffuse", vec3_of(0.8f));  \
+                    set_shader_vec3(cube_shader, POINT_LIGHT(i) ".k.specular", vec3_of(1.0f)); \
+                                                                                               \
+                    set_shader_float(cube_shader, POINT_LIGHT(i) ".att.constant", 1.0f);       \
+                    set_shader_float(cube_shader, POINT_LIGHT(i) ".att.linear", 0.09);         \
+                    set_shader_float(cube_shader, POINT_LIGHT(i) ".att.quadratic", 0.032);
+
+                SET_SHADER_POINT_LIGHT(0);
+                SET_SHADER_POINT_LIGHT(1);
+                SET_SHADER_POINT_LIGHT(2);
+                SET_SHADER_POINT_LIGHT(3);
+
+                #undef SET_SHADER_POINT_LIGHT
+                #undef POINT_LIGHT
+            }
+
+            { // Spot light.
+                set_shader_vec3(cube_shader, "spot_light.position", camera.position);
+                set_shader_vec3(cube_shader, "spot_light.direction", camera.forward);
+
+                set_shader_float(
+                    cube_shader, "spot_light.cos_cutoff_inner", cosf(RADIANS(12.5f)));
+                set_shader_float(
+                    cube_shader, "spot_light.cos_cutoff_outer", cosf(RADIANS(15.0f)));
+
+                set_shader_vec3(cube_shader, "spot_light.k.ambient", vec3_of(0.0f));
+                set_shader_vec3(cube_shader, "spot_light.k.diffuse", vec3_of(1.0f));
+                set_shader_vec3(cube_shader, "spot_light.k.specular", vec3_of(1.0f));
+
+                set_shader_float(cube_shader, "spot_light.att.constant", 1.0f);
+                set_shader_float(cube_shader, "spot_light.att.linear", 0.09);
+                set_shader_float(cube_shader, "spot_light.att.quadratic", 0.032);
+            }
+        }
+        // clang-format on
 
         use_shader(cube_shader);
         {
-            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
+            set_shader_vec3(cube_shader, "view_pos", camera.position);
+
             set_shader_mat4(cube_shader, "world_to_view", view);
             set_shader_mat4(cube_shader, "view_to_clip", projection);
-
-            set_shader_vec3(cube_shader, "light_in_world", light_pos);
-
-            set_shader_vec3(cube_shader, "light.ambient", vec3_of(0.2f));
-            set_shader_vec3(cube_shader, "light.diffuse", vec3_of(1.0f));
-            set_shader_vec3(cube_shader, "light.specular", vec3_of(1.0f));
-
-            set_shader_int(cube_shader, "material.diffuse", 0);
-            set_shader_int(cube_shader, "material.specular", 1);
-            set_shader_float(cube_shader, "material.shininess", 32.0f);
 
             bind_texture_to_unit(diffuse_map, GL_TEXTURE0);
             bind_texture_to_unit(specular_map, GL_TEXTURE1);
 
             glBindVertexArray(vao_cube);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            for (int i = 0; i < ARRAY_LEN(cube_positions); ++i) {
+                f32 const angle = RADIANS((i % 3) ? -20 * glfwGetTime() : 25 * glfwGetTime());
+                mat4 const model = mat4_mul(
+                    mat4_translate(cube_positions[i]),
+                    mat4_rotate(angle, (vec3) { 1.0f, 0.3f, 0.5f }));
+                set_shader_mat4(cube_shader, "local_to_world", model);
+
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+            }
         }
 
         use_shader(light_cube_shader);
         {
-            mat4 const model = mat4_mul(mat4_translate(light_pos), mat4_scale(vec3_of(0.2f)));
-            set_shader_mat4(light_cube_shader, "local_to_world", model);
             set_shader_mat4(light_cube_shader, "world_to_view", view);
             set_shader_mat4(light_cube_shader, "view_to_clip", projection);
 
             glBindVertexArray(vao_light_cube);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            for (int i = 0; i < ARRAY_LEN(point_light_positions); ++i) {
+                mat4 const model =
+                    mat4_mul(mat4_translate(point_light_positions[i]), mat4_scale(vec3_of(0.2f)));
+                set_shader_mat4(light_cube_shader, "local_to_world", model);
+
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+            }
         }
 
         glfwSwapBuffers(window);

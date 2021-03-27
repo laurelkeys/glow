@@ -3,15 +3,13 @@
 #include "maths.h"
 
 Camera new_camera_at(vec3 const position) {
-    vec3 const forward = { 0, 0, -1 }; // pitch = 0, yaw = -90
-    vec3 const right = vec3_normalize(vec3_cross(forward, CAMERA_WORLD_UP));
-    vec3 const up = vec3_cross(right, forward);
     return (Camera) {
-        CAMERA_WORLD_UP,
-        position,
-        forward,
-        right,
-        up,
+        .world_up = { 0, 1, 0 },
+        .position = position,
+
+        .forward = { 0, 0, -1 }, // pitch = 0, yaw = -90
+        .right = { 1, 0, 0 }, // world_up = { 0, 1, 0 }
+        .up = { 0, 1, 0 }, // cross(right, forward)
 
         .pitch = 0,
         .yaw = -90,
@@ -20,11 +18,17 @@ Camera new_camera_at(vec3 const position) {
         .mouse_sensitivity = 0.1f,
         .fovy = 45.0f,
         .aspect = 1.0f,
+
+        .near = 0.1f,
+        .far = 100.0f,
     };
 }
 
 mat4 get_camera_view_matrix(Camera const *camera) {
     return mat4_lookat(camera->position, vec3_add(camera->position, camera->forward), camera->up);
+}
+mat4 get_camera_projection_matrix(Camera const *camera) {
+    return mat4_perspective(RADIANS(camera->fovy), camera->aspect, camera->near, camera->far);
 }
 
 static void update_camera_coordinate_system(Camera *camera) {
