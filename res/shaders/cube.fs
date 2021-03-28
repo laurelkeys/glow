@@ -2,6 +2,7 @@
 
 out vec4 fragColor;
 
+#define PHONG_SHININESS_MULTIPLIER 2.0
 #define POINT_LIGHTS_LEN 4
 
 struct Components { vec3 ambient; vec3 diffuse; vec3 specular; };
@@ -35,6 +36,7 @@ in vec3 frag_pos;
 in vec3 frag_normal;
 in vec2 tex_coords;
 
+uniform bool use_blinn_phong;
 uniform vec3 view_pos;
 uniform DirectionalLight directional_light;
 uniform PointLight point_lights[POINT_LIGHTS_LEN];
@@ -65,8 +67,14 @@ vec3 light_color(Components light, vec3 light_dir, vec3 normal, vec3 view_dir) {
     float diff = max(dot(normal, light_dir), 0.0);
     vec3 diffuse = light.diffuse * diff * texture(material.diffuse, tex_coords).rgb;
 
-    vec3 reflect_dir = reflect(-light_dir, normal);
-    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+    float spec = 0.0;
+    if (use_blinn_phong) {
+        vec3 halfway_dir = normalize(light_dir + view_dir);
+        spec = pow(max(dot(normal, halfway_dir), 0.0), PHONG_SHININESS_MULTIPLIER * material.shininess);
+    } else {
+        vec3 reflect_dir = reflect(-light_dir, normal);
+        spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+    }
     vec3 specular = light.specular * spec * texture(material.specular, tex_coords).rgb;
 
     return ambient + diffuse + specular;
@@ -79,7 +87,6 @@ float light_attenuation(Attenuation att, float dist) {
 // Directional light.
 vec3 compute_directional_light(DirectionalLight light, vec3 normal, vec3 view_dir) {
     vec3 light_dir = normalize(-light.direction);
-
     return light_color(light.k, light_dir, normal, view_dir);
 }
 

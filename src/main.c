@@ -31,6 +31,8 @@ Camera camera;
 vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
+bool is_b_pressed = false;
+bool use_blinn_phong = false;
 
 Shader cube_shader;
 Shader light_cube_shader;
@@ -241,6 +243,7 @@ int main(int argc, char *argv[]) {
 
         use_shader(cube_shader);
         {
+            set_shader_bool(cube_shader, "use_blinn_phong", use_blinn_phong);
             set_shader_vec3(cube_shader, "view_pos", camera.position);
 
             set_shader_mat4(cube_shader, "world_to_view", view);
@@ -337,6 +340,14 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
         GLOW_LOG("Hot swapping 'light_cube' shaders");
         reload_shader_from_filepath(
             &light_cube_shader, GLOW_SHADERS_ "light_cube.vs", GLOW_SHADERS_ "light_cube.fs");
+    }
+
+    if ON_PRESS (B, is_b_pressed) {
+        if (use_blinn_phong = !use_blinn_phong) {
+            GLOW_LOG("Using Blinn-Phong shading");
+        } else {
+            GLOW_LOG("Using Phong shading");
+        }
     }
 }
 

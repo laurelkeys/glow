@@ -41,7 +41,7 @@ add_executable(
 
 # ----------------------------------------------------------------------------------------
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_SHADERS_="${PROJECT_SOURCE_DIR}/src/shaders/")
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_SHADERS_="${PROJECT_SOURCE_DIR}/res/shaders/")
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_TEXTURES_="${PROJECT_SOURCE_DIR}/res/textures/")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_INCLUDE_NONE)
