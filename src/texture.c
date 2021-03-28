@@ -5,20 +5,15 @@
 
 #include <stb_image.h>
 
-static int const MAG_FILTER[] = {
-    [TextureFilter_Nearest] = GL_NEAREST,
-    [TextureFilter_Linear] = GL_LINEAR,
-};
-static int const MIN_FILTER[] = {
-    [TextureFilter_Nearest] = GL_NEAREST,
-    [TextureFilter_Linear] = GL_LINEAR,
-};
-static int const MIN_MIPMAP_FILTER[2][2] = {
+// clang-format off
+static int const FILTER[] = { [TextureFilter_Nearest] = GL_NEAREST, [TextureFilter_Linear] = GL_LINEAR };
+static int const MIN_MIPMAP_FILTER[][2] = {
     [TextureFilter_Nearest][TextureFilter_Nearest] = GL_NEAREST_MIPMAP_NEAREST,
-    [TextureFilter_Nearest][TextureFilter_Linear] = GL_NEAREST_MIPMAP_LINEAR,
-    [TextureFilter_Linear][TextureFilter_Nearest] = GL_LINEAR_MIPMAP_NEAREST,
-    [TextureFilter_Linear][TextureFilter_Linear] = GL_LINEAR_MIPMAP_LINEAR,
+    [TextureFilter_Nearest][TextureFilter_Linear ] = GL_NEAREST_MIPMAP_LINEAR,
+    [TextureFilter_Linear ][TextureFilter_Nearest] = GL_LINEAR_MIPMAP_NEAREST,
+    [TextureFilter_Linear ][TextureFilter_Linear ] = GL_LINEAR_MIPMAP_LINEAR,
 };
+// clang-format on
 
 static int const WRAP[] = {
     [TextureWrap_ClampToEdge] = GL_CLAMP_TO_EDGE,
@@ -26,6 +21,28 @@ static int const WRAP[] = {
     [TextureWrap_MirroredRepeat] = GL_MIRRORED_REPEAT,
     [TextureWrap_Repeat] = GL_REPEAT,
 };
+
+// References:
+//  https://www.khronos.org/opengl/wiki/Image_Format#Legacy_Image_Formats
+//  https://www.khronos.org/opengl/wiki/Texture#Swizzle_mask
+
+static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+static int gl_format(int channels) {
+    switch (channels) {
+        case 1: // replicate legacy GL_LUMINANCE
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_R001_TO_RRR1);
+            return GL_RED;
+        case 2: // replicate legacy GL_LUMINANCE_ALPHA
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_RG01_TO_RRRG);
+            return GL_RG;
+        default: // fallthrough to GL_RGB in release mode
+            GLOW_WARNING("invalid number of channels for image: '%d'", channels);
+            assert(false);
+        case 3: return GL_RGB;
+        case 4: return GL_RGBA;
+    }
+}
 
 static TextureSettings const DEFAULT_SETTINGS = {
     .generate_mipmap = true,
@@ -52,11 +69,11 @@ Texture new_texture_from_image_with_settings(
         /*width*/ texture_image.width,
         /*height*/ texture_image.height,
         /*border*/ 0,
-        /*format*/ texture_image.channels == 3 ? GL_RGB : GL_RGBA,
+        /*format*/ gl_format(texture_image.channels),
         /*type*/ GL_UNSIGNED_BYTE,
         /*data*/ texture_image.data);
 
-    int min_filter = MIN_FILTER[settings.min_filter];
+    int min_filter = FILTER[settings.min_filter];
     if (settings.generate_mipmap) {
         min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -65,7 +82,7 @@ Texture new_texture_from_image_with_settings(
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap_s]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap_t]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, MAG_FILTER[settings.mag_filter]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, FILTER[settings.mag_filter]);
 
     return (Texture) { texture_id };
 }
@@ -81,11 +98,9 @@ Texture new_texture_from_filepath_with_settings(
         GLOW_WARNING("failed to load image from path: '%s'", image_path);
         return (*err = Err_Stbi_Load, (Texture) { 0 });
     }
-    if (channels != 3 && channels != 4) {
-        GLOW_WARNING("expected an RGB or RGBA image, but got %d channels instead", channels);
-        assert(false);
-    }
-    Texture texture = new_texture_from_image((TextureImage) { data, width, height, channels });
+    assert(1 <= channels && channels <= 4);
+    Texture texture = new_texture_from_image_with_settings(
+        settings, (TextureImage) { data, width, height, channels });
     stbi_image_free(data);
     return texture;
 }
