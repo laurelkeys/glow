@@ -22,13 +22,13 @@ static int const WRAP[] = {
     [TextureWrap_Repeat] = GL_REPEAT,
 };
 
-// References:
-//  https://www.khronos.org/opengl/wiki/Image_Format#Legacy_Image_Formats
-//  https://www.khronos.org/opengl/wiki/Texture#Swizzle_mask
-
 static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
 static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
 static int gl_format(int channels) {
+    // References:
+    //  https://www.khronos.org/opengl/wiki/Image_Format#Legacy_Image_Formats
+    //  https://www.khronos.org/opengl/wiki/Texture#Swizzle_mask
+
     switch (channels) {
         case 1: // replicate legacy GL_LUMINANCE
             glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_R001_TO_RRR1);
@@ -37,7 +37,7 @@ static int gl_format(int channels) {
             glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_RG01_TO_RRRG);
             return GL_RG;
         default: // fallthrough to GL_RGB in release mode
-            GLOW_WARNING("invalid number of channels for image: '%d'", channels);
+            GLOW_WARNING("texture image with invalid number of channels: `%d`", channels);
             assert(false);
         case 3: return GL_RGB;
         case 4: return GL_RGBA;
@@ -73,16 +73,18 @@ Texture new_texture_from_image_with_settings(
         /*type*/ GL_UNSIGNED_BYTE,
         /*data*/ texture_image.data);
 
-    int min_filter = FILTER[settings.min_filter];
+    int min_filter;
     if (settings.generate_mipmap) {
-        min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
         glGenerateMipmap(GL_TEXTURE_2D);
+        min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
+    } else {
+        min_filter = FILTER[settings.min_filter];
     }
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap_s]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap_t]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, FILTER[settings.mag_filter]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
 
     return (Texture) { texture_id };
 }
@@ -95,7 +97,8 @@ Texture new_texture_from_filepath_with_settings(
     int width, height, channels;
     u8 *data = stbi_load(image_path, &width, &height, &channels, 0);
     if (!data) {
-        GLOW_WARNING("failed to load image from path: '%s'", image_path);
+        GLOW_WARNING("failed to load image from path: `%s`", image_path);
+        GLOW_WARNING("stbi_failure_reason() returned: `%s`", stbi_failure_reason());
         return (*err = Err_Stbi_Load, (Texture) { 0 });
     }
     assert(1 <= channels && channels <= 4);

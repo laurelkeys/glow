@@ -33,8 +33,8 @@ typedef unsigned int uint;
 
 #define ARRAY_LEN(a) (sizeof(a) / sizeof(*(a)))
 
-#define GLOW_STRINGIFY(s) #s
-#define STRINGIFY(s) GLOW_STRINGIFY(s)
+#define STRINGIFY_(s) #s
+#define STRINGIFY(s) STRINGIFY_(s)
 
 #define SWAP(type, a, b) \
     do {                 \

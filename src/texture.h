@@ -16,9 +16,9 @@ typedef enum TextureWrap {
 
 typedef struct TextureSettings {
     bool generate_mipmap;
-    TextureFilter mipmap_filter;
     TextureFilter min_filter;
     TextureFilter mag_filter;
+    TextureFilter mipmap_filter;
     TextureWrap wrap_s;
     TextureWrap wrap_t;
 } TextureSettings;

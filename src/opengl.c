@@ -78,12 +78,12 @@ bool program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err
 
 int get_uniform_location(uint program, char const *name) {
     int const loc = glGetUniformLocation(program, name);
-    if (loc == -1) { GLOW_WARNING("failed to find uniform location for: '%s'", name); }
+    if (loc == -1) { GLOW_WARNING("failed to find uniform location for: `%s`", name); }
     return loc;
 }
 
 int get_attribute_location(uint program, char const *name) {
     int const loc = glGetAttribLocation(program, name);
-    if (loc == -1) { GLOW_WARNING("failed to find attribute location for: '%s'", name); }
+    if (loc == -1) { GLOW_WARNING("failed to find attribute location for: `%s`", name); }
     return loc;
 }

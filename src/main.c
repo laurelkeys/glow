@@ -121,10 +121,10 @@ int main(int argc, char *argv[]) {
     };
 
     vec3 const point_light_positions[] = {
-        { 0.7f,  0.2f,   2.0f },
-        { 2.3f, -3.3f,  -4.0f },
-        {-4.0f,  2.0f, -12.0f },
-        { 0.0f,  0.0f,  -3.0f },
+        {  0.7f,  0.2f,   2.0f },
+        {  2.3f, -3.3f,  -4.0f },
+        { -4.0f,  2.0f, -12.0f },
+        {  0.0f,  0.0f,  -3.0f },
     };
     // clang-format on
 
@@ -343,7 +343,7 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
     }
 
     if ON_PRESS (B, is_b_pressed) {
-        if (use_blinn_phong = !use_blinn_phong) {
+        if ((use_blinn_phong = !use_blinn_phong)) {
             GLOW_LOG("Using Blinn-Phong shading");
         } else {
             GLOW_LOG("Using Phong shading");

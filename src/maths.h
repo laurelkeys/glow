@@ -9,7 +9,10 @@
 // Constants.
 //
 
+#ifndef M_PI
 #define M_PI 3.1415926535897932
+#endif
+
 #define M_TAU 6.2831853071795865
 #define M_SQRT_2 1.4142135623730950
 #define M_SQRT_3 1.7320508075688773
