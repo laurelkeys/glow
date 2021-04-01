@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
          0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,    1.0f, 1.0f,
          0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    1.0f, 0.0f,
          0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,    0.0f, 0.0f,
     };
 
     vec3 const cube_positions[] = {
@@ -161,6 +161,8 @@ int main(int argc, char *argv[]) {
 
     use_shader(cube_shader);
     {
+        // @Robustness @Fixme: since this isn't done in the render loop, reloading the
+        // cube shader will break it (unless we copied this over to `process_input`).
         set_shader_sampler2D(cube_shader, "material.diffuse", GL_TEXTURE0);
         set_shader_sampler2D(cube_shader, "material.specular", GL_TEXTURE1);
         set_shader_float(cube_shader, "material.shininess", 32.0f);
@@ -179,6 +181,7 @@ int main(int argc, char *argv[]) {
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
 
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
@@ -320,6 +323,10 @@ main_exit:
     (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
     else if (!is_key_pressed && (is_key_pressed = true))
 
+#define RELOAD_SHADER(name, shader_ptr)          \
+    GLOW_LOG("Hot swapping '" name "' shaders"); \
+    reload_shader_from_filepath((shader_ptr), GLOW_SHADERS_ name ".vs", GLOW_SHADERS_ name ".fs");
+
 void process_input(GLFWwindow *window, f32 const delta_time) {
     if IS_PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
 
@@ -332,14 +339,8 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
-
-        GLOW_LOG("Hot swapping 'cube' shaders");
-        reload_shader_from_filepath(
-            &cube_shader, GLOW_SHADERS_ "cube.vs", GLOW_SHADERS_ "cube.fs");
-
-        GLOW_LOG("Hot swapping 'light_cube' shaders");
-        reload_shader_from_filepath(
-            &light_cube_shader, GLOW_SHADERS_ "light_cube.vs", GLOW_SHADERS_ "light_cube.fs");
+        RELOAD_SHADER("cube", &cube_shader);
+        RELOAD_SHADER("light_cube", &light_cube_shader);
     }
 
     if ON_PRESS (B, is_b_pressed) {
@@ -351,6 +352,7 @@ void process_input(GLFWwindow *window, f32 const delta_time) {
     }
 }
 
+#undef RELOAD_SHADER
 #undef ON_PRESS
 #undef IS_PRESSED
 

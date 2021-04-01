@@ -3,21 +3,21 @@
 #include "prelude.h"
 
 typedef enum TextureFilter {
+    TextureFilter_Linear = 0,
     TextureFilter_Nearest,
-    TextureFilter_Linear,
 } TextureFilter;
 
 typedef enum TextureWrap {
+    TextureWrap_Repeat = 0,
     TextureWrap_ClampToEdge,
     TextureWrap_ClampToBorder,
     TextureWrap_MirroredRepeat,
-    TextureWrap_Repeat,
 } TextureWrap;
 
 typedef struct TextureSettings {
     bool generate_mipmap;
-    TextureFilter min_filter;
     TextureFilter mag_filter;
+    TextureFilter min_filter;
     TextureFilter mipmap_filter;
     TextureWrap wrap_s;
     TextureWrap wrap_t;

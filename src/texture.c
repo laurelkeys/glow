@@ -46,8 +46,8 @@ static int gl_format(int channels) {
 
 static TextureSettings const DEFAULT_SETTINGS = {
     .generate_mipmap = true,
-    .min_filter = TextureFilter_Linear,
     .mag_filter = TextureFilter_Linear,
+    .min_filter = TextureFilter_Nearest,
     .mipmap_filter = TextureFilter_Linear,
     .wrap_s = TextureWrap_Repeat,
     .wrap_t = TextureWrap_Repeat,
