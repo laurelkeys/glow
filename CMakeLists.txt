@@ -15,8 +15,10 @@ set(DEFAULT_BUILD_TYPE "Release")
 
 set(FILE_SOURCES
     src/camera.c
+    src/file.c
     src/maths.c
     src/mesh.c
+    src/model.c
     src/opengl.c
     src/shader.c
     src/texture.c
@@ -25,8 +27,10 @@ set(FILE_SOURCES
 set(FILE_HEADERS
     src/camera.h
     src/console.h
+    src/file.h
     src/maths.h
     src/mesh.h
+    src/model.h
     src/opengl.h
     src/shader.h
     src/texture.h
@@ -43,6 +47,7 @@ add_executable(
 
 # ----------------------------------------------------------------------------------------
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_MODELS_="${PROJECT_SOURCE_DIR}/res/models/")
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_SHADERS_="${PROJECT_SOURCE_DIR}/res/shaders/")
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_TEXTURES_="${PROJECT_SOURCE_DIR}/res/textures/")
 

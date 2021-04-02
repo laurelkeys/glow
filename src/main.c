@@ -305,9 +305,11 @@ main_err:
         case Err_Shader_Link: GLOW_ERROR("failed to link shader program"); break;
         case Err_Stbi_Load: GLOW_ERROR("stbi_load() failed"); break;
         case Err_Assimp_Import: GLOW_ERROR("aiImportFile() failed"); break;
+        case Err_Assimp_Get_Texture: GLOW_ERROR("aiGetMaterialTexture() failed"); break;
         case Err_Fopen: GLOW_ERROR("fopen() failed"); break;
         case Err_Malloc: GLOW_ERROR("malloc() failed"); break;
         case Err_Calloc: GLOW_ERROR("calloc() failed"); break;
+        case Err_Realloc: GLOW_ERROR("realloc() failed"); break;
         default: assert(false);
     }
 

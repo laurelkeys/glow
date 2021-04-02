@@ -12,8 +12,9 @@ typedef enum MeshTextureType {
 } MeshTextureType;
 
 typedef struct MeshTexture {
-    Texture it;
     MeshTextureType type;
+    char const *path;
+    Texture it;
 } MeshTexture;
 
 typedef struct MeshVertex {
@@ -37,8 +38,6 @@ typedef struct Mesh {
     usize textures_len;
 
     uint vao;
-    uint vbo;
-    uint ebo;
 } Mesh;
 
 // @Note: Mesh doesn't take "ownership" over any pointers.

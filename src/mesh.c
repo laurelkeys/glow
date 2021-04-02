@@ -41,19 +41,21 @@ Mesh new_mesh(
     }
     glBindVertexArray(0);
 
-    return (Mesh) {
-        vertices, vertices_len, indices, indices_len, textures, textures_len, vao, vbo, ebo,
-    };
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &vbo);
+
+    return (Mesh) { vertices, vertices_len, indices, indices_len, textures, textures_len, vao };
 }
 
-#define NAME_DIFFUSE "material.diffuse"
-#define NAME_SPECULAR "material.specular"
+#define NAME_DIFFUSE "texture_diffuse"
+#define NAME_SPECULAR "texture_specular"
 #define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE), sizeof(NAME_SPECULAR)) + sizeof("99"))
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     uint diffuse = 0;
     uint specular = 0;
 
+    // @Robustness: could 100 textures not be enough?
     assert(mesh->textures_len <= 99);
     char name[MAX_NAME_LEN + 1];
 
@@ -81,6 +83,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     glBindVertexArray(mesh->vao);
     glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+    // bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }
 
 #undef MAX_NAME_LEN
