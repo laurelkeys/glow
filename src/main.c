@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
         glEnableVertexAttribArray(1); // normal attribute
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
 
-        glEnableVertexAttribArray(2); // texcoord attribute
+        glEnableVertexAttribArray(2); // texture coords attribute
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
     }
     glBindVertexArray(vao_light_cube);

@@ -61,30 +61,32 @@ Texture new_texture_from_image_with_settings(
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
+    {
+        glTexImage2D(
+            /*target*/ GL_TEXTURE_2D,
+            /*level*/ 0,
+            /*internalformat*/ GL_RGB,
+            /*width*/ texture_image.width,
+            /*height*/ texture_image.height,
+            /*border*/ 0,
+            /*format*/ gl_format(texture_image.channels),
+            /*type*/ GL_UNSIGNED_BYTE,
+            /*data*/ texture_image.data);
 
-    glTexImage2D(
-        /*target*/ GL_TEXTURE_2D,
-        /*level*/ 0,
-        /*internalformat*/ GL_RGB,
-        /*width*/ texture_image.width,
-        /*height*/ texture_image.height,
-        /*border*/ 0,
-        /*format*/ gl_format(texture_image.channels),
-        /*type*/ GL_UNSIGNED_BYTE,
-        /*data*/ texture_image.data);
+        int min_filter;
+        if (settings.generate_mipmap) {
+            glGenerateMipmap(GL_TEXTURE_2D);
+            min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
+        } else {
+            min_filter = FILTER[settings.min_filter];
+        }
 
-    int min_filter;
-    if (settings.generate_mipmap) {
-        glGenerateMipmap(GL_TEXTURE_2D);
-        min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
-    } else {
-        min_filter = FILTER[settings.min_filter];
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap_s]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap_t]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, FILTER[settings.mag_filter]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
     }
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap_s]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap_t]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, FILTER[settings.mag_filter]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     return (Texture) { texture_id };
 }
