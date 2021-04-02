@@ -61,6 +61,8 @@ typedef enum Err {
 
     Err_Stbi_Load,
 
+    Err_Assimp_Import,
+
     Err_Fopen,
     Err_Malloc,
     Err_Calloc,

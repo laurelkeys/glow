@@ -27,11 +27,11 @@ typedef struct MeshVertex {
 } MeshVertex;
 
 typedef struct Mesh {
-    uint const *indices;
-    usize indices_len;
-
     MeshVertex const *vertices;
     usize vertices_len;
+
+    uint const *indices;
+    usize indices_len;
 
     MeshTexture const *textures;
     usize textures_len;
@@ -43,10 +43,10 @@ typedef struct Mesh {
 
 // @Note: Mesh doesn't take "ownership" over any pointers.
 Mesh new_mesh(
-    uint const *indices,
-    usize indices_len,
     MeshVertex const *vertices,
     usize vertices_len,
+    uint const *indices,
+    usize indices_len,
     MeshTexture const *textures,
     usize textures_len);
 

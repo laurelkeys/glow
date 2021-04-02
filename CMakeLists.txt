@@ -48,6 +48,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_TEXTURES_="${PROJECT_SOU
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_INCLUDE_NONE)
 
-target_link_libraries(${PROJECT_NAME} glfw glad stb)
+target_link_libraries(${PROJECT_NAME} glfw glad stb assimp)
 
 # ----------------------------------------------------------------------------------------

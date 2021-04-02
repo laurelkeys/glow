@@ -54,6 +54,8 @@ int main(int argc, char *argv[]) {
     GLFWwindow *const window = init_opengl(window_settings, &err);
     if (err) { goto main_err; }
 
+    stbi_set_flip_vertically_on_load(true);
+
     // @Volatile: use these same files in `process_input`.
     cube_shader = TRY_NEW_SHADER("cube", &err);
     light_cube_shader = TRY_NEW_SHADER("light_cube", &err);
@@ -302,6 +304,7 @@ main_err:
         case Err_Shader_Compile: GLOW_ERROR("failed to compile shader"); break;
         case Err_Shader_Link: GLOW_ERROR("failed to link shader program"); break;
         case Err_Stbi_Load: GLOW_ERROR("stbi_load() failed"); break;
+        case Err_Assimp_Import: GLOW_ERROR("aiImportFile() failed"); break;
         case Err_Fopen: GLOW_ERROR("fopen() failed"); break;
         case Err_Malloc: GLOW_ERROR("malloc() failed"); break;
         case Err_Calloc: GLOW_ERROR("calloc() failed"); break;

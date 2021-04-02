@@ -23,3 +23,30 @@ add_library(stb STATIC stb/stb_image.c)
 target_include_directories(stb PUBLIC stb/)
 
 # ----------------------------------------------------------------------------------------
+
+option(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF)
+set(ASSIMP_BUILD_BLEND_IMPORTER TRUE)
+set(ASSIMP_BUILD_COLLADA_IMPORTER TRUE)
+set(ASSIMP_BUILD_FBX_IMPORTER TRUE)
+set(ASSIMP_BUILD_GLTF_IMPORTER TRUE)
+set(ASSIMP_BUILD_OBJ_IMPORTER TRUE)
+set(ASSIMP_BUILD_PLY_IMPORTER TRUE)
+set(ASSIMP_BUILD_STL_IMPORTER TRUE)
+
+# option(ASSIMP_NO_EXPORT OFF)
+# option(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF)
+# set(ASSIMP_BUILD_COLLADA_EXPORTER TRUE)
+# set(ASSIMP_BUILD_FBX_EXPORTER TRUE)
+# set(ASSIMP_BUILD_GLTF_EXPORTER TRUE)
+# set(ASSIMP_BUILD_OBJ_EXPORTER TRUE)
+# set(ASSIMP_BUILD_PLY_EXPORTER TRUE)
+# set(ASSIMP_BUILD_STL_EXPORTER TRUE)
+option(ASSIMP_NO_EXPORT ON)
+
+option(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+option(ASSIMP_BUILD_SAMPLES OFF)
+option(ASSIMP_BUILD_TESTS OFF)
+
+add_subdirectory(assimp)
+
+# ----------------------------------------------------------------------------------------

@@ -6,10 +6,10 @@
 #include <stdio.h>
 
 Mesh new_mesh(
-    uint const *indices,
-    usize indices_len,
     MeshVertex const *vertices,
     usize vertices_len,
+    uint const *indices,
+    usize indices_len,
     MeshTexture const *textures,
     usize textures_len) {
     uint vao, vbo, ebo;
@@ -42,28 +42,28 @@ Mesh new_mesh(
     glBindVertexArray(0);
 
     return (Mesh) {
-        indices, indices_len, vertices, vertices_len, textures, textures_len, vao, vbo, ebo,
+        vertices, vertices_len, indices, indices_len, textures, textures_len, vao, vbo, ebo,
     };
 }
 
 #define NAME_DIFFUSE "material.diffuse"
 #define NAME_SPECULAR "material.specular"
+#define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE), sizeof(NAME_SPECULAR)) + sizeof("99"))
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     uint diffuse = 0;
     uint specular = 0;
 
     assert(mesh->textures_len <= 99);
-    usize const max_name_len = MAX(sizeof(NAME_DIFFUSE), sizeof(NAME_SPECULAR)) + sizeof("99");
-    char name[max_name_len + 1];
+    char name[MAX_NAME_LEN + 1];
 
     for (int i = 0; i < mesh->textures_len; ++i) {
         switch (mesh->textures[i].type) {
             case MeshTextureType_Diffuse:
-                snprintf(name, max_name_len, NAME_DIFFUSE "%d", ++diffuse);
+                snprintf(name, MAX_NAME_LEN, NAME_DIFFUSE "%d", ++diffuse);
                 break;
             case MeshTextureType_Specular:
-                snprintf(name, max_name_len, NAME_SPECULAR "%d", ++specular);
+                snprintf(name, MAX_NAME_LEN, NAME_SPECULAR "%d", ++specular);
                 break;
             default:
                 GLOW_WARNING(
@@ -83,5 +83,6 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     glBindVertexArray(0);
 }
 
+#undef MAX_NAME_LEN
 #undef NAME_SPECULAR
 #undef NAME_DIFFUSE
