@@ -88,7 +88,7 @@ Texture new_texture_from_image_with_settings(
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    return (Texture) { texture_id };
+    return (Texture) { texture_id, TextureType_None };
 }
 
 Texture new_texture_from_filepath(char const *image_path, Err *err) {

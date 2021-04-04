@@ -6,18 +6,7 @@
 #include "shader.h"
 #include "texture.h"
 
-typedef enum MeshTextureType {
-    MeshTextureType_Diffuse,
-    MeshTextureType_Specular,
-} MeshTextureType;
-
-typedef struct MeshTexture {
-    MeshTextureType type;
-    char const *path;
-    Texture it;
-} MeshTexture;
-
-typedef struct MeshVertex {
+typedef struct Vertex {
     vec3 position;
     vec3 normal;
     vec2 texcoords;
@@ -25,28 +14,28 @@ typedef struct MeshVertex {
     vec3 tangent;
     vec3 bitangent; // cross(normal, tangent)
 #endif
-} MeshVertex;
+} Vertex;
 
 typedef struct Mesh {
-    MeshVertex const *vertices;
+    Vertex *vertices; // @Ownership
     usize vertices_len;
 
-    uint const *indices;
+    uint *indices; // @Ownership
     usize indices_len;
 
-    MeshTexture const *textures;
+    Texture *textures; // @Ownership
     usize textures_len;
 
     uint vao;
 } Mesh;
 
-// @Note: Mesh doesn't take "ownership" over any pointers.
 Mesh new_mesh(
-    MeshVertex const *vertices,
+    Vertex *vertices,
     usize vertices_len,
-    uint const *indices,
+    uint *indices,
     usize indices_len,
-    MeshTexture const *textures,
+    Texture *textures,
     usize textures_len);
+void dealloc_mesh(Mesh *mesh);
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader);

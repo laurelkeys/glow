@@ -30,8 +30,15 @@ typedef struct TextureImage {
     int channels;
 } TextureImage;
 
+typedef enum TextureType {
+    TextureType_None = 0,
+    TextureType_Diffuse,
+    TextureType_Specular,
+} TextureType;
+
 typedef struct Texture {
     uint id;
+    TextureType type; // defaults to TextureType_None
 } Texture;
 
 Texture new_texture_from_image(TextureImage const texture_image);
