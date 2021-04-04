@@ -184,12 +184,12 @@ static bool preload_textures_with_type(
 
         if (*err) {
             GLOW_WARNING("failed to load texture: `%s`", full_path);
-            return false;
+        } else {
+            GLOW_LOG("Loaded texture: `%s`", full_path);
         }
-
-        GLOW_LOG("Loaded texture: `%s`", full_path);
-        return true;
     }
+
+    return *err == Err_None;
 }
 
 Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
