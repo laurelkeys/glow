@@ -18,7 +18,7 @@ static bool fetch_from_preloaded_textures_with_type(
     bool found_all_textures = true;
 
     uint const count = aiGetMaterialTextureCount(material, type);
-    for (usize i = 0; i < count; ++i) {
+    for (uint i = 0; i < count; ++i) {
         struct aiString path = { 0 };
         if (aiGetMaterialTexture(material, type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
             != aiReturn_SUCCESS) {
@@ -44,6 +44,8 @@ static bool fetch_from_preloaded_textures_with_type(
 
 static Mesh process_mesh(
     Model const *model, struct aiMesh const *mesh, struct aiScene const *scene, Err *err) {
+    // @Fixme: prefix the name of this function with 'alloc' since we allocate heap space.
+
     //
     // Mesh vertices.
     //
@@ -90,7 +92,7 @@ static Mesh process_mesh(
     uint const diffuse_len = aiGetMaterialTextureCount(material, aiTextureType_DIFFUSE);
     uint const specular_len = aiGetMaterialTextureCount(material, aiTextureType_SPECULAR);
 
-    // @Speed: currently a Texture is no larger than two ints (and uint plus an enum),
+    // @Speed: currently a Texture is no larger than two ints (an uint plus an enum),
     // so it's cheap enough to copy. But if it ever gets larger, it'd be better to store
     // texture handles inside of Mesh instead (i.e. usize indices into the model's array).
     usize const textures_capacity = diffuse_len + specular_len;
@@ -155,7 +157,7 @@ static bool preload_textures_with_type(
     enum aiTextureType type,
     Err *err) {
     uint const count = aiGetMaterialTextureCount(material, type);
-    for (usize i = 0; i < count; ++i) {
+    for (uint i = 0; i < count; ++i) {
         struct aiString path = { 0 };
         if (aiGetMaterialTexture(material, type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
             != aiReturn_SUCCESS) {
@@ -198,8 +200,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     post_process_flags |= aiProcess_Triangulate; // @Volatile: `process_mesh` relies on this
     post_process_flags |= aiProcess_FlipUVs;
     post_process_flags |= aiProcess_JoinIdenticalVertices;
-    // post_process_flags |= aiProcess_CalcTangentSpace;
-    // post_process_flags |= aiProcess_GenSmoothNormals;
+    post_process_flags |= aiProcess_CalcTangentSpace;
+    post_process_flags |= aiProcess_GenSmoothNormals;
 
     struct aiScene const *scene = aiImportFile(model_path, post_process_flags);
 
@@ -212,8 +214,10 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     char *dir_path = alloc_str_copy(model_path);
     terminate_at_last_path_component(dir_path); // modifies dir_path in-place
 
+    assert(scene->mNumMeshes == 1); // @@
+
     Model model = {
-        .dir_path = dir_path,
+        .dir_path = dir_path, // @@ should we store the model_path instead?
 
         .meshes = calloc(scene->mNumMeshes, sizeof(Mesh)),
         .meshes_len = 0,
@@ -263,7 +267,7 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         GLOW_LOG("Finished loading `%s` model", point_at_last_path_component(model_path));
     }
 
-    return model; // @Speed: is it worth it using a Model pointer to avoid returning this copy?
+    return model;
 }
 
 void dealloc_model(Model *model) {

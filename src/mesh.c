@@ -67,22 +67,23 @@ void dealloc_mesh(Mesh *mesh) {
     free(mesh->vertices);
     free(mesh->indices);
     free(mesh->textures);
+    glDeleteVertexArrays(1, &mesh->vao);
 }
+
+// @Todo: stop using hard-coded names.
+#define NAME_DIFFUSE "texture_diffuse"
+#define NAME_SPECULAR "texture_specular"
+#define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     uint diffuse = 0;
     uint specular = 0;
 
-#define NAME_DIFFUSE "texture_diffuse"
-#define NAME_SPECULAR "texture_specular"
-#define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
-
     // @Robustness: could 100 textures not be enough?
     assert(mesh->textures_len <= 99);
     char name[MAX_NAME_LEN + 1] = { 0 };
 
-    for (int i = 0; i < mesh->textures_len; ++i) {
-        // @Fixme: what's the best way to handle TextureType_None?
+    for (usize i = 0; i < mesh->textures_len; ++i) {
         switch (mesh->textures[i].type) {
             case TextureType_Diffuse:
                 snprintf(name, MAX_NAME_LEN + 1, NAME_DIFFUSE "%d", ++diffuse);
@@ -90,6 +91,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
             case TextureType_Specular:
                 snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR "%d", ++specular);
                 break;
+            // @Fixme: what's the best way to handle TextureType_None?
             default:
                 GLOW_WARNING(
                     "mesh texture with id `%d` has invalid type: `%d`",
@@ -103,12 +105,12 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
         bind_texture_to_unit(mesh->textures[i], texture_unit);
     }
 
-#undef MAX_NAME_LEN
-#undef NAME_SPECULAR
-#undef NAME_DIFFUSE
-
     glBindVertexArray(mesh->vao);
     glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }
+
+#undef MAX_NAME_LEN
+#undef NAME_SPECULAR
+#undef NAME_DIFFUSE
