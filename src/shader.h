@@ -6,8 +6,6 @@
 
 typedef struct Shader {
     uint program_id;
-    uint vertex_id;
-    uint fragment_id;
 } Shader;
 
 Shader new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err);

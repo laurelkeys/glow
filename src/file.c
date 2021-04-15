@@ -109,7 +109,7 @@ char const *point_at_last_path_component(char const *path) {
     while (last != path && SLASH_EQ(*last)) { last -= 1; }
 
     char const *first = last;
-    // *(last + 1) = '\0'; // @Note: we could do this if path wasn't a const pointer...
+    // *(last + 1) = '\0'; // we should do this if path wasn't a const pointer...
 
     // Find the first non-trailing slash.
     while (first != path && SLASH_NEQ(*first)) { first -= 1; }

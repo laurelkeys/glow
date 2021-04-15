@@ -39,7 +39,7 @@ Shader new_shader_from_source(char const *vertex_source, char const *fragment_so
     glDeleteShader(vertex_id);
     glDeleteShader(fragment_id);
 
-    return (Shader) { program_id, vertex_id, fragment_id };
+    return (Shader) { program_id };
 }
 
 static char *alloc_data_from_filepath(char const *path, Err *err) {
@@ -87,9 +87,6 @@ static bool reload_shader(
 
     glDeleteProgram(shader->program_id);
     shader->program_id = new_shader.program_id;
-    // @Todo: accept NULL args to reuse old ids.
-    shader->vertex_id = new_shader.vertex_id;
-    shader->fragment_id = new_shader.fragment_id;
 
     return true;
 }

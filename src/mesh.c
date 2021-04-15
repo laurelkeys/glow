@@ -70,7 +70,7 @@ void dealloc_mesh(Mesh *mesh) {
     glDeleteVertexArrays(1, &mesh->vao);
 }
 
-// @Todo: stop using hard-coded names.
+// @Fixme: stop using hard-coded names.
 #define NAME_DIFFUSE "texture_diffuse"
 #define NAME_SPECULAR "texture_specular"
 #define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
@@ -91,7 +91,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
             case TextureType_Specular:
                 snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR "%d", ++specular);
                 break;
-            // @Fixme: what's the best way to handle TextureType_None?
+            // @Incomplete: what's the best way to handle TextureType_None?
             default:
                 GLOW_WARNING(
                     "mesh texture with id `%d` has invalid type: `%d`",
