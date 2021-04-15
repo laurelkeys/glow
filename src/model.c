@@ -7,11 +7,20 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+// @Note: this is a helper structure to hold data which we need temporarily,
+// while building a new Model.
+typedef struct MeshTextures {
+    char **paths; // @Ownership
+    Texture *array; // @Ownership
+    usize len;
+    usize capacity;
+} MeshTextures;
+
 static bool fetch_from_preloaded_textures_with_type(
     Texture *textures,
     usize *textures_len,
     usize textures_capacity,
-    Model const *model,
+    MeshTextures const *mesh_textures,
     struct aiMaterial const *material,
     enum aiTextureType type,
     Err *err) {
@@ -27,11 +36,11 @@ static bool fetch_from_preloaded_textures_with_type(
 
         // Find (and copy) the pre-loaded texture by comparing its path.
         bool found_it = false;
-        for (usize j = 0; j < model->mesh_textures_len; ++j) {
-            if (!strncmp(&path.data[0], model->mesh_textures_paths[j], path.length)) {
+        for (usize j = 0; j < mesh_textures->len; ++j) {
+            if (!strncmp(&path.data[0], mesh_textures->paths[j], path.length)) {
                 found_it = true;
                 assert(*textures_len < textures_capacity);
-                textures[(*textures_len)++] = model->mesh_textures[j];
+                textures[(*textures_len)++] = mesh_textures->array[j];
             }
         }
         found_all_textures = found_all_textures && found_it;
@@ -43,7 +52,11 @@ static bool fetch_from_preloaded_textures_with_type(
 }
 
 static Mesh process_mesh(
-    Model const *model, struct aiMesh const *mesh, struct aiScene const *scene, Err *err) {
+    Model const *model,
+    MeshTextures const *mesh_textures,
+    struct aiMesh const *mesh,
+    struct aiScene const *scene,
+    Err *err) {
     // @Fixme: prefix the name of this function with 'alloc' since we allocate heap space.
 
     //
@@ -96,7 +109,7 @@ static Mesh process_mesh(
     // so it's cheap enough to copy. But if it ever gets larger, it'd be better to store
     // texture handles inside of Mesh instead (i.e. usize indices into the model's array).
     usize const textures_capacity = diffuse_len + specular_len;
-    assert(textures_capacity <= model->mesh_textures_capacity);
+    assert(textures_capacity <= mesh_textures->capacity);
     Texture *textures = calloc(textures_capacity, sizeof(Texture));
     if (!textures) {
         free(vertices);
@@ -106,7 +119,7 @@ static Mesh process_mesh(
 
 #define FETCH_TEXTURES_WITH_TYPE(material, type, textures_len_ptr) \
     fetch_from_preloaded_textures_with_type(                       \
-        textures, textures_len_ptr, textures_capacity, model, material, type, err)
+        textures, textures_len_ptr, textures_capacity, mesh_textures, material, type, err)
 
     usize textures_len = 0;
     FETCH_TEXTURES_WITH_TYPE(material, aiTextureType_DIFFUSE, &textures_len);
@@ -124,16 +137,21 @@ static Mesh process_mesh(
         textures_len);
 }
 
-static bool
-process_node(Model *model, struct aiNode const *node, struct aiScene const *scene, Err *err) {
+static bool process_node(
+    Model *model,
+    MeshTextures const *mesh_textures,
+    struct aiNode const *node,
+    struct aiScene const *scene,
+    Err *err) {
     for (uint i = 0; !*err && i < node->mNumMeshes; ++i) {
         struct aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
         assert(model->meshes_len < model->meshes_capacity);
-        model->meshes[(model->meshes_len)++] = process_mesh(model, mesh, scene, err);
+        model->meshes[(model->meshes_len)++] =
+            process_mesh(model, mesh_textures, mesh, scene, err);
     }
 
     for (uint i = 0; !*err && i < node->mNumChildren; ++i) {
-        process_node(model, node->mChildren[i], scene, err);
+        process_node(model, mesh_textures, node->mChildren[i], scene, err);
     }
 
     return *err == Err_None;
@@ -151,7 +169,8 @@ static TextureType mesh_texture_type_from_assimp(enum aiTextureType type) {
 }
 
 static bool preload_textures_with_type(
-    Model *model,
+    MeshTextures *mesh_textures,
+    char const *dir_path,
     usize dir_path_len,
     struct aiMaterial const *material,
     enum aiTextureType type,
@@ -168,21 +187,21 @@ static bool preload_textures_with_type(
         usize const full_path_len = dir_path_len + 1 + path.length; // + 1 for the slash
         char *full_path = calloc(full_path_len + 1, sizeof(char));
 #ifdef _WIN32
-        snprintf(full_path, full_path_len + 1, "%s\\%s", model->dir_path, &path.data[0]);
+        snprintf(full_path, full_path_len + 1, "%s\\%s", dir_path, &path.data[0]);
 #else
-        snprintf(full_path, full_path_len + 1, "%s/%s", model->dir_path, &path.data[0]);
+        snprintf(full_path, full_path_len + 1, "%s/%s", dir_path, &path.data[0]);
 #endif
 
         // Load and store the mesh texture, together with its path so that
         // we can find it later on (when buillding the meshes themselves).
-        usize const mesh_textures_len = model->mesh_textures_len;
+        usize const mesh_textures_len = mesh_textures->len;
         {
-            assert(mesh_textures_len < model->mesh_textures_capacity);
-            model->mesh_textures_paths[mesh_textures_len] = alloc_str_copy(&path.data[0]);
-            model->mesh_textures[mesh_textures_len] = new_texture_from_filepath(full_path, err);
-            model->mesh_textures[mesh_textures_len].type = mesh_texture_type_from_assimp(type);
+            assert(mesh_textures_len < mesh_textures->capacity);
+            mesh_textures->paths[mesh_textures_len] = alloc_str_copy(&path.data[0]);
+            mesh_textures->array[mesh_textures_len] = new_texture_from_filepath(full_path, err);
+            mesh_textures->array[mesh_textures_len].type = mesh_texture_type_from_assimp(type);
         }
-        model->mesh_textures_len += 1;
+        mesh_textures->len += 1;
 
         if (*err) {
             GLOW_WARNING("failed to load texture: `%s`", full_path);
@@ -214,25 +233,23 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     char *dir_path = alloc_str_copy(model_path);
     terminate_at_last_path_component(dir_path); // modifies dir_path in-place
 
-    assert(scene->mNumMeshes == 1); // @@
-
     Model model = {
-        .dir_path = dir_path, // @@ should we store the model_path instead?
-
+        .path = model_path,
         .meshes = calloc(scene->mNumMeshes, sizeof(Mesh)),
         .meshes_len = 0,
         .meshes_capacity = scene->mNumMeshes,
+    };
 
+    MeshTextures mesh_textures = {
         // @Note: we want to use mNumMaterials in here, not mNumTextures!
-        .mesh_textures_paths = calloc(scene->mNumMaterials, sizeof(char *)),
-        .mesh_textures = calloc(scene->mNumMaterials, sizeof(Texture)),
-        .mesh_textures_len = 0,
-        .mesh_textures_capacity = scene->mNumMaterials,
+        .paths = calloc(scene->mNumMaterials, sizeof(char *)),
+        .array = calloc(scene->mNumMaterials, sizeof(Texture)),
+        .len = 0,
+        .capacity = scene->mNumMaterials,
     };
 
     if (model.meshes_capacity > 0 && !model.meshes) { *err = Err_Calloc; }
-    if (model.mesh_textures_capacity > 0
-        && (!model.mesh_textures_paths || !model.mesh_textures)) {
+    if (mesh_textures.capacity > 0 && (!mesh_textures.paths || !mesh_textures.array)) {
         *err = Err_Calloc;
     }
 
@@ -241,25 +258,29 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         usize const dir_path_len = strlen(dir_path);
 
 #define LOAD_TEXTURES_WITH_TYPE(material, type) \
-    preload_textures_with_type(&model, dir_path_len, material, type, err)
+    preload_textures_with_type(&mesh_textures, dir_path, dir_path_len, material, type, err)
 
         for (uint i = 0; i < scene->mNumMaterials; ++i) {
             struct aiMaterial const *material = scene->mMaterials[i];
             LOAD_TEXTURES_WITH_TYPE(material, aiTextureType_DIFFUSE);
             LOAD_TEXTURES_WITH_TYPE(material, aiTextureType_SPECULAR);
         }
-        assert(model.mesh_textures_len == model.mesh_textures_capacity);
+        assert(mesh_textures.len == mesh_textures.capacity);
 
 #undef LOAD_TEXTURES_WITH_TYPE
 
         // Convert assimp meshes.
         if (!*err) {
-            process_node(&model, scene->mRootNode, scene, err);
+            process_node(&model, &mesh_textures, scene->mRootNode, scene, err);
             assert(model.meshes_len == model.meshes_capacity);
         }
     }
 
     aiReleaseImport(scene);
+
+    for (usize i = 0; i < mesh_textures.len; ++i) { free(mesh_textures.paths[i]); }
+    free(mesh_textures.paths);
+    free(mesh_textures.array);
 
     if (*err) {
         GLOW_WARNING("failed to load model");
@@ -271,14 +292,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
 }
 
 void dealloc_model(Model *model) {
-    free(model->dir_path);
-
     for (usize i = 0; i < model->meshes_len; ++i) { dealloc_mesh(&model->meshes[i]); }
     free(model->meshes);
-
-    for (usize i = 0; i < model->mesh_textures_len; ++i) { free(model->mesh_textures_paths[i]); }
-    free(model->mesh_textures_paths);
-    free(model->mesh_textures);
 }
 
 void draw_model_with_shader(Model const *model, Shader const shader) {

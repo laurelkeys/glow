@@ -6,16 +6,10 @@
 #include "shader.h"
 
 typedef struct Model {
-    char *dir_path; // @Ownership
-
+    char const *path;
     Mesh *meshes; // @Ownership
     usize meshes_len;
     usize meshes_capacity;
-
-    char **mesh_textures_paths; // @Ownership
-    Texture *mesh_textures; // @Ownership
-    usize mesh_textures_len;
-    usize mesh_textures_capacity;
 } Model;
 
 Model alloc_new_model_from_filepath(char const *model_path, Err *err);
