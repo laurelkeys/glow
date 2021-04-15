@@ -71,8 +71,8 @@ void dealloc_mesh(Mesh *mesh) {
 }
 
 // @Fixme: stop using hard-coded names.
-#define NAME_DIFFUSE "texture_diffuse"
-#define NAME_SPECULAR "texture_specular"
+#define NAME_DIFFUSE "material.diffuse"
+#define NAME_SPECULAR "material.specular"
 #define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
@@ -86,10 +86,18 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     for (usize i = 0; i < mesh->textures_len; ++i) {
         switch (mesh->textures[i].type) {
             case TextureType_Diffuse:
-                snprintf(name, MAX_NAME_LEN + 1, NAME_DIFFUSE "%d", ++diffuse);
+                if (diffuse++ == 0) {
+                    snprintf(name, MAX_NAME_LEN + 1, NAME_DIFFUSE);
+                } else {
+                    snprintf(name, MAX_NAME_LEN + 1, NAME_DIFFUSE "%d", diffuse);
+                }
                 break;
             case TextureType_Specular:
-                snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR "%d", ++specular);
+                if (specular++ == 0) {
+                    snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR);
+                } else {
+                    snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR "%d", specular);
+                }
                 break;
             // @Incomplete: what's the best way to handle TextureType_None?
             default:
