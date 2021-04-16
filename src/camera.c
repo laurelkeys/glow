@@ -19,8 +19,8 @@ Camera new_camera_at(vec3 const position) {
         .fovy = 45.0f,
         .aspect = 1.0f,
 
-        .near = 0.1f,
-        .far = 100.0f,
+        .near = CAMERA_Z_NEAR,
+        .far = CAMERA_Z_FAR,
     };
 }
 

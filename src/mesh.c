@@ -74,31 +74,24 @@ void dealloc_mesh(Mesh *mesh) {
 #define NAME_DIFFUSE "material.diffuse"
 #define NAME_SPECULAR "material.specular"
 #define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
+#define SET_NAME(name, NAME_TYPE, type_count)                           \
+    if (type_count++ == 0) {                                            \
+        snprintf((name), MAX_NAME_LEN + 1, NAME_TYPE);                  \
+    } else {                                                            \
+        snprintf((name), MAX_NAME_LEN + 1, NAME_TYPE "%d", type_count); \
+    }
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     uint diffuse = 0;
     uint specular = 0;
 
-    // @Robustness: could 100 textures not be enough?
     assert(mesh->textures_len <= 99);
     char name[MAX_NAME_LEN + 1] = { 0 };
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
         switch (mesh->textures[i].type) {
-            case TextureType_Diffuse:
-                if (diffuse++ == 0) {
-                    snprintf(name, MAX_NAME_LEN + 1, NAME_DIFFUSE);
-                } else {
-                    snprintf(name, MAX_NAME_LEN + 1, NAME_DIFFUSE "%d", diffuse);
-                }
-                break;
-            case TextureType_Specular:
-                if (specular++ == 0) {
-                    snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR);
-                } else {
-                    snprintf(name, MAX_NAME_LEN + 1, NAME_SPECULAR "%d", specular);
-                }
-                break;
+            case TextureType_Diffuse: SET_NAME(name, NAME_DIFFUSE, diffuse); break;
+            case TextureType_Specular: SET_NAME(name, NAME_SPECULAR, specular); break;
             // @Incomplete: what's the best way to handle TextureType_None?
             default:
                 GLOW_WARNING(
@@ -119,6 +112,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }
 
+#undef SET_NAME
 #undef MAX_NAME_LEN
 #undef NAME_SPECULAR
 #undef NAME_DIFFUSE

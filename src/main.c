@@ -66,8 +66,8 @@ int main(int argc, char *argv[]) {
     stbi_set_flip_vertically_on_load(true);
 
     // @Volatile: use these same files in `process_input`.
-    light_cube_shader = TRY_NEW_SHADER("light_cube", &err);
-    backpack_shader = TRY_NEW_SHADER("cube", &err);
+    light_cube_shader = TRY_NEW_SHADER("simple_white", &err);
+    backpack_shader = TRY_NEW_SHADER("blinn_phong", &err);
 
     Texture const diffuse_map = TRY_NEW_TEXTURE("container2.png", &err);
     Texture const specular_map = TRY_NEW_TEXTURE("container2_specular.png", &err);
@@ -282,8 +282,8 @@ void process_input(GLFWwindow *window, f32 delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
-        RELOAD_SHADER("light_cube", &light_cube_shader);
-        RELOAD_SHADER("cube", &backpack_shader);
+        RELOAD_SHADER("simple_white", &light_cube_shader);
+        RELOAD_SHADER("blinn_phong", &backpack_shader);
     }
 
     if ON_PRESS (B, is_b_pressed) {
