@@ -9,9 +9,16 @@
 //
 
 f32 fract(f32 x) { return x - floorf(x); }
+
 f32 lerp(f32 a, f32 b, f32 t) { return (1 - t) * a + t * b; }
+f32 unlerp(f32 a, f32 b, f32 value) { return (value - a) / (b - a); }
+f32 remap(f32 a0, f32 b0, f32 a1, f32 b1, f32 value) {
+    return lerp(a1, b1, unlerp(a0, b0, value));
+}
+
 f32 clamp(f32 x, f32 x_min, f32 x_max) { return CLAMP(x, x_min, x_max); }
 f32 saturate(f32 x) { return CLAMP(x, 0, 1); }
+
 f32 move_toward(f32 a, f32 b, f32 amount) {
     if (a > b) {
         a -= amount;
@@ -558,4 +565,12 @@ quat quat_normalize(quat const q) { return quat_scl(q, 1 / quat_length(q)); }
 
 quat quat_lerp(quat const a, quat const b, f32 t) { return (quat) { lerp(a.re, b.re, t), vec3_lerp(a.im, b.im, t) }; }
 quat quat_nlerp(quat const a, quat const b, f32 t) { return quat_normalize(quat_lerp(a, b, t)); }
+
+quat quat_from_axis_angle(vec3 const axis, f32 angle_in_radians) {
+    f32 const half_angle_in_radians = 0.5f * angle_in_radians;
+    return (quat) {
+        .re = cosf(half_angle_in_radians),
+        .im = vec3_scl(axis, sinf(half_angle_in_radians)),
+    };
+}
 #endif

@@ -43,14 +43,21 @@
 #define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))
 #define CLAMP_MIN(x, a) (((x) < (a)) ? (a) : (x))
 
+#define DIV_CEIL(dividend, divisor) ((dividend) / (divisor) + ((dividend) % (divisor) ? 1 : 0))
+
 //
 // Scalar math.
 //
 
 f32 fract(f32 x);
+
 f32 lerp(f32 a, f32 b, f32 t);
+f32 unlerp(f32 a, f32 b, f32 value); // inverse lerp
+f32 remap(f32 a0, f32 b0, f32 a1, f32 b1, f32 value);
+
 f32 clamp(f32 x, f32 x_min, f32 x_max);
 f32 saturate(f32 x);
+
 f32 move_toward(f32 a, f32 b, f32 amount);
 
 //
@@ -215,4 +222,6 @@ quat quat_normalize(quat const q);
 
 quat quat_lerp(quat const a, quat const b, f32 t);
 quat quat_nlerp(quat const a, quat const b, f32 t);
+
+quat quat_from_axis_angle(vec3 const axis, f32 angle_in_radians);
 #endif
