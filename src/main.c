@@ -45,10 +45,12 @@ bool use_blinn_phong = false;
 
 Shader light_cube_shader;
 Shader backpack_shader;
+Shader outline_shader;
 
 // Forward declarations.
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
+void setup_blinn_phong_shader_lights(Shader const shader, vec3 const *, usize);
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -68,6 +70,7 @@ int main(int argc, char *argv[]) {
     // @Volatile: use these same files in `process_input`.
     light_cube_shader = TRY_NEW_SHADER("simple_white", &err);
     backpack_shader = TRY_NEW_SHADER("blinn_phong", &err);
+    outline_shader = TRY_NEW_SHADER("single_color", &err);
 
     Texture const diffuse_map = TRY_NEW_TEXTURE("container2.png", &err);
     Texture const specular_map = TRY_NEW_TEXTURE("container2_specular.png", &err);
@@ -81,44 +84,34 @@ int main(int argc, char *argv[]) {
         { -4.0f,  2.0f, -12.0f },
         {  0.0f,  0.0f,  -3.0f },
     };
+    usize const point_light_positions_len = ARRAY_LEN(point_light_positions);
     // clang-format on
 
-    uint vao_cube, vao_light_cube, vbo;
-    glGenVertexArrays(1, &vao_cube);
+    uint vao_light_cube;
     glGenVertexArrays(1, &vao_light_cube);
-    glGenBuffers(1, &vbo);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTICES), CUBE_VERTICES, GL_STATIC_DRAW);
-    // @Note: the VBO now contains the cube data we will need for both VAOs,
-    // and since it's now bound (and we do not bind any other VBOs) we don't
-    // need to rebind it after the VAOs to link it with glVertexAttribPointer.
-
-    uint const stride = sizeof(f32) * 8;
-
-    glBindVertexArray(vao_cube);
     {
-        glEnableVertexAttribArray(0); // position attribute
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTICES), CUBE_VERTICES, GL_STATIC_DRAW);
 
-        glEnableVertexAttribArray(1); // normal attribute
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
+        glBindVertexArray(vao_light_cube);
+        {
+            glEnableVertexAttribArray(0); // position attribute
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) 0);
+        }
+        glBindVertexArray(0);
 
-        glEnableVertexAttribArray(2); // texture coords attribute
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
+        glDeleteBuffers(1, &vbo);
     }
-    glBindVertexArray(vao_light_cube);
-    {
-        glEnableVertexAttribArray(0); // position attribute
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
-    }
-    glBindVertexArray(0);
 
     f32 last_frame = 0; // time of last frame
     f32 delta_time = 0; // time between consecutive frames
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
+    glStencilOp(/*sfail*/ GL_KEEP, /*dpfail*/ GL_KEEP, /*dppass*/ GL_REPLACE);
 
     while (!glfwWindowShouldClose(window)) {
         f32 const curr_frame = glfwGetTime();
@@ -127,10 +120,67 @@ int main(int argc, char *argv[]) {
         process_input(window, delta_time);
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
+
+        //
+        // Backpack model shader.
+        //
+
+        // Add 1 to the stencil buffer wherever the object's fragments are rendered.
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glStencilMask(0xFF);
+
+        use_shader(backpack_shader);
+        {
+            set_shader_mat4(backpack_shader, "local_to_world", mat4_id());
+            set_shader_mat4(backpack_shader, "world_to_view", view);
+            set_shader_mat4(backpack_shader, "view_to_clip", projection);
+
+            setup_blinn_phong_shader_lights(
+                backpack_shader, point_light_positions, point_light_positions_len);
+            set_shader_bool(backpack_shader, "use_blinn_phong", use_blinn_phong);
+            set_shader_vec3(backpack_shader, "view_pos", camera.position);
+
+            set_shader_float(backpack_shader, "material.shininess", 32.0f);
+
+            draw_model_with_shader(&backpack, backpack_shader);
+        }
+
+        //
+        // Outline color shader.
+        //
+
+        // Disable depth testing and writing to the stencil buffer, and only draw
+        // where the stencil buffer is not equal to 1 (to outline the object).
+        glDisable(GL_DEPTH_TEST);
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilMask(0x00);
+
+        use_shader(outline_shader);
+        {
+            // Render the same backpack model, but slightly upscaled.
+            set_shader_mat4(outline_shader, "local_to_world", mat4_scale(vec3_of(1.02f)));
+            set_shader_mat4(outline_shader, "world_to_view", view);
+            set_shader_mat4(outline_shader, "view_to_clip", projection);
+
+            vec3 const outline_color = { 0.04f, 0.28f, 0.26f };
+            set_shader_vec3(outline_shader, "color", outline_color);
+
+            // @Hack: draw "textureless" as we don't use the materials.
+            draw_textureless_model_with_shader(&backpack, outline_shader);
+        }
+
+        //
+        // Light cube shader.
+        //
+
+        // Re-enable depth testing and writing to the stencil buffer.
+        glEnable(GL_DEPTH_TEST);
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glStencilMask(0xFF);
 
         use_shader(light_cube_shader);
         {
@@ -138,99 +188,25 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(light_cube_shader, "view_to_clip", projection);
 
             glBindVertexArray(vao_light_cube);
-            for (int i = 0; i < ARRAY_LEN(point_light_positions); ++i) {
+            for (int i = 0; i < point_light_positions_len; ++i) {
                 mat4 const model =
                     mat4_mul(mat4_translate(point_light_positions[i]), mat4_scale(vec3_of(0.2f)));
                 set_shader_mat4(light_cube_shader, "local_to_world", model);
 
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
-        }
-
-        // clang-format off
-        use_shader(backpack_shader);
-        {
-            set_shader_float(backpack_shader, "material.shininess", 32.0f);
-
-            { // Directional light.
-                set_shader_vec3(
-                    backpack_shader, "directional_light.direction", (vec3) { -0.2f, -1.0f, -0.3f });
-
-                set_shader_vec3(backpack_shader, "directional_light.k.ambient", vec3_of(0.05f));
-                set_shader_vec3(backpack_shader, "directional_light.k.diffuse", vec3_of(0.4f));
-                set_shader_vec3(backpack_shader, "directional_light.k.specular", vec3_of(0.5f));
-            }
-
-            { // Point lights.
-                #define POINT_LIGHT(i) "point_lights[" STRINGIFY(i) "]"
-
-                #define SET_SHADER_POINT_LIGHT(i)                                                  \
-                    assert((i) < ARRAY_LEN(point_light_positions));                                \
-                                                                                                   \
-                    set_shader_vec3(                                                               \
-                        backpack_shader, POINT_LIGHT(i) ".position", point_light_positions[(i)]);  \
-                                                                                                   \
-                    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.ambient", vec3_of(0.05f)); \
-                    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.diffuse", vec3_of(0.8f));  \
-                    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.specular", vec3_of(1.0f)); \
-                                                                                                   \
-                    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.constant", 1.0f);       \
-                    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.linear", 0.09);         \
-                    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.quadratic", 0.032);
-
-                SET_SHADER_POINT_LIGHT(0);
-                SET_SHADER_POINT_LIGHT(1);
-                SET_SHADER_POINT_LIGHT(2);
-                SET_SHADER_POINT_LIGHT(3);
-
-                #undef SET_SHADER_POINT_LIGHT
-                #undef POINT_LIGHT
-            }
-
-            { // Spot light.
-                set_shader_vec3(backpack_shader, "spot_light.position", camera.position);
-                set_shader_vec3(backpack_shader, "spot_light.direction", camera.forward);
-
-                set_shader_float(
-                    backpack_shader, "spot_light.cos_cutoff_inner", cosf(RADIANS(12.5f)));
-                set_shader_float(
-                    backpack_shader, "spot_light.cos_cutoff_outer", cosf(RADIANS(15.0f)));
-
-                set_shader_vec3(backpack_shader, "spot_light.k.ambient", vec3_of(0.0f));
-                set_shader_vec3(backpack_shader, "spot_light.k.diffuse", vec3_of(1.0f));
-                set_shader_vec3(backpack_shader, "spot_light.k.specular", vec3_of(1.0f));
-
-                set_shader_float(backpack_shader, "spot_light.att.constant", 1.0f);
-                set_shader_float(backpack_shader, "spot_light.att.linear", 0.09);
-                set_shader_float(backpack_shader, "spot_light.att.quadratic", 0.032);
-            }
-        }
-        // clang-format on
-
-        use_shader(backpack_shader);
-        {
-            set_shader_bool(backpack_shader, "use_blinn_phong", use_blinn_phong);
-            set_shader_vec3(backpack_shader, "view_pos", camera.position);
-
-            mat4 const model = mat4_id();
-
-            set_shader_mat4(backpack_shader, "local_to_world", model);
-            set_shader_mat4(backpack_shader, "world_to_view", view);
-            set_shader_mat4(backpack_shader, "view_to_clip", projection);
-
-            draw_model_with_shader(&backpack, backpack_shader);
+            glBindVertexArray(0);
         }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao_light_cube);
-    glDeleteVertexArrays(1, &vao_cube);
-    glDeleteProgram(light_cube_shader.program_id);
-    glDeleteProgram(backpack_shader.program_id);
     dealloc_model(&backpack);
+    glDeleteProgram(outline_shader.program_id);
+    glDeleteProgram(backpack_shader.program_id);
+    glDeleteProgram(light_cube_shader.program_id);
 
     goto main_exit;
 
@@ -254,6 +230,65 @@ main_err:
 main_exit:
     glfwTerminate();
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+void setup_blinn_phong_shader_lights(
+    Shader const shader, vec3 const *point_light_positions, usize point_light_positions_len) {
+    //
+    // Directional light.
+    //
+
+    set_shader_vec3(
+        backpack_shader, "directional_light.direction", (vec3) { -0.2f, -1.0f, -0.3f });
+
+    set_shader_vec3(backpack_shader, "directional_light.k.ambient", vec3_of(0.05f));
+    set_shader_vec3(backpack_shader, "directional_light.k.diffuse", vec3_of(0.4f));
+    set_shader_vec3(backpack_shader, "directional_light.k.specular", vec3_of(0.5f));
+
+    //
+    // Point lights.
+    //
+
+#define POINT_LIGHT(i) "point_lights[" STRINGIFY(i) "]"
+
+#define SET_SHADER_POINT_LIGHT(i)                                                             \
+    assert((i) < point_light_positions_len);                                                  \
+                                                                                              \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".position", point_light_positions[(i)]); \
+                                                                                              \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.ambient", vec3_of(0.05f));            \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.diffuse", vec3_of(0.8f));             \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.specular", vec3_of(1.0f));            \
+                                                                                              \
+    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.constant", 1.0f);                  \
+    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.linear", 0.09);                    \
+    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.quadratic", 0.032);
+
+    SET_SHADER_POINT_LIGHT(0);
+    SET_SHADER_POINT_LIGHT(1);
+    SET_SHADER_POINT_LIGHT(2);
+    SET_SHADER_POINT_LIGHT(3);
+
+#undef SET_SHADER_POINT_LIGHT
+#undef POINT_LIGHT
+
+    //
+    // Spot light.
+    //
+
+    set_shader_vec3(backpack_shader, "spot_light.position", camera.position);
+    set_shader_vec3(backpack_shader, "spot_light.direction", camera.forward);
+
+    set_shader_float(backpack_shader, "spot_light.cos_cutoff_inner", cosf(RADIANS(12.5f)));
+    set_shader_float(backpack_shader, "spot_light.cos_cutoff_outer", cosf(RADIANS(15.0f)));
+
+    set_shader_vec3(backpack_shader, "spot_light.k.ambient", vec3_of(0.0f));
+    set_shader_vec3(backpack_shader, "spot_light.k.diffuse", vec3_of(1.0f));
+    set_shader_vec3(backpack_shader, "spot_light.k.specular", vec3_of(1.0f));
+
+    set_shader_float(backpack_shader, "spot_light.att.constant", 1.0f);
+    set_shader_float(backpack_shader, "spot_light.att.linear", 0.09);
+    set_shader_float(backpack_shader, "spot_light.att.quadratic", 0.032);
 }
 
 //
@@ -284,6 +319,7 @@ void process_input(GLFWwindow *window, f32 delta_time) {
         // @Volatile: use the same files as in `main`.
         RELOAD_SHADER("simple_white", &light_cube_shader);
         RELOAD_SHADER("blinn_phong", &backpack_shader);
+        RELOAD_SHADER("single_color", &outline_shader);
     }
 
     if ON_PRESS (B, is_b_pressed) {

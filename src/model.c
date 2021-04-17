@@ -153,6 +153,14 @@ static bool process_assimp_node_to_alloc_model_meshes(
     return *err == Err_None;
 }
 
+static usize count_assimp_nodes(struct aiNode const *node) {
+    usize count = 1;
+    for (uint i = 0; i < node->mNumChildren; ++i) {
+        count += count_assimp_nodes(node->mChildren[i]);
+    }
+    return count;
+}
+
 static TextureType mesh_texture_type_from_assimp(enum aiTextureType type) {
     switch (type) {
         case aiTextureType_DIFFUSE: return TextureType_Diffuse;
@@ -172,7 +180,7 @@ static bool preload_textures_with_type(
     enum aiTextureType type,
     Err *err) {
     uint const count = aiGetMaterialTextureCount(material, type);
-    struct aiString path = { 0 };
+    struct aiString path = { 0 }; // texture path
     for (uint i = 0; i < count; ++i) {
         if (aiGetMaterialTexture(material, type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
             != aiReturn_SUCCESS) {
@@ -225,6 +233,7 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     }
 
     GLOW_LOG("Loading model: `%s`", model_path);
+    assert(count_assimp_nodes(scene->mRootNode) - 1 == scene->mNumMeshes);
 
     assert(scene->mNumMeshes > 0);
     Model model = {
@@ -294,5 +303,15 @@ void dealloc_model(Model *model) {
 void draw_model_with_shader(Model const *model, Shader const shader) {
     for (usize i = 0; i < model->meshes_len; ++i) {
         draw_mesh_with_shader(&model->meshes[i], shader);
+    }
+}
+
+void draw_textureless_model_with_shader(Model const *model, Shader const shader) {
+    for (usize i = 0; i < model->meshes_len; ++i) {
+        usize const textures_len = model->meshes[i].textures_len;
+        // @Hack: ignore textures them while drawing the mesh.
+        model->meshes[i].textures_len = 0;
+        draw_mesh_with_shader(&model->meshes[i], shader);
+        model->meshes[i].textures_len = textures_len;
     }
 }
