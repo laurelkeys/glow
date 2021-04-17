@@ -47,10 +47,12 @@ Shader light_cube_shader;
 Shader backpack_shader;
 Shader outline_shader;
 
+vec3 point_lights[4];
+
 // Forward declarations.
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
-void setup_blinn_phong_shader_lights(Shader const shader, vec3 const *, usize);
+void setup_blinn_phong_shader_lights(Shader const shader);
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -78,13 +80,10 @@ int main(int argc, char *argv[]) {
     Model backpack = TRY_ALLOC_NEW_MODEL("backpack/backpack.obj", &err);
 
     // clang-format off
-    vec3 const point_light_positions[] = {
-        {  0.7f,  0.2f,   2.0f },
-        {  2.3f, -3.3f,  -4.0f },
-        { -4.0f,  2.0f, -12.0f },
-        {  0.0f,  0.0f,  -3.0f },
-    };
-    usize const point_light_positions_len = ARRAY_LEN(point_light_positions);
+    point_lights[0] = (vec3) {  0.7f,  0.2f,   2.0f };
+    point_lights[1] = (vec3) {  2.3f, -3.3f,  -4.0f };
+    point_lights[2] = (vec3) { -4.0f,  2.0f, -12.0f };
+    point_lights[3] = (vec3) {  0.0f,  0.0f,  -3.0f };
     // clang-format on
 
     uint vao_light_cube;
@@ -139,8 +138,7 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(backpack_shader, "world_to_view", view);
             set_shader_mat4(backpack_shader, "view_to_clip", projection);
 
-            setup_blinn_phong_shader_lights(
-                backpack_shader, point_light_positions, point_light_positions_len);
+            setup_blinn_phong_shader_lights(backpack_shader);
             set_shader_bool(backpack_shader, "use_blinn_phong", use_blinn_phong);
             set_shader_vec3(backpack_shader, "view_pos", camera.position);
 
@@ -188,10 +186,11 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(light_cube_shader, "view_to_clip", projection);
 
             glBindVertexArray(vao_light_cube);
-            for (int i = 0; i < point_light_positions_len; ++i) {
-                mat4 const model =
-                    mat4_mul(mat4_translate(point_light_positions[i]), mat4_scale(vec3_of(0.2f)));
-                set_shader_mat4(light_cube_shader, "local_to_world", model);
+            for (usize i = 0; i < ARRAY_LEN(point_lights); ++i) {
+                set_shader_mat4(
+                    light_cube_shader,
+                    "local_to_world",
+                    mat4_mul(mat4_translate(point_lights[i]), mat4_scale(vec3_of(0.2f))));
 
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
@@ -232,8 +231,7 @@ main_exit:
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-void setup_blinn_phong_shader_lights(
-    Shader const shader, vec3 const *point_light_positions, usize point_light_positions_len) {
+void setup_blinn_phong_shader_lights(Shader const shader) {
     //
     // Directional light.
     //
@@ -249,19 +247,20 @@ void setup_blinn_phong_shader_lights(
     // Point lights.
     //
 
+    assert(ARRAY_LEN(point_lights) == 4);
+
 #define POINT_LIGHT(i) "point_lights[" STRINGIFY(i) "]"
 
-#define SET_SHADER_POINT_LIGHT(i)                                                             \
-    assert((i) < point_light_positions_len);                                                  \
-                                                                                              \
-    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".position", point_light_positions[(i)]); \
-                                                                                              \
-    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.ambient", vec3_of(0.05f));            \
-    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.diffuse", vec3_of(0.8f));             \
-    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.specular", vec3_of(1.0f));            \
-                                                                                              \
-    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.constant", 1.0f);                  \
-    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.linear", 0.09);                    \
+#define SET_SHADER_POINT_LIGHT(i)                                                    \
+                                                                                     \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".position", point_lights[(i)]); \
+                                                                                     \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.ambient", vec3_of(0.05f));   \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.diffuse", vec3_of(0.8f));    \
+    set_shader_vec3(backpack_shader, POINT_LIGHT(i) ".k.specular", vec3_of(1.0f));   \
+                                                                                     \
+    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.constant", 1.0f);         \
+    set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.linear", 0.09);           \
     set_shader_float(backpack_shader, POINT_LIGHT(i) ".att.quadratic", 0.032);
 
     SET_SHADER_POINT_LIGHT(0);

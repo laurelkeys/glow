@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     args, glow_args = parser.parse_known_args()
 
-    if not args.cmake and not args.make and not args.run and not args.test:
+    if not args.cmake and not args.make and not args.run:
         debug_print("Doing nothing, no options passed (try using --help).")
     if glow_args:
         debug_print(f"glow args: {glow_args}")
