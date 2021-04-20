@@ -22,9 +22,15 @@ static int const WRAP[] = {
     [TextureWrap_Repeat] = GL_REPEAT,
 };
 
-static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
-static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+static int const INTERNAL_FORMAT[] = {
+    [TextureFormat_Rgb] = GL_RGB,
+    [TextureFormat_Rgba] = GL_RGBA,
+};
+
 static int gl_format(int channels) {
+    static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+    static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+
     // References:
     //  https://www.khronos.org/opengl/wiki/Image_Format#Legacy_Image_Formats
     //  https://www.khronos.org/opengl/wiki/Texture#Swizzle_mask
@@ -44,7 +50,9 @@ static int gl_format(int channels) {
     }
 }
 
-static TextureSettings const DEFAULT_SETTINGS = {
+// Default value for TextureSettings.
+TextureSettings const Default_TextureSettings = {
+    .format = TextureFormat_Rgb,
     .generate_mipmap = true,
     .mag_filter = TextureFilter_Linear,
     .min_filter = TextureFilter_Nearest,
@@ -54,7 +62,7 @@ static TextureSettings const DEFAULT_SETTINGS = {
 };
 
 Texture new_texture_from_image(TextureImage const texture_image) {
-    return new_texture_from_image_with_settings(DEFAULT_SETTINGS, texture_image);
+    return new_texture_from_image_with_settings(Default_TextureSettings, texture_image);
 }
 Texture new_texture_from_image_with_settings(
     TextureSettings const settings, TextureImage const texture_image) {
@@ -65,7 +73,7 @@ Texture new_texture_from_image_with_settings(
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
-            /*internalformat*/ GL_RGB,
+            /*internalformat*/ INTERNAL_FORMAT[settings.format],
             /*width*/ texture_image.width,
             /*height*/ texture_image.height,
             /*border*/ 0,
@@ -92,7 +100,7 @@ Texture new_texture_from_image_with_settings(
 }
 
 Texture new_texture_from_filepath(char const *image_path, Err *err) {
-    return new_texture_from_filepath_with_settings(DEFAULT_SETTINGS, image_path, err);
+    return new_texture_from_filepath_with_settings(Default_TextureSettings, image_path, err);
 }
 Texture new_texture_from_filepath_with_settings(
     TextureSettings const settings, char const *image_path, Err *err) {

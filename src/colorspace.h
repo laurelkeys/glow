@@ -4,7 +4,7 @@
 
 #include "maths.h"
 
-// @Note: we assume that everything (input or output) color related is in the sRGB color space.
+// @Note: we assume that everything (input or output) color-related is in the sRGB color space.
 // Hence, if we want to match the behavior of real light and materials, linear RGB should be used.
 // While, if we want to match the human perception of color, Oklab should be used
 // (which is a perceptual color space that assumes D65 whitepoint, same as sRGB).

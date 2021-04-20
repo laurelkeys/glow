@@ -14,7 +14,13 @@ typedef enum TextureWrap {
     TextureWrap_MirroredRepeat,
 } TextureWrap;
 
+typedef enum TextureFormat {
+    TextureFormat_Rgb = 0,
+    TextureFormat_Rgba,
+} TextureFormat;
+
 typedef struct TextureSettings {
+    TextureFormat format; // saved internally
     bool generate_mipmap;
     TextureFilter mag_filter;
     TextureFilter min_filter;
@@ -22,6 +28,8 @@ typedef struct TextureSettings {
     TextureWrap wrap_s;
     TextureWrap wrap_t;
 } TextureSettings;
+
+extern TextureSettings const Default_TextureSettings;
 
 typedef struct TextureImage {
     u8 *data;

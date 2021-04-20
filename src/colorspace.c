@@ -4,26 +4,30 @@
 // Linear RGB <-> sRGB transforms.
 //
 
-#define LINEAR_TO_SRGB(x) \
+vec3 linear_rgb_to_srgb(vec3 const c) {
+#define LINEAR_RGB_TO_SRGB(x) \
     ((x) <= 0.0031308f ? 12.92f * (x) : 1.055f * powf((x), (1.0f / 2.4f)) - 0.055f)
 
-vec3 linear_rgb_to_srgb(vec3 const c) {
     return (vec3) {
-        LINEAR_TO_SRGB(c.x),
-        LINEAR_TO_SRGB(c.y),
-        LINEAR_TO_SRGB(c.z),
+        LINEAR_RGB_TO_SRGB(c.x),
+        LINEAR_RGB_TO_SRGB(c.y),
+        LINEAR_RGB_TO_SRGB(c.z),
     };
+
+#undef LINEAR_RGB_TO_SRGB
 }
 
-#define SRGB_TO_LINEAR(x) \
+vec3 srgb_to_linear_rgb(vec3 const c) {
+#define SRGB_TO_LINEAR_RGB(x) \
     ((x) <= 0.04045f ? (x) / 12.92f : powf(((x) + 0.055f) * (1.0f / 1.055f), 2.4f))
 
-vec3 srgb_to_linear_rgb(vec3 const c) {
     return (vec3) {
-        SRGB_TO_LINEAR(c.x),
-        SRGB_TO_LINEAR(c.y),
-        SRGB_TO_LINEAR(c.z),
+        SRGB_TO_LINEAR_RGB(c.x),
+        SRGB_TO_LINEAR_RGB(c.y),
+        SRGB_TO_LINEAR_RGB(c.z),
     };
+
+#undef SRGB_TO_LINEAR_RGB
 }
 
 //

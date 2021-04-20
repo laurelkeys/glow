@@ -2,26 +2,31 @@
 
 #include "maths.h"
 
+// Default value for Camera.
+Camera const Default_Camera = {
+    .world_up = { 0, 1, 0 },
+    .position = { 0, 0, 0 },
+
+    .forward = { 0, 0, -1 }, // pitch = 0, yaw = -90
+    .right = { 1, 0, 0 }, // world_up = { 0, 1, 0 }
+    .up = { 0, 1, 0 }, // cross(right, forward)
+
+    .pitch = 0,
+    .yaw = -90,
+
+    .movement_speed = 2.5f,
+    .mouse_sensitivity = 0.1f,
+    .fovy = 45.0f,
+    .aspect = 1.0f,
+
+    .near = 0.1f,
+    .far = 100.0f,
+};
+
 Camera new_camera_at(vec3 const position) {
-    return (Camera) {
-        .world_up = { 0, 1, 0 },
-        .position = position,
-
-        .forward = { 0, 0, -1 }, // pitch = 0, yaw = -90
-        .right = { 1, 0, 0 }, // world_up = { 0, 1, 0 }
-        .up = { 0, 1, 0 }, // cross(right, forward)
-
-        .pitch = 0,
-        .yaw = -90,
-
-        .movement_speed = 2.5f,
-        .mouse_sensitivity = 0.1f,
-        .fovy = 45.0f,
-        .aspect = 1.0f,
-
-        .near = CAMERA_Z_NEAR,
-        .far = CAMERA_Z_FAR,
-    };
+    Camera camera = Default_Camera;
+    camera.position = position;
+    return camera;
 }
 
 mat4 get_camera_view_matrix(Camera const *camera) {

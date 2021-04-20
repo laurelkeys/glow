@@ -7,8 +7,6 @@
 
 static f32 const CAMERA_FOVY_MIN = 1.0f;
 static f32 const CAMERA_FOVY_MAX = 90.0f;
-static f32 const CAMERA_Z_NEAR = 0.1f;
-static f32 const CAMERA_Z_FAR = 100.0f;
 
 typedef struct Camera {
     vec3 world_up;
@@ -29,6 +27,8 @@ typedef struct Camera {
     f32 near;
     f32 far;
 } Camera;
+
+extern Camera const Default_Camera;
 
 typedef enum CameraMovement {
     CameraMovement_Forward,
