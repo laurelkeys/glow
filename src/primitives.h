@@ -107,7 +107,7 @@ static f32 const FLOOR_VERTICES[] = {
      5.0f, -0.5f, -5.0f,    2.0f, 2.0f,
 };
 
-static f32 const GRASS_VERTICES[] = {
+static f32 const TRANSPARENT_VERTICES[] = {
     // positions            // texture coords
      0.0f,  0.5f,  0.0f,    1.0f, 1.0f,
      0.0f, -0.5f,  0.0f,    1.0f, 0.0f,

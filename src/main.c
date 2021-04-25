@@ -46,7 +46,13 @@ Shader shader;
 // Forward declarations.
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
-void setup_blinn_phong_shader_lights(Shader const shader);
+
+int transparent_cmp(void const *a, void const *b) {
+    f32 const dist_a = vec3_length(vec3_sub(camera.position, *(vec3 const *) a));
+    f32 const dist_b = vec3_length(vec3_sub(camera.position, *(vec3 const *) b));
+    /* return (dist_a < dist_b) ? 1 : (dist_a > dist_b) ? -1 : 0; */
+    return (dist_a < dist_b) - (dist_a > dist_b);
+}
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -73,8 +79,8 @@ int main(int argc, char *argv[]) {
     tex_settings.format = TextureFormat_Rgba; // load alpha
     tex_settings.wrap_s = TextureWrap_ClampToEdge;
     tex_settings.wrap_t = TextureWrap_ClampToEdge;
-    Texture const grass =
-        new_texture_from_filepath_with_settings(tex_settings, GLOW_TEXTURES_ "grass.png", &err);
+    Texture const transparent = new_texture_from_filepath_with_settings(
+        tex_settings, GLOW_TEXTURES_ "blending_transparent_window.png", &err);
     if (err) { goto main_err; }
 
 #define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)                                 \
@@ -90,23 +96,23 @@ int main(int argc, char *argv[]) {
     }                                                                                        \
     glBindVertexArray(0)
 
-    uint vao_cubes, vao_floor, vao_grass;
+    uint vao_cubes, vao_floor, vao_transparent;
     glGenVertexArrays(1, &vao_cubes);
     glGenVertexArrays(1, &vao_floor);
-    glGenVertexArrays(1, &vao_grass);
+    glGenVertexArrays(1, &vao_transparent);
     {
         uint vbos[3];
         glGenBuffers(3, vbos);
         BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(CUBE_VERTICES, vbos[0], vao_cubes);
         BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(FLOOR_VERTICES, vbos[1], vao_floor);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(GRASS_VERTICES, vbos[2], vao_grass);
+        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(TRANSPARENT_VERTICES, vbos[2], vao_transparent);
         glDeleteBuffers(3, vbos);
     }
 
 #undef BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS
 
     // clang-format off
-    vec3 const vegetation[] = {
+    vec3 const transparent_positions[] = {
         { -1.5f, 0.0f, -0.48f },
         {  1.5f, 0.0f,  0.51f },
         {  0.0f, 0.0f,  0.7f  },
@@ -123,6 +129,8 @@ int main(int argc, char *argv[]) {
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     while (!glfwWindowShouldClose(window)) {
         f32 const curr_frame = glfwGetTime();
@@ -155,11 +163,17 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(shader, "local_to_world", mat4_id());
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            // Grass.
-            glBindVertexArray(vao_grass);
-            bind_texture_to_unit(grass, GL_TEXTURE0);
-            for (vec3 const *it = vegetation; it != ARRAY_END(vegetation); ++it) {
-                set_shader_mat4(shader, "local_to_world", mat4_translate(*it));
+            // Window.
+            glBindVertexArray(vao_transparent);
+            bind_texture_to_unit(transparent, GL_TEXTURE0);
+            qsort( // sort by view distance before rendering
+                (void *) transparent_positions,
+                ARRAY_LEN(transparent_positions),
+                sizeof(transparent_positions[0]),
+                transparent_cmp);
+            for (usize i = 0; i < ARRAY_LEN(transparent_positions); ++i) {
+                mat4 const model = mat4_translate(transparent_positions[i]);
+                set_shader_mat4(shader, "local_to_world", model);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
             }
 
@@ -170,7 +184,7 @@ int main(int argc, char *argv[]) {
         glfwPollEvents();
     }
 
-    glDeleteVertexArrays(1, &vao_grass);
+    glDeleteVertexArrays(1, &vao_transparent);
     glDeleteVertexArrays(1, &vao_floor);
     glDeleteVertexArrays(1, &vao_cubes);
     glDeleteProgram(shader.program_id);
