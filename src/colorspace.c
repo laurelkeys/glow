@@ -1,5 +1,53 @@
 #include "colorspace.h"
 
+#include "console.h"
+
+// clang-format off
+vec3 convert_color(vec3 const c, ColorSpace const from, ColorSpace const to) {
+    if (from == to) { return c; }
+    vec3 linear_rgb;
+    switch (from) {
+        default:
+            GLOW_WARNING("unhandled source ColorSpace: `%d`", from);
+            assert(false);
+        case ColorSpace_SRGB:      linear_rgb = srgb_to_linear_rgb(c);
+        case ColorSpace_LinearRGB: linear_rgb = c;
+        case ColorSpace_Oklab:     linear_rgb = oklab_to_linear_rgb(c);
+        case ColorSpace_CIEXYZ:    linear_rgb = ciexyz_to_linear_rgb(c);
+    }
+    switch (to) {
+        default:
+            GLOW_WARNING("unhandled target ColorSpace: `%d`", to);
+            assert(false);
+        case ColorSpace_SRGB:      return linear_rgb_to_srgb(linear_rgb);
+        case ColorSpace_LinearRGB: return linear_rgb;
+        case ColorSpace_Oklab:     return linear_rgb_to_oklab(linear_rgb);
+        case ColorSpace_CIEXYZ:    return linear_rgb_to_ciexyz(linear_rgb);
+    }
+}
+// clang-format on
+
+//
+// Pure gamma power function compression / expansion.
+//
+
+vec3 gamma_encode(vec3 const c, f32 gamma) {
+    f32 const gamma_rcp = 1.0f / gamma;
+    return (vec3) {
+        powf(c.x, gamma_rcp),
+        powf(c.y, gamma_rcp),
+        powf(c.z, gamma_rcp),
+    };
+}
+
+vec3 gamma_decode(vec3 const c, f32 gamma) {
+    return (vec3) {
+        powf(c.x, gamma),
+        powf(c.y, gamma),
+        powf(c.z, gamma),
+    };
+}
+
 //
 // Linear RGB <-> sRGB transforms.
 //
@@ -73,3 +121,51 @@ vec3 oklab_to_linear_rgb(vec3 const c) {
         -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s,
     };
 }
+
+//
+// Linear RGB <-> CIE XYZ transforms.
+//
+
+#define CLAMP_MIN3(v, a)              \
+    if ((v).x < (a)) { (v).x = (a); } \
+    if ((v).y < (a)) { (v).y = (a); } \
+    if ((v).z < (a)) { (v).z = (a); }
+
+vec3 linear_rgb_to_ciexyz(vec3 const c) {
+    vec3 ciexyz = {
+        0.412453 * c.x + 0.357580 * c.y + 0.180423 * c.z,
+        0.212671 * c.x + 0.715160 * c.y + 0.072169 * c.z,
+        0.019334 * c.x + 0.119193 * c.y + 0.950227 * c.z,
+    };
+    CLAMP_MIN3(ciexyz, 0.0f);
+    return ciexyz;
+}
+
+vec3 ciexyz_to_linear_rgb(vec3 const c) {
+    vec3 linear_rgb = {
+        +3.240479f * c.x - 1.537150f * c.y - 0.498535f * c.z,
+        -0.969256f * c.x + 1.875991f * c.y + 0.041556f * c.z,
+        +0.055648f * c.x - 0.204043f * c.y + 1.057311f * c.z,
+    };
+    CLAMP_MIN3(linear_rgb, 0.0f);
+    return linear_rgb;
+}
+
+#undef CLAMP_MIN3
+
+//
+// Luma and relative luminance.
+//
+
+/*
+#define WEIGHTED_SUM(c) (0.2126f * (c).x + 0.7152f * (c).y + 0.0722f * (c).z)
+
+f32 luma(vec3 const srgb) {
+    return WEIGHTED_SUM(srgb); // Y' = 0.2126R' + 0.7152G' + 0.0722B'
+}
+f32 luminance(vec3 const linear_rgb) {
+    return WEIGHTED_SUM(linear_rgb); // Y = 0.2126R + 0.7152G + 0.0722B
+}
+
+#undef WEIGHTED_SUM
+*/
