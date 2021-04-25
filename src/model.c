@@ -63,16 +63,15 @@ static Mesh process_assimp_mesh_into_alloc_mesh(
     Vertex *vertices = calloc(mesh->mNumVertices, sizeof(Vertex));
     if (!vertices) { return (*err = Err_Calloc, (Mesh) { 0 }); }
 
+    bool const has_texcoords = (mesh->mTextureCoords[0] != NULL);
     for (uint i = 0; i < mesh->mNumVertices; ++i) {
         struct aiVector3D position = mesh->mVertices[i];
         struct aiVector3D normal = mesh->mNormals[i];
-        struct aiVector3D texcoords = (mesh->mTextureCoords[0] != NULL)
-                                          ? mesh->mTextureCoords[0][i]
-                                          : (struct aiVector3D) { 0 };
         vertices[i] = (Vertex) {
             { position.x, position.y, position.z },
             { normal.x, normal.y, normal.z },
-            { texcoords.x, texcoords.y },
+            { has_texcoords ? mesh->mTextureCoords[0][i].x : 0.0f,
+              has_texcoords ? mesh->mTextureCoords[0][i].y : 0.0f },
         };
     }
 

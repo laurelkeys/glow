@@ -32,6 +32,7 @@ typedef unsigned int uint;
 #define UNUSED(a) ((void) (a))
 
 #define ARRAY_LEN(a) (sizeof(a) / sizeof(*(a)))
+#define ARRAY_END(a) ((a) + ARRAY_LEN(a))
 
 #define STRINGIFY_(s) #s
 #define STRINGIFY(s) STRINGIFY_(s)
