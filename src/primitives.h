@@ -96,7 +96,7 @@ static f32 const CUBE_VERTICES[] = {
     -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
 };
 
-static f32 const PLANE_VERTICES[] = {
+static f32 const FLOOR_VERTICES[] = {
     // positions            // texture coords
      5.0f, -0.5f,  5.0f,    2.0f, 0.0f,
     -5.0f, -0.5f,  5.0f,    0.0f, 0.0f,

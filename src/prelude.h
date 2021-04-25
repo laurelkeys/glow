@@ -44,6 +44,17 @@ typedef unsigned int uint;
         (b) = tmp;       \
     } while (0)
 
+/*
+#define FOR(type, begin, end)  \
+    for (                      \
+        struct {               \
+            usize index;       \
+            type *value;       \
+        } it = { 0, (begin) }; \
+        it.value != (end);     \
+        ++it.index, ++it.value)
+*/
+
 //
 // Miscellaneous.
 //

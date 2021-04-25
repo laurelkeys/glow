@@ -70,14 +70,26 @@ Texture new_texture_from_image_with_settings(
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     {
+        int const internal_format = INTERNAL_FORMAT[settings.format];
+        int const format = gl_format(texture_image.channels);
+        if (internal_format != format) {
+            GLOW_WARNING(
+                "%dx%dx%d texture image has OpenGL format=`%d` but internalFormat=`%d`",
+                texture_image.width,
+                texture_image.height,
+                texture_image.channels,
+                format,
+                internal_format);
+        }
+
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
-            /*internalformat*/ INTERNAL_FORMAT[settings.format],
+            /*internalFormat*/ internal_format,
             /*width*/ texture_image.width,
             /*height*/ texture_image.height,
             /*border*/ 0,
-            /*format*/ gl_format(texture_image.channels),
+            /*format*/ format,
             /*type*/ GL_UNSIGNED_BYTE,
             /*data*/ texture_image.data);
 

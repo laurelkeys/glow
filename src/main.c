@@ -68,7 +68,14 @@ int main(int argc, char *argv[]) {
 
     Texture const cubes = TRY_NEW_TEXTURE("marble.jpg", &err);
     Texture const floor = TRY_NEW_TEXTURE("metal.png", &err);
-    Texture const grass = TRY_NEW_TEXTURE("grass.png", &err);
+
+    TextureSettings tex_settings = Default_TextureSettings;
+    tex_settings.format = TextureFormat_Rgba; // load alpha
+    tex_settings.wrap_s = TextureWrap_ClampToEdge;
+    tex_settings.wrap_t = TextureWrap_ClampToEdge;
+    Texture const grass =
+        new_texture_from_filepath_with_settings(tex_settings, GLOW_TEXTURES_ "grass.png", &err);
+    if (err) { goto main_err; }
 
 #define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)                                 \
     glBindBuffer(GL_ARRAY_BUFFER, vbo);                                                      \
@@ -83,31 +90,17 @@ int main(int argc, char *argv[]) {
     }                                                                                        \
     glBindVertexArray(0)
 
-    uint vao_cubes;
+    uint vao_cubes, vao_floor, vao_grass;
     glGenVertexArrays(1, &vao_cubes);
-    {
-        uint vbo;
-        glGenBuffers(1, &vbo);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(CUBE_VERTICES, vbo, vao_cubes);
-        glDeleteBuffers(1, &vbo);
-    }
-
-    uint vao_floor;
     glGenVertexArrays(1, &vao_floor);
-    {
-        uint vbo;
-        glGenBuffers(1, &vbo);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(PLANE_VERTICES, vbo, vao_floor);
-        glDeleteBuffers(1, &vbo);
-    }
-
-    uint vao_grass;
     glGenVertexArrays(1, &vao_grass);
     {
-        uint vbo;
-        glGenBuffers(1, &vbo);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(GRASS_VERTICES, vbo, vao_grass);
-        glDeleteBuffers(1, &vbo);
+        uint vbos[3];
+        glGenBuffers(3, vbos);
+        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(CUBE_VERTICES, vbos[0], vao_cubes);
+        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(FLOOR_VERTICES, vbos[1], vao_floor);
+        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(GRASS_VERTICES, vbos[2], vao_grass);
+        glDeleteBuffers(3, vbos);
     }
 
 #undef BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS
