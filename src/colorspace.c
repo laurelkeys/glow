@@ -152,20 +152,3 @@ vec3 ciexyz_to_linear_rgb(vec3 const c) {
 }
 
 #undef CLAMP_MIN3
-
-//
-// Luma and relative luminance.
-//
-
-/*
-#define WEIGHTED_SUM(c) (0.2126f * (c).x + 0.7152f * (c).y + 0.0722f * (c).z)
-
-f32 luma(vec3 const srgb) {
-    return WEIGHTED_SUM(srgb); // Y' = 0.2126R' + 0.7152G' + 0.0722B'
-}
-f32 luminance(vec3 const linear_rgb) {
-    return WEIGHTED_SUM(linear_rgb); // Y = 0.2126R + 0.7152G + 0.0722B
-}
-
-#undef WEIGHTED_SUM
-*/

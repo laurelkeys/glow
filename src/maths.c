@@ -541,6 +541,7 @@ void quat_print(char const *name, quat const q) {
 quat quat_id(void) { return (quat) { .re = 1, .im = { 0, 0, 0 } }; }
 
 quat quat_conjugate(quat const q) { return (quat) { q.re, vec3_neg(q.im) }; }
+quat quat_inverse(quat const q) { return quat_scl(quat_conjugate(q), quat_dot(q, q)); }
 quat quat_neg(quat const q) { return (quat) { -q.re, vec3_neg(q.im) }; }
 
 quat quat_add(quat const a, quat const b) { return (quat) { a.re + b.re, vec3_add(a.im, b.im) }; }

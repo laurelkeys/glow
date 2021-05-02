@@ -74,7 +74,7 @@ Texture new_texture_from_image_with_settings(
         int const format = gl_format(texture_image.channels);
         if (internal_format != format) {
             GLOW_WARNING(
-                "%dx%dx%d texture image has OpenGL format=`%d` but internalFormat=`%d`",
+                "%dx%dx%d texture image has OpenGL format=`0x%x` but internalFormat=`0x%x`",
                 texture_image.width,
                 texture_image.height,
                 texture_image.channels,

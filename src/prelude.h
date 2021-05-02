@@ -34,8 +34,11 @@ typedef unsigned int uint;
 #define ARRAY_LEN(a) (sizeof(a) / sizeof(*(a)))
 #define ARRAY_END(a) ((a) + ARRAY_LEN(a))
 
-#define STRINGIFY_(s) #s
-#define STRINGIFY(s) STRINGIFY_(s)
+#define CONCATIFY_(a, b) a##b
+#define CONCATIFY(a, b) CONCATIFY_(a, b)
+
+#define STRINGIFY_(a) #a
+#define STRINGIFY(a) STRINGIFY_(a)
 
 #define SWAP(type, a, b) \
     do {                 \
@@ -81,11 +84,3 @@ typedef enum Err {
     Err_Calloc,
     Err_Realloc,
 } Err;
-
-/* Notes:
- *
- *  - OpenGL 3.3 specs:
- *      - Core Profile https://www.khronos.org/registry/OpenGL/specs/gl/glspec33.core.pdf
- *      - GLSL https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.3.30.pdf
- *
- * */

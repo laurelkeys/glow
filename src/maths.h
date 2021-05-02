@@ -209,6 +209,7 @@ void quat_print(char const *name, quat const q);
 quat quat_id(void);
 
 quat quat_conjugate(quat const q);
+quat quat_inverse(quat const q);
 quat quat_neg(quat const q);
 
 quat quat_add(quat const a, quat const b);
