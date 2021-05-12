@@ -155,12 +155,11 @@ int main(int argc, char *argv[]) {
         /*renderbuffer*/ rbo);
 
     // Check if the framebuffer is complete.
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        if (status != GL_FRAMEBUFFER_COMPLETE) {
-            GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
-        }
+    int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     uint vao_quad;
     glGenVertexArrays(1, &vao_quad);
@@ -248,36 +247,35 @@ int main(int argc, char *argv[]) {
         {
             set_shader_mat4(shader, "world_to_view", view);
             set_shader_mat4(shader, "view_to_clip", projection);
+            DEFER(glBindVertexArray(0)) {
+                // Cubes.
+                glBindVertexArray(vao_cubes);
+                bind_texture_to_unit(cubes, GL_TEXTURE0);
+                set_shader_mat4(shader, "local_to_world", mat4_translate((vec3) { -1, 0, -1 }));
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+                set_shader_mat4(shader, "local_to_world", mat4_translate((vec3) { 2, 0, 0 }));
+                glDrawArrays(GL_TRIANGLES, 0, 36);
 
-            // Cubes.
-            glBindVertexArray(vao_cubes);
-            bind_texture_to_unit(cubes, GL_TEXTURE0);
-            set_shader_mat4(shader, "local_to_world", mat4_translate((vec3) { -1, 0, -1 }));
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-            set_shader_mat4(shader, "local_to_world", mat4_translate((vec3) { 2, 0, 0 }));
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            // Floor.
-            glBindVertexArray(vao_floor);
-            bind_texture_to_unit(floor, GL_TEXTURE0);
-            set_shader_mat4(shader, "local_to_world", mat4_id());
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-
-            // Window.
-            glBindVertexArray(vao_transparent);
-            bind_texture_to_unit(transparent, GL_TEXTURE0);
-            qsort( // sort by view distance before rendering
-                (void *) transparent_positions,
-                ARRAY_LEN(transparent_positions),
-                sizeof(transparent_positions[0]),
-                transparent_cmp);
-            for (usize i = 0; i < ARRAY_LEN(transparent_positions); ++i) {
-                mat4 const model = mat4_translate(transparent_positions[i]);
-                set_shader_mat4(shader, "local_to_world", model);
+                // Floor.
+                glBindVertexArray(vao_floor);
+                bind_texture_to_unit(floor, GL_TEXTURE0);
+                set_shader_mat4(shader, "local_to_world", mat4_id());
                 glDrawArrays(GL_TRIANGLES, 0, 6);
-            }
 
-            glBindVertexArray(0);
+                // Window.
+                glBindVertexArray(vao_transparent);
+                bind_texture_to_unit(transparent, GL_TEXTURE0);
+                qsort( // sort by view distance before rendering
+                    (void *) transparent_positions,
+                    ARRAY_LEN(transparent_positions),
+                    sizeof(transparent_positions[0]),
+                    transparent_cmp);
+                for (usize i = 0; i < ARRAY_LEN(transparent_positions); ++i) {
+                    mat4 const model = mat4_translate(transparent_positions[i]);
+                    set_shader_mat4(shader, "local_to_world", model);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
+            }
         }
 
         //

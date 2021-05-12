@@ -15,7 +15,7 @@ set(DEFAULT_BUILD_TYPE "RelWithDebInfo")
 
 set(FILE_SOURCES
     src/camera.c
-    src/colorspace.c
+    src/color.c
     src/file.c
     src/maths.c
     src/mesh.c
@@ -27,7 +27,7 @@ set(FILE_SOURCES
 
 set(FILE_HEADERS
     src/camera.h
-    src/colorspace.h
+    src/color.h
     src/console.h
     src/file.h
     src/maths.h

@@ -69,7 +69,7 @@ Texture new_texture_from_image_with_settings(
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    {
+    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
         int const internal_format = INTERNAL_FORMAT[settings.format];
         int const format = gl_format(texture_image.channels);
         if (internal_format != format) {
@@ -106,7 +106,6 @@ Texture new_texture_from_image_with_settings(
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, FILTER[settings.mag_filter]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
     }
-    glBindTexture(GL_TEXTURE_2D, 0);
 
     return (Texture) { texture_id, TextureType_None };
 }

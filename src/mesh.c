@@ -13,7 +13,7 @@ init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices
     glGenBuffers(1, &ebo);
 
     glBindVertexArray(vao);
-    {
+    DEFER(glBindVertexArray(0)) {
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(
             GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_len, &vertices[0], GL_STATIC_DRAW);
@@ -34,7 +34,6 @@ init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices
         glEnableVertexAttribArray(1); // vertex normal
         glEnableVertexAttribArray(2); // vertex texcoords
     }
-    glBindVertexArray(0);
 
     glDeleteBuffers(1, &ebo);
     glDeleteBuffers(1, &vbo);
@@ -107,8 +106,9 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     }
 
     glBindVertexArray(mesh->vao);
-    glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    DEFER(glBindVertexArray(0)) {
+        glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
+    }
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }
 
