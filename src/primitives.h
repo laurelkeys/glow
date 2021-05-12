@@ -5,6 +5,17 @@
 #include "maths.h"
 
 // clang-format off
+static f32 const QUAD_VERTICES[] = {
+    // positions     // texture coords
+    -1.0f,  1.0f,    0.0f, 1.0f,
+    -1.0f, -1.0f,    0.0f, 0.0f,
+     1.0f, -1.0f,    1.0f, 0.0f,
+
+    -1.0f,  1.0f,    0.0f, 1.0f,
+     1.0f, -1.0f,    1.0f, 0.0f,
+     1.0f,  1.0f,    1.0f, 1.0f
+};
+
 #if 0
 static f32 const CUBE_VERTICES[] = {
     // positions            // normals             // texture coords

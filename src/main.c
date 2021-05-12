@@ -42,8 +42,10 @@ bool mouse_is_first = true;
 bool is_tab_pressed = false;
 
 Shader shader;
+Shader quad_shader;
 
 // Forward declarations.
+void setup_shaders();
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
 
@@ -71,8 +73,9 @@ int main(int argc, char *argv[]) {
 
     // @Volatile: use these same files in `process_input`.
     shader = TRY_NEW_SHADER("simple_texture", &err);
+    quad_shader = TRY_NEW_SHADER("simple_quad", &err);
 
-    Texture const cubes = TRY_NEW_TEXTURE("marble.jpg", &err);
+    Texture const cubes = TRY_NEW_TEXTURE("container.jpg", &err);
     Texture const floor = TRY_NEW_TEXTURE("metal.png", &err);
 
     TextureSettings tex_settings = Default_TextureSettings;
@@ -86,90 +89,108 @@ int main(int argc, char *argv[]) {
     uint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // @Note: currently, the Texture struct only represents image data,
+    // so we have to create a depth/stencil texture manually.
+    // Therefore, while we could get a texture handle by doing this:
+    //  |
+    //  |   TextureSettings tex_settings = Default_TextureSettings;
+    //  |   tex_settings.generate_mipmap = false;
+    //  |   tex_settings.mag_filter = TextureFilter_Linear;
+    //  |   tex_settings.min_filter = TextureFilter_Linear;
+    //  |   Texture const fb_texture = new_texture_from_image_with_settings(
+    //  |       tex_settings,
+    //  |       (TextureImage) {
+    //  |           .data = NULL,
+    //  |           .width = window_settings.width,
+    //  |           .height = window_settings.height,
+    //  |           .channels = 3,
+    //  |       });
+    //
+    // For clarity, we are also creating the color buffer by hand below,
+    // since we will only allocate memory and not actually fill it (this
+    // will happen as soon as we render to the framebuffer).
+    uint fb_texture;
+    glGenTextures(1, &fb_texture);
+    glBindTexture(GL_TEXTURE_2D, fb_texture);
+    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+        glTexImage2D(
+            /*target*/ GL_TEXTURE_2D,
+            /*level*/ 0,
+            /*internalformat*/ GL_RGB,
+            /*width*/ window_settings.width,
+            /*height*/ window_settings.height,
+            /*border*/ 0,
+            /*format*/ GL_RGB,
+            /*type*/ GL_UNSIGNED_BYTE,
+            /*data*/ NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+
+    // Attach the texture to the currently bound framebuffer object (fbo).
+    glFramebufferTexture2D(
+        /*target*/ GL_FRAMEBUFFER,
+        /*attachment*/ GL_COLOR_ATTACHMENT0,
+        /*textarget*/ GL_TEXTURE_2D,
+        /*texture*/ fb_texture,
+        /*level*/ 0);
+
+    uint rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+        glRenderbufferStorage(
+            /*target*/ GL_RENDERBUFFER,
+            /*internalFormat*/ GL_DEPTH24_STENCIL8,
+            /*width*/ window_settings.width,
+            /*height*/ window_settings.height);
+    }
+
+    // Attach the renderbuffer object to fbo's depth and stencil attachment.
+    glFramebufferRenderbuffer(
+        /*target*/ GL_FRAMEBUFFER,
+        /*attachment*/ GL_DEPTH_STENCIL_ATTACHMENT,
+        /*renderbuffertarget*/ GL_RENDERBUFFER,
+        /*renderbuffer*/ rbo);
+
+    // Check if the framebuffer is complete.
     DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        // @Note: currently, the Texture struct only represents image data,
-        // so we have to create a depth/stencil texture manually.
-        // Therefore, while we could get a texture handle by doing this:
-        //  |
-        //  |   TextureSettings tex_settings = Default_TextureSettings;
-        //  |   tex_settings.generate_mipmap = false;
-        //  |   tex_settings.mag_filter = TextureFilter_Linear;
-        //  |   tex_settings.min_filter = TextureFilter_Linear;
-        //  |   Texture const fb_texture = new_texture_from_image_with_settings(
-        //  |       tex_settings,
-        //  |       (TextureImage) {
-        //  |           .data = NULL,
-        //  |           .width = window_settings.width,
-        //  |           .height = window_settings.height,
-        //  |           .channels = 3,
-        //  |       });
-        //
-        // For clarity, we are also creating the color buffer by hand below,
-        // since we will only allocate memory and not actually fill it (this
-        // will happen as soon as we render to the framebuffer).
-        uint fb_texture;
-        glGenTextures(1, &fb_texture);
-        glBindTexture(GL_TEXTURE_2D, fb_texture);
-        DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-            glTexImage2D(
-                /*target*/ GL_TEXTURE_2D,
-                /*level*/ 0,
-                /*internalformat*/ GL_RGB,
-                /*width*/ window_settings.width,
-                /*height*/ window_settings.height,
-                /*border*/ 0,
-                /*format*/ GL_RGB,
-                /*type*/ GL_UNSIGNED_BYTE,
-                /*data*/ NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        }
-
-        // Attach the texture to the currently bound framebuffer object (fbo).
-        glFramebufferTexture2D(
-            /*target*/ GL_FRAMEBUFFER,
-            /*attachment*/ GL_COLOR_ATTACHMENT0,
-            /*textarget*/ GL_TEXTURE_2D,
-            /*texture*/ fb_texture,
-            /*level*/ 0);
-
-        uint rbo;
-        glGenRenderbuffers(1, &rbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-        DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
-            glRenderbufferStorage(
-                /*target*/ GL_RENDERBUFFER,
-                /*internalFormat*/ GL_DEPTH24_STENCIL8,
-                /*width*/ window_settings.width,
-                /*height*/ window_settings.height);
-        }
-
-        // Attach the renderbuffer object to fbo's depth and stencil attachment.
-        glFramebufferRenderbuffer(
-            /*target*/ GL_FRAMEBUFFER,
-            /*attachment*/ GL_DEPTH_STENCIL_ATTACHMENT,
-            /*renderbuffertarget*/ GL_RENDERBUFFER,
-            /*renderbuffer*/ rbo);
-
-        // Check if the framebuffer is complete.
         int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
             GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
         }
     }
 
+    uint vao_quad;
+    glGenVertexArrays(1, &vao_quad);
+    {
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(QUAD_VERTICES), QUAD_VERTICES, GL_STATIC_DRAW);
+        glBindVertexArray(vao_quad);
+        DEFER(glBindVertexArray(0)) {
+            int const stride = sizeof(f32) * 4;
+            glEnableVertexAttribArray(0); // position attribute
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, (void *) 0);
+            glEnableVertexAttribArray(1); // texture coords attribute
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 2));
+        }
+        glDeleteBuffers(1, &vbo);
+    }
+
 #define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)                                 \
     glBindBuffer(GL_ARRAY_BUFFER, vbo);                                                      \
     glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);                       \
     glBindVertexArray(vao);                                                                  \
-    {                                                                                        \
+    DEFER(glBindVertexArray(0)) {                                                            \
         int const stride = sizeof(f32) * 5;                                                  \
         glEnableVertexAttribArray(0); /* position attribute */                               \
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);                 \
         glEnableVertexAttribArray(1); /* texture coords attribute */                         \
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3)); \
-    }                                                                                        \
-    glBindVertexArray(0)
+    }
 
     uint vao_cubes, vao_floor, vao_transparent;
     glGenVertexArrays(1, &vao_cubes);
@@ -196,14 +217,12 @@ int main(int argc, char *argv[]) {
     };
     // clang-format on
 
-    use_shader(shader);
-    { set_shader_sampler2D(shader, "texture1", GL_TEXTURE0); }
-
     f32 last_frame = 0; // time of last frame
     f32 delta_time = 0; // time between consecutive frames
 
+    setup_shaders();
+
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
-    glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -213,11 +232,17 @@ int main(int argc, char *argv[]) {
         last_frame = curr_frame;
         process_input(window, delta_time);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
+
+        //
+        // First pass.
+        //
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // not using stencil for now
+        glEnable(GL_DEPTH_TEST);
 
         use_shader(shader);
         {
@@ -255,6 +280,22 @@ int main(int argc, char *argv[]) {
             glBindVertexArray(0);
         }
 
+        //
+        // Second pass.
+        //
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDisable(GL_DEPTH_TEST);
+
+        use_shader(quad_shader);
+        {
+            glBindVertexArray(vao_quad);
+            glBindTexture(GL_TEXTURE_2D, fb_texture);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -262,7 +303,9 @@ int main(int argc, char *argv[]) {
     glDeleteVertexArrays(1, &vao_transparent);
     glDeleteVertexArrays(1, &vao_floor);
     glDeleteVertexArrays(1, &vao_cubes);
+    glDeleteVertexArrays(1, &vao_quad);
     glDeleteFramebuffers(1, &fbo);
+    glDeleteProgram(quad_shader.program_id);
     glDeleteProgram(shader.program_id);
 
     goto main_exit;
@@ -287,6 +330,14 @@ main_err:
 main_exit:
     glfwTerminate();
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+void setup_shaders() {
+    use_shader(shader);
+    set_shader_sampler2D(shader, "texture1", GL_TEXTURE0);
+
+    use_shader(quad_shader);
+    set_shader_sampler2D(quad_shader, "screen_texture", GL_TEXTURE0);
 }
 
 //
@@ -316,6 +367,8 @@ void process_input(GLFWwindow *window, f32 delta_time) {
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
         RELOAD_SHADER("simple_texture", &shader);
+        RELOAD_SHADER("simple_quad", &quad_shader);
+        setup_shaders();
     }
 }
 
