@@ -83,6 +83,81 @@ int main(int argc, char *argv[]) {
         tex_settings, GLOW_TEXTURES_ "blending_transparent_window.png", &err);
     if (err) { goto main_err; }
 
+    uint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        // @Note: currently, the Texture struct only represents image data,
+        // so we have to create a depth/stencil texture manually.
+        // Therefore, while we could get a texture handle by doing this:
+        //  |
+        //  |   TextureSettings tex_settings = Default_TextureSettings;
+        //  |   tex_settings.generate_mipmap = false;
+        //  |   tex_settings.mag_filter = TextureFilter_Linear;
+        //  |   tex_settings.min_filter = TextureFilter_Linear;
+        //  |   Texture const fb_texture = new_texture_from_image_with_settings(
+        //  |       tex_settings,
+        //  |       (TextureImage) {
+        //  |           .data = NULL,
+        //  |           .width = window_settings.width,
+        //  |           .height = window_settings.height,
+        //  |           .channels = 3,
+        //  |       });
+        //
+        // For clarity, we are also creating the color buffer by hand below,
+        // since we will only allocate memory and not actually fill it (this
+        // will happen as soon as we render to the framebuffer).
+        uint fb_texture;
+        glGenTextures(1, &fb_texture);
+        glBindTexture(GL_TEXTURE_2D, fb_texture);
+        DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+            glTexImage2D(
+                /*target*/ GL_TEXTURE_2D,
+                /*level*/ 0,
+                /*internalformat*/ GL_RGB,
+                /*width*/ window_settings.width,
+                /*height*/ window_settings.height,
+                /*border*/ 0,
+                /*format*/ GL_RGB,
+                /*type*/ GL_UNSIGNED_BYTE,
+                /*data*/ NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+
+        // Attach the texture to the currently bound framebuffer object (fbo).
+        glFramebufferTexture2D(
+            /*target*/ GL_FRAMEBUFFER,
+            /*attachment*/ GL_COLOR_ATTACHMENT0,
+            /*textarget*/ GL_TEXTURE_2D,
+            /*texture*/ fb_texture,
+            /*level*/ 0);
+
+        uint rbo;
+        glGenRenderbuffers(1, &rbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+        DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+            glRenderbufferStorage(
+                /*target*/ GL_RENDERBUFFER,
+                /*internalFormat*/ GL_DEPTH24_STENCIL8,
+                /*width*/ window_settings.width,
+                /*height*/ window_settings.height);
+        }
+
+        // Attach the renderbuffer object to fbo's depth and stencil attachment.
+        glFramebufferRenderbuffer(
+            /*target*/ GL_FRAMEBUFFER,
+            /*attachment*/ GL_DEPTH_STENCIL_ATTACHMENT,
+            /*renderbuffertarget*/ GL_RENDERBUFFER,
+            /*renderbuffer*/ rbo);
+
+        // Check if the framebuffer is complete.
+        int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE) {
+            GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
+        }
+    }
+
 #define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)                                 \
     glBindBuffer(GL_ARRAY_BUFFER, vbo);                                                      \
     glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);                       \
@@ -187,6 +262,7 @@ int main(int argc, char *argv[]) {
     glDeleteVertexArrays(1, &vao_transparent);
     glDeleteVertexArrays(1, &vao_floor);
     glDeleteVertexArrays(1, &vao_cubes);
+    glDeleteFramebuffers(1, &fbo);
     glDeleteProgram(shader.program_id);
 
     goto main_exit;

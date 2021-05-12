@@ -16,6 +16,8 @@
 
 typedef int8_t i8;
 typedef uint8_t u8;
+typedef int64_t i64;
+typedef uint64_t u64;
 
 typedef float f32;
 typedef double f64;
@@ -57,6 +59,10 @@ typedef unsigned int uint;
         it.value != (end);     \
         ++it.index, ++it.value)
 */
+
+#define DEFER(f)                                                      \
+    for (int CONCATIFY(i__, __LINE__) = 0; !CONCATIFY(i__, __LINE__); \
+         (CONCATIFY(i__, __LINE__) += 1), f)
 
 //
 // Miscellaneous.
