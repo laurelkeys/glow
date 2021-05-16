@@ -5,9 +5,9 @@
 #include "maths.h"
 #include "model.h"
 #include "opengl.h"
-#include "primitives.h"
 #include "shader.h"
 #include "texture.h"
+#include "vertices.h"
 
 #include <stdio.h>
 
@@ -41,20 +41,13 @@ vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
 
-Shader shader;
-Shader quad_shader;
+Shader cube_shader;
+Shader skybox_shader;
 
 // Forward declarations.
 void setup_shaders();
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
-
-int transparent_cmp(void const *a, void const *b) {
-    f32 const dist_a = vec3_length(vec3_sub(camera.position, *(vec3 const *) a));
-    f32 const dist_b = vec3_length(vec3_sub(camera.position, *(vec3 const *) b));
-    /* return (dist_a < dist_b) ? 1 : (dist_a > dist_b) ? -1 : 0; */
-    return (dist_a < dist_b) - (dist_a > dist_b);
-}
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -69,152 +62,67 @@ int main(int argc, char *argv[]) {
     GLFWwindow *const window = init_opengl(window_settings, &err);
     if (err) { goto main_err; }
 
-    stbi_set_flip_vertically_on_load(true);
-
     // @Volatile: use these same files in `process_input`.
-    shader = TRY_NEW_SHADER("simple_texture", &err);
-    quad_shader = TRY_NEW_SHADER("simple_quad", &err);
+    cube_shader = TRY_NEW_SHADER("simple_texture", &err);
+    skybox_shader = TRY_NEW_SHADER("simple_skybox", &err);
 
+    stbi_set_flip_vertically_on_load(true);
     Texture const cubes = TRY_NEW_TEXTURE("container.jpg", &err);
     Texture const floor = TRY_NEW_TEXTURE("metal.png", &err);
-
-    TextureSettings tex_settings = Default_TextureSettings;
-    tex_settings.format = TextureFormat_Rgba; // load alpha
-    tex_settings.wrap_s = TextureWrap_ClampToEdge;
-    tex_settings.wrap_t = TextureWrap_ClampToEdge;
-    Texture const transparent = new_texture_from_filepath_with_settings(
-        tex_settings, GLOW_TEXTURES_ "blending_transparent_window.png", &err);
+    stbi_set_flip_vertically_on_load(false);
+    Texture const skybox = new_cubemap_texture_from_filepaths(
+        (char const *[6]) {
+            GLOW_TEXTURES_ "skybox/right.jpg", // +X
+            GLOW_TEXTURES_ "skybox/left.jpg", // -X
+            GLOW_TEXTURES_ "skybox/top.jpg", // +Y
+            GLOW_TEXTURES_ "skybox/bottom.jpg", // -Y
+            GLOW_TEXTURES_ "skybox/front.jpg", // +Z
+            GLOW_TEXTURES_ "skybox/back.jpg", // -Z
+        },
+        &err);
     if (err) { goto main_err; }
 
-    uint fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    uint vao_cubes, vao_floor;
+    glGenVertexArrays(1, &vao_cubes);
+    glGenVertexArrays(1, &vao_floor);
+    {
+        uint vbos[2];
+        glGenBuffers(ARRAY_LEN(vbos), vbos);
+        int const stride = sizeof(f32) * 5;
 
-    // @Note: currently, the Texture struct only represents image data,
-    // so we have to create a depth/stencil texture manually.
-    // Therefore, while we could get a texture handle by doing this:
-    //  |
-    //  |   TextureSettings tex_settings = Default_TextureSettings;
-    //  |   tex_settings.generate_mipmap = false;
-    //  |   tex_settings.mag_filter = TextureFilter_Linear;
-    //  |   tex_settings.min_filter = TextureFilter_Linear;
-    //  |   Texture const fb_texture = new_texture_from_image_with_settings(
-    //  |       tex_settings,
-    //  |       (TextureImage) {
-    //  |           .data = NULL,
-    //  |           .width = window_settings.width,
-    //  |           .height = window_settings.height,
-    //  |           .channels = 3,
-    //  |       });
-    //
-    // For clarity, we are also creating the color buffer by hand below,
-    // since we will only allocate memory and not actually fill it (this
-    // will happen as soon as we render to the framebuffer).
-    uint fb_texture;
-    glGenTextures(1, &fb_texture);
-    glBindTexture(GL_TEXTURE_2D, fb_texture);
-    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-        glTexImage2D(
-            /*target*/ GL_TEXTURE_2D,
-            /*level*/ 0,
-            /*internalformat*/ GL_RGB,
-            /*width*/ window_settings.width,
-            /*height*/ window_settings.height,
-            /*border*/ 0,
-            /*format*/ GL_RGB,
-            /*type*/ GL_UNSIGNED_BYTE,
-            /*data*/ NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)             \
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);                                  \
+    glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);   \
+    glBindVertexArray(vao);                                              \
+    glEnableVertexAttribArray(0); /* position attribute */               \
+    glEnableVertexAttribArray(1); /* texture coords attribute */         \
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0); \
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3))
+
+        DEFER(glBindVertexArray(0)) {
+            BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(CUBE_VERTICES, vbos[0], vao_cubes);
+            BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(FLOOR_VERTICES, vbos[1], vao_floor);
+        }
+
+#undef BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS
+
+        glDeleteBuffers(ARRAY_LEN(vbos), vbos);
     }
 
-    // Attach the texture to the currently bound framebuffer object (fbo).
-    glFramebufferTexture2D(
-        /*target*/ GL_FRAMEBUFFER,
-        /*attachment*/ GL_COLOR_ATTACHMENT0,
-        /*textarget*/ GL_TEXTURE_2D,
-        /*texture*/ fb_texture,
-        /*level*/ 0);
-
-    uint rbo;
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
-        glRenderbufferStorage(
-            /*target*/ GL_RENDERBUFFER,
-            /*internalFormat*/ GL_DEPTH24_STENCIL8,
-            /*width*/ window_settings.width,
-            /*height*/ window_settings.height);
-    }
-
-    // Attach the renderbuffer object to fbo's depth and stencil attachment.
-    glFramebufferRenderbuffer(
-        /*target*/ GL_FRAMEBUFFER,
-        /*attachment*/ GL_DEPTH_STENCIL_ATTACHMENT,
-        /*renderbuffertarget*/ GL_RENDERBUFFER,
-        /*renderbuffer*/ rbo);
-
-    // Check if the framebuffer is complete.
-    int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    uint vao_quad;
-    glGenVertexArrays(1, &vao_quad);
+    uint vao_skybox;
+    glGenVertexArrays(1, &vao_skybox);
     {
         uint vbo;
         glGenBuffers(1, &vbo);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(QUAD_VERTICES), QUAD_VERTICES, GL_STATIC_DRAW);
-        glBindVertexArray(vao_quad);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(SKYBOX_VERTICES), SKYBOX_VERTICES, GL_STATIC_DRAW);
+        glBindVertexArray(vao_skybox);
         DEFER(glBindVertexArray(0)) {
-            int const stride = sizeof(f32) * 4;
             glEnableVertexAttribArray(0); // position attribute
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, (void *) 0);
-            glEnableVertexAttribArray(1); // texture coords attribute
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 2));
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 3, (void *) 0);
         }
         glDeleteBuffers(1, &vbo);
     }
-
-#define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)                                 \
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);                                                      \
-    glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);                       \
-    glBindVertexArray(vao);                                                                  \
-    DEFER(glBindVertexArray(0)) {                                                            \
-        int const stride = sizeof(f32) * 5;                                                  \
-        glEnableVertexAttribArray(0); /* position attribute */                               \
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);                 \
-        glEnableVertexAttribArray(1); /* texture coords attribute */                         \
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3)); \
-    }
-
-    uint vao_cubes, vao_floor, vao_transparent;
-    glGenVertexArrays(1, &vao_cubes);
-    glGenVertexArrays(1, &vao_floor);
-    glGenVertexArrays(1, &vao_transparent);
-    {
-        uint vbos[3];
-        glGenBuffers(3, vbos);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(CUBE_VERTICES, vbos[0], vao_cubes);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(FLOOR_VERTICES, vbos[1], vao_floor);
-        BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(TRANSPARENT_VERTICES, vbos[2], vao_transparent);
-        glDeleteBuffers(3, vbos);
-    }
-
-#undef BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS
-
-    // clang-format off
-    vec3 const transparent_positions[] = {
-        { -1.5f, 0.0f, -0.48f },
-        {  1.5f, 0.0f,  0.51f },
-        {  0.0f, 0.0f,  0.7f  },
-        { -0.3f, 0.0f, -2.3f  },
-        {  0.5f, 0.0f, -0.6f  },
-    };
-    // clang-format on
 
     f32 last_frame = 0; // time of last frame
     f32 delta_time = 0; // time between consecutive frames
@@ -222,8 +130,7 @@ int main(int argc, char *argv[]) {
     setup_shaders();
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
 
     while (!glfwWindowShouldClose(window)) {
         f32 const curr_frame = glfwGetTime();
@@ -234,77 +141,54 @@ int main(int argc, char *argv[]) {
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
 
-        //
-        // First pass.
-        //
-
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // not using stencil for now
-        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        use_shader(shader);
+        use_shader(cube_shader);
         {
-            set_shader_mat4(shader, "world_to_view", view);
-            set_shader_mat4(shader, "view_to_clip", projection);
-            DEFER(glBindVertexArray(0)) {
-                // Cubes.
-                glBindVertexArray(vao_cubes);
-                bind_texture_to_unit(cubes, GL_TEXTURE0);
-                set_shader_mat4(shader, "local_to_world", mat4_translate((vec3) { -1, 0, -1 }));
-                glDrawArrays(GL_TRIANGLES, 0, 36);
-                set_shader_mat4(shader, "local_to_world", mat4_translate((vec3) { 2, 0, 0 }));
-                glDrawArrays(GL_TRIANGLES, 0, 36);
+            set_shader_mat4(cube_shader, "world_to_view", view);
+            set_shader_mat4(cube_shader, "view_to_clip", projection);
 
-                // Floor.
-                glBindVertexArray(vao_floor);
-                bind_texture_to_unit(floor, GL_TEXTURE0);
-                set_shader_mat4(shader, "local_to_world", mat4_id());
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+            // Cubes.
+            glBindVertexArray(vao_cubes);
+            bind_texture_to_unit(cubes, GL_TEXTURE0);
+            set_shader_mat4(cube_shader, "local_to_world", mat4_translate((vec3) { -1, 0, -1 }));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            set_shader_mat4(cube_shader, "local_to_world", mat4_translate((vec3) { 2, 0, 0 }));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
 
-                // Window.
-                glBindVertexArray(vao_transparent);
-                bind_texture_to_unit(transparent, GL_TEXTURE0);
-                qsort( // sort by view distance before rendering
-                    (void *) transparent_positions,
-                    ARRAY_LEN(transparent_positions),
-                    sizeof(transparent_positions[0]),
-                    transparent_cmp);
-                for (usize i = 0; i < ARRAY_LEN(transparent_positions); ++i) {
-                    mat4 const model = mat4_translate(transparent_positions[i]);
-                    set_shader_mat4(shader, "local_to_world", model);
-                    glDrawArrays(GL_TRIANGLES, 0, 6);
-                }
-            }
+            // Floor.
+            glBindVertexArray(vao_floor);
+            bind_texture_to_unit(floor, GL_TEXTURE0);
+            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
+            glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
-        //
-        // Second pass.
-        //
+        glDepthFunc(GL_LEQUAL);
+        DEFER(glDepthFunc(GL_LESS)) {
+            use_shader(skybox_shader);
+            {
+                mat4 view_without_translation = view;
+                view_without_translation.m[0][3] = 0.0f;
+                view_without_translation.m[1][3] = 0.0f;
+                view_without_translation.m[2][3] = 0.0f;
+                set_shader_mat4(skybox_shader, "world_to_view", view_without_translation);
+                set_shader_mat4(skybox_shader, "view_to_clip", projection);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glDisable(GL_DEPTH_TEST);
-
-        use_shader(quad_shader);
-        {
-            glBindVertexArray(vao_quad);
-            glBindTexture(GL_TEXTURE_2D, fb_texture);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+                glBindVertexArray(vao_skybox);
+                bind_texture_to_unit(skybox, GL_TEXTURE0);
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+            }
         }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    glDeleteVertexArrays(1, &vao_transparent);
-    glDeleteVertexArrays(1, &vao_floor);
+    glDeleteVertexArrays(1, &vao_skybox);
     glDeleteVertexArrays(1, &vao_cubes);
-    glDeleteVertexArrays(1, &vao_quad);
-    glDeleteFramebuffers(1, &fbo);
-    glDeleteProgram(quad_shader.program_id);
-    glDeleteProgram(shader.program_id);
+    glDeleteProgram(skybox_shader.program_id);
+    glDeleteProgram(cube_shader.program_id);
 
     goto main_exit;
 
@@ -331,11 +215,11 @@ main_exit:
 }
 
 void setup_shaders() {
-    use_shader(shader);
-    set_shader_sampler2D(shader, "texture1", GL_TEXTURE0);
+    use_shader(cube_shader);
+    set_shader_sampler2D(cube_shader, "texture1", GL_TEXTURE0);
 
-    use_shader(quad_shader);
-    set_shader_sampler2D(quad_shader, "screen_texture", GL_TEXTURE0);
+    use_shader(skybox_shader);
+    set_shader_sampler2D(skybox_shader, "skybox", GL_TEXTURE0);
 }
 
 //
@@ -364,8 +248,8 @@ void process_input(GLFWwindow *window, f32 delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
-        RELOAD_SHADER("simple_texture", &shader);
-        RELOAD_SHADER("simple_quad", &quad_shader);
+        RELOAD_SHADER("simple_texture", &cube_shader);
+        RELOAD_SHADER("simple_skybox", &skybox_shader);
         setup_shaders();
     }
 }

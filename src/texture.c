@@ -107,7 +107,7 @@ Texture new_texture_from_image_with_settings(
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
     }
 
-    return (Texture) { texture_id, TextureType_None };
+    return (Texture) { texture_id, GL_TEXTURE_2D, TextureMaterialType_None };
 }
 
 Texture new_texture_from_filepath(char const *image_path, Err *err) {
@@ -131,5 +131,53 @@ Texture new_texture_from_filepath_with_settings(
 
 void bind_texture_to_unit(Texture const texture, uint texture_unit) {
     glActiveTexture(texture_unit);
-    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glBindTexture(texture.target, texture.id);
 }
+
+#if 1
+Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
+    uint texture_id;
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
+    DEFER(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)) {
+        for (usize i = 0; i < 6; ++i) {
+            int const target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
+            int const format = gl_format(texture_images[i].channels);
+            glTexImage2D(
+                /*target*/ target,
+                /*level*/ 0,
+                /*internalFormat*/ format,
+                /*width*/ texture_images[i].width,
+                /*height*/ texture_images[i].height,
+                /*border*/ 0,
+                /*format*/ format,
+                /*type*/ GL_UNSIGNED_BYTE,
+                /*data*/ texture_images[i].data);
+        }
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    }
+    return (Texture) { texture_id, GL_TEXTURE_CUBE_MAP, TextureMaterialType_None };
+}
+
+Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err) {
+    TextureImage texture_images[6] = { 0 };
+    for (usize i = 0; i < 6; ++i) {
+        int width, height, channels;
+        u8 *data = stbi_load(image_paths[i], &width, &height, &channels, 0);
+        if (!data) {
+            GLOW_WARNING("failed to load image from path: `%s`", i, image_paths[i]);
+            GLOW_WARNING("stbi_failure_reason() returned: `%s`", stbi_failure_reason());
+            return (*err = Err_Stbi_Load, (Texture) { 0 });
+        }
+        assert(1 <= channels && channels <= 4);
+        texture_images[i] = (TextureImage) { data, width, height, channels };
+    }
+    Texture texture = new_cubemap_texture_from_images(texture_images);
+    for (usize i = 0; i < 6; ++i) { stbi_image_free(texture_images[i].data); }
+    return texture;
+}
+#endif

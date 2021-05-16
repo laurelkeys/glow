@@ -160,14 +160,15 @@ static usize count_assimp_nodes(struct aiNode const *node) {
     return count;
 }
 
-static TextureType mesh_texture_type_from_assimp(enum aiTextureType type) {
+static TextureMaterialType mesh_texture_material_type_from_assimp(enum aiTextureType type) {
     switch (type) {
-        case aiTextureType_DIFFUSE: return TextureType_Diffuse;
-        case aiTextureType_SPECULAR: return TextureType_Specular;
+        case aiTextureType_AMBIENT: return TextureMaterialType_Ambient;
+        case aiTextureType_DIFFUSE: return TextureMaterialType_Diffuse;
+        case aiTextureType_SPECULAR: return TextureMaterialType_Specular;
         default:
             GLOW_WARNING("unhandled assimp aiTextureType: `%d`", type);
             assert(false);
-            return TextureType_None;
+            return TextureMaterialType_None;
     }
 }
 
@@ -200,7 +201,8 @@ static bool preload_textures_with_type(
         assert(mesh_textures->len < mesh_textures->capacity);
         mesh_textures->paths[mesh_textures->len] = alloc_str_copy(&path.data[0]);
         mesh_textures->array[mesh_textures->len] = new_texture_from_filepath(full_path, err);
-        mesh_textures->array[mesh_textures->len].type = mesh_texture_type_from_assimp(type);
+        mesh_textures->array[mesh_textures->len].material =
+            mesh_texture_material_type_from_assimp(type);
         mesh_textures->len += 1;
 
         if (*err) {

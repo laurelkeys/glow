@@ -16,6 +16,51 @@ static f32 const QUAD_VERTICES[] = {
      1.0f,  1.0f,    1.0f, 1.0f
 };
 
+static f32 const SKYBOX_VERTICES[] = {
+    // positions
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+};
+
 #if 0
 static f32 const CUBE_VERTICES[] = {
     // positions            // normals             // texture coords
@@ -106,6 +151,7 @@ static f32 const CUBE_VERTICES[] = {
     -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
     -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
 };
+#endif
 
 static f32 const FLOOR_VERTICES[] = {
     // positions            // texture coords
@@ -128,5 +174,4 @@ static f32 const TRANSPARENT_VERTICES[] = {
      1.0f, -0.5f,  0.0f,    0.0f, 0.0f,
      1.0f,  0.5f,  0.0f,    0.0f, 1.0f,
 };
-#endif
 // clang-format on

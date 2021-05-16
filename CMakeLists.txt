@@ -34,9 +34,9 @@ set(FILE_HEADERS
     src/mesh.h
     src/model.h
     src/opengl.h
-    src/primitives.h
     src/shader.h
     src/texture.h
+    src/vertices.h
     src/prelude.h)
 
 # ----------------------------------------------------------------------------------------

@@ -70,9 +70,11 @@ void dealloc_mesh(Mesh *mesh) {
 }
 
 // @Fixme: stop using hard-coded names.
+#define NAME_AMBIENT "material.ambient"
 #define NAME_DIFFUSE "material.diffuse"
 #define NAME_SPECULAR "material.specular"
-#define MAX_NAME_LEN (MAX(sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
+#define MAX_NAME_LEN \
+    (MAX3(sizeof(NAME_AMBIENT "99"), sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
 #define SET_NAME(name, NAME_TYPE, type_count)                           \
     if (type_count++ == 0) {                                            \
         snprintf((name), MAX_NAME_LEN + 1, NAME_TYPE);                  \
@@ -81,6 +83,7 @@ void dealloc_mesh(Mesh *mesh) {
     }
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
+    uint ambient = 0;
     uint diffuse = 0;
     uint specular = 0;
 
@@ -88,15 +91,16 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     char name[MAX_NAME_LEN + 1] = { 0 };
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
-        switch (mesh->textures[i].type) {
-            case TextureType_Diffuse: SET_NAME(name, NAME_DIFFUSE, diffuse); break;
-            case TextureType_Specular: SET_NAME(name, NAME_SPECULAR, specular); break;
-            // @Incomplete: what's the best way to handle TextureType_None?
+        switch (mesh->textures[i].material) {
+            case TextureMaterialType_Ambient: SET_NAME(name, NAME_AMBIENT, ambient); break;
+            case TextureMaterialType_Diffuse: SET_NAME(name, NAME_DIFFUSE, diffuse); break;
+            case TextureMaterialType_Specular: SET_NAME(name, NAME_SPECULAR, specular); break;
+            // @Incomplete: what's the best way to handle TextureMaterialType_None?
             default:
                 GLOW_WARNING(
-                    "mesh texture with id `%d` has invalid type: `%d`",
+                    "mesh texture with id `%d` has invalid material type: `%d`",
                     mesh->textures[i].id,
-                    mesh->textures[i].type);
+                    mesh->textures[i].material);
                 assert(false);
                 return;
         }
