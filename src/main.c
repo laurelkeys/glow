@@ -45,7 +45,7 @@ Shader cube_shader;
 Shader skybox_shader;
 
 // Forward declarations.
-void setup_shaders();
+void setup_shaders(void);
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
 
@@ -63,12 +63,12 @@ int main(int argc, char *argv[]) {
     if (err) { goto main_err; }
 
     // @Volatile: use these same files in `process_input`.
-    cube_shader = TRY_NEW_SHADER("simple_texture", &err);
+    cube_shader = TRY_NEW_SHADER("simple_envmap", &err);
     skybox_shader = TRY_NEW_SHADER("simple_skybox", &err);
 
     stbi_set_flip_vertically_on_load(true);
-    Texture const cubes = TRY_NEW_TEXTURE("container.jpg", &err);
-    Texture const floor = TRY_NEW_TEXTURE("metal.png", &err);
+    Texture const cube = TRY_NEW_TEXTURE("container.jpg", &err);
+
     stbi_set_flip_vertically_on_load(false);
     Texture const skybox = new_cubemap_texture_from_filepaths(
         (char const *[6]) {
@@ -82,31 +82,24 @@ int main(int argc, char *argv[]) {
         &err);
     if (err) { goto main_err; }
 
-    uint vao_cubes, vao_floor;
-    glGenVertexArrays(1, &vao_cubes);
-    glGenVertexArrays(1, &vao_floor);
+    uint vao_cube;
+    glGenVertexArrays(1, &vao_cube);
     {
-        uint vbos[2];
-        glGenBuffers(ARRAY_LEN(vbos), vbos);
-        int const stride = sizeof(f32) * 5;
-
-#define BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(data, vbo, vao)             \
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);                                  \
-    glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);   \
-    glBindVertexArray(vao);                                              \
-    glEnableVertexAttribArray(0); /* position attribute */               \
-    glEnableVertexAttribArray(1); /* texture coords attribute */         \
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0); \
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3))
-
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTICES), CUBE_VERTICES, GL_STATIC_DRAW);
+        glBindVertexArray(vao_cube);
         DEFER(glBindVertexArray(0)) {
-            BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(CUBE_VERTICES, vbos[0], vao_cubes);
-            BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS(FLOOR_VERTICES, vbos[1], vao_floor);
+            int const stride = sizeof(f32) * 8;
+            glEnableVertexAttribArray(0); // position
+            glEnableVertexAttribArray(1); // normal
+            glEnableVertexAttribArray(2); // texture coords
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
         }
-
-#undef BIND_DATA_TO_VBO_AND_SET_VAO_ATTRIBS
-
-        glDeleteBuffers(ARRAY_LEN(vbos), vbos);
+        glDeleteBuffers(1, &vbo); // @Note: deleting the VBO is only valid after unbinding the VAO
     }
 
     uint vao_skybox;
@@ -118,7 +111,7 @@ int main(int argc, char *argv[]) {
         glBufferData(GL_ARRAY_BUFFER, sizeof(SKYBOX_VERTICES), SKYBOX_VERTICES, GL_STATIC_DRAW);
         glBindVertexArray(vao_skybox);
         DEFER(glBindVertexArray(0)) {
-            glEnableVertexAttribArray(0); // position attribute
+            glEnableVertexAttribArray(0); // position
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 3, (void *) 0);
         }
         glDeleteBuffers(1, &vbo);
@@ -146,47 +139,40 @@ int main(int argc, char *argv[]) {
 
         use_shader(cube_shader);
         {
+            set_shader_vec3(cube_shader, "camera_pos", camera.position);
+
+            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
             set_shader_mat4(cube_shader, "world_to_view", view);
             set_shader_mat4(cube_shader, "view_to_clip", projection);
 
-            // Cubes.
-            glBindVertexArray(vao_cubes);
-            bind_texture_to_unit(cubes, GL_TEXTURE0);
-            set_shader_mat4(cube_shader, "local_to_world", mat4_translate((vec3) { -1, 0, -1 }));
+            glBindVertexArray(vao_cube);
+            bind_texture_to_unit(cube, GL_TEXTURE0);
             glDrawArrays(GL_TRIANGLES, 0, 36);
-            set_shader_mat4(cube_shader, "local_to_world", mat4_translate((vec3) { 2, 0, 0 }));
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            // Floor.
-            glBindVertexArray(vao_floor);
-            bind_texture_to_unit(floor, GL_TEXTURE0);
-            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
-            glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
+        // Change the depth function to make sure the skybox passes the depth tests.
         glDepthFunc(GL_LEQUAL);
-        DEFER(glDepthFunc(GL_LESS)) {
-            use_shader(skybox_shader);
-            {
-                mat4 view_without_translation = view;
-                view_without_translation.m[0][3] = 0.0f;
-                view_without_translation.m[1][3] = 0.0f;
-                view_without_translation.m[2][3] = 0.0f;
-                set_shader_mat4(skybox_shader, "world_to_view", view_without_translation);
-                set_shader_mat4(skybox_shader, "view_to_clip", projection);
+        use_shader(skybox_shader);
+        {
+            mat4 view_without_translation = view;
+            view_without_translation.m[0][3] = 0.0f;
+            view_without_translation.m[1][3] = 0.0f;
+            view_without_translation.m[2][3] = 0.0f;
+            set_shader_mat4(skybox_shader, "world_to_view", view_without_translation);
+            set_shader_mat4(skybox_shader, "view_to_clip", projection);
 
-                glBindVertexArray(vao_skybox);
-                bind_texture_to_unit(skybox, GL_TEXTURE0);
-                glDrawArrays(GL_TRIANGLES, 0, 36);
-            }
+            glBindVertexArray(vao_skybox);
+            bind_texture_to_unit(skybox, GL_TEXTURE0);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
         }
+        glDepthFunc(GL_LESS);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     glDeleteVertexArrays(1, &vao_skybox);
-    glDeleteVertexArrays(1, &vao_cubes);
+    glDeleteVertexArrays(1, &vao_cube);
     glDeleteProgram(skybox_shader.program_id);
     glDeleteProgram(cube_shader.program_id);
 
@@ -214,9 +200,9 @@ main_exit:
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-void setup_shaders() {
+void setup_shaders(void) {
     use_shader(cube_shader);
-    set_shader_sampler2D(cube_shader, "texture1", GL_TEXTURE0);
+    set_shader_sampler2D(cube_shader, "skybox", GL_TEXTURE0);
 
     use_shader(skybox_shader);
     set_shader_sampler2D(skybox_shader, "skybox", GL_TEXTURE0);
@@ -248,7 +234,7 @@ void process_input(GLFWwindow *window, f32 delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
-        RELOAD_SHADER("simple_texture", &cube_shader);
+        RELOAD_SHADER("simple_envmap", &cube_shader);
         RELOAD_SHADER("simple_skybox", &skybox_shader);
         setup_shaders();
     }
