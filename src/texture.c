@@ -27,6 +27,17 @@ static int const INTERNAL_FORMAT[] = {
     [TextureFormat_Rgba] = GL_RGBA,
 };
 
+static int const TEXTURE_TARGET[] = {
+    [TextureTargetType_2D] = GL_TEXTURE_2D,
+    [TextureTargetType_Cube] = GL_TEXTURE_CUBE_MAP,
+};
+
+static int const TEXTURE_TARGET_CUBE_FACE[6] = {
+    [0] = GL_TEXTURE_CUBE_MAP_POSITIVE_X, [1] = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+    [2] = GL_TEXTURE_CUBE_MAP_POSITIVE_Y, [3] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+    [4] = GL_TEXTURE_CUBE_MAP_POSITIVE_Z, [5] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
+};
+
 static int gl_format(int channels) {
     static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
     static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
@@ -107,7 +118,7 @@ Texture new_texture_from_image_with_settings(
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
     }
 
-    return (Texture) { texture_id, GL_TEXTURE_2D, TextureMaterialType_None };
+    return (Texture) { texture_id, TextureTargetType_2D, TextureMaterialType_None };
 }
 
 Texture new_texture_from_filepath(char const *image_path, Err *err) {
@@ -131,7 +142,7 @@ Texture new_texture_from_filepath_with_settings(
 
 void bind_texture_to_unit(Texture const texture, uint texture_unit) {
     glActiveTexture(texture_unit);
-    glBindTexture(texture.target, texture.id);
+    glBindTexture(TEXTURE_TARGET[texture.target], texture.id);
 }
 
 #if 1
@@ -141,7 +152,7 @@ Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
     DEFER(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)) {
         for (usize i = 0; i < 6; ++i) {
-            int const target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
+            int const target = TEXTURE_TARGET_CUBE_FACE[i];
             int const format = gl_format(texture_images[i].channels);
             glTexImage2D(
                 /*target*/ target,
@@ -160,7 +171,7 @@ Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     }
-    return (Texture) { texture_id, GL_TEXTURE_CUBE_MAP, TextureMaterialType_None };
+    return (Texture) { texture_id, TextureTargetType_Cube, TextureMaterialType_None };
 }
 
 Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err) {

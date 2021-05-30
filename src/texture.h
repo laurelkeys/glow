@@ -45,9 +45,14 @@ typedef enum TextureMaterialType {
     TextureMaterialType_Specular,
 } TextureMaterialType;
 
+typedef enum TextureTargetType {
+    TextureTargetType_2D = 0, // GL_TEXTURE_2D
+    TextureTargetType_Cube, // GL_TEXTURE_CUBE_MAP
+} TextureTargetType;
+
 typedef struct Texture {
     uint id;
-    uint target; // OpenGL texture target (e.g. GL_TEXTURE_2D)
+    TextureTargetType target; // defaults to TextureTargetType_2D
     TextureMaterialType material; // defaults to TextureMaterialType_None
 } Texture;
 

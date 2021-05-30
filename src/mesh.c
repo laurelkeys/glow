@@ -91,6 +91,8 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
     char name[MAX_NAME_LEN + 1] = { 0 };
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
+        // @Todo: store a char const *material_name in the Texture struct, and use string
+        // interning for efficiency, since they will be immutable (and not always unique).
         switch (mesh->textures[i].material) {
             case TextureMaterialType_Ambient: SET_NAME(name, NAME_AMBIENT, ambient); break;
             case TextureMaterialType_Diffuse: SET_NAME(name, NAME_DIFFUSE, diffuse); break;
