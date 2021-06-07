@@ -28,11 +28,11 @@ init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices
         glVertexAttribPointer(
             1, 3, GL_FLOAT, GL_FALSE, stride, (void *) offsetof(Vertex, normal));
         glVertexAttribPointer(
-            2, 2, GL_FLOAT, GL_FALSE, stride, (void *) offsetof(Vertex, texcoords));
+            2, 2, GL_FLOAT, GL_FALSE, stride, (void *) offsetof(Vertex, texcoord));
 
         glEnableVertexAttribArray(0); // vertex position
         glEnableVertexAttribArray(1); // vertex normal
-        glEnableVertexAttribArray(2); // vertex texcoords
+        glEnableVertexAttribArray(2); // vertex texcoord
     }
 
     glDeleteBuffers(1, &ebo);

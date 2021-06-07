@@ -63,15 +63,15 @@ static Mesh process_assimp_mesh_into_alloc_mesh(
     Vertex *vertices = calloc(mesh->mNumVertices, sizeof(Vertex));
     if (!vertices) { return (*err = Err_Calloc, (Mesh) { 0 }); }
 
-    bool const has_texcoords = (mesh->mTextureCoords[0] != NULL);
+    bool const has_texcoord = (mesh->mTextureCoords[0] != NULL);
     for (uint i = 0; i < mesh->mNumVertices; ++i) {
         struct aiVector3D position = mesh->mVertices[i];
         struct aiVector3D normal = mesh->mNormals[i];
         vertices[i] = (Vertex) {
             { position.x, position.y, position.z },
             { normal.x, normal.y, normal.z },
-            { has_texcoords ? mesh->mTextureCoords[0][i].x : 0.0f,
-              has_texcoords ? mesh->mTextureCoords[0][i].y : 0.0f },
+            { has_texcoord ? mesh->mTextureCoords[0][i].x : 0.0f,
+              has_texcoord ? mesh->mTextureCoords[0][i].y : 0.0f },
         };
     }
 
@@ -222,7 +222,10 @@ static uint const POST_PROCESS_FLAGS = 0
     | aiProcess_FlipUVs
     | aiProcess_JoinIdenticalVertices
     | aiProcess_CalcTangentSpace
-    | aiProcess_GenSmoothNormals;
+    | aiProcess_GenSmoothNormals
+    | aiProcess_GenUVCoords
+    | aiProcess_OptimizeMeshes
+    | aiProcess_SortByPType;
 // clang-format on
 
 Model alloc_new_model_from_filepath(char const *model_path, Err *err) {

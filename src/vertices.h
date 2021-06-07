@@ -133,65 +133,65 @@ static f32 const TRANSPARENT_VERTICES[] = {
 typedef struct VertexLocations {
     int position;
     int normal;
-    int texcoords;
+    int texcoord;
 } VertexLocations;
 
-static VertexLocations const Default_VertexLocations = { .position = 0, .normal = 1, .texcoords = 2 };
+static VertexLocations const Default_VertexLocations = { .position = 0, .normal = 1, .texcoord = 2 };
 
 #include "mesh.h"
 
 static Vertex const CUBE_VERTICES[] = {
-    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoords = { 0, 0 } },
-    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoords = { 1, 0 } },
-    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoords = { 1, 1 } },
-    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoords = { 1, 1 } },
-    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoords = { 0, 1 } },
-    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoords = { 0, 0 } },
+    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoord = { 0, 0 } },
+    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoord = { 1, 0 } },
+    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoord = { 1, 1 } },
+    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoord = { 1, 1 } },
+    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoord = { 0, 1 } },
+    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, 0, -1 }, .texcoord = { 0, 0 } },
 
-    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoords = { 0, 0 } },
-    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoords = { 1, 0 } },
-    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoords = { 1, 1 } },
-    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoords = { 1, 1 } },
-    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoords = { 0, 1 } },
-    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoords = { 0, 0 } },
+    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoord = { 0, 0 } },
+    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoord = { 1, 0 } },
+    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoord = { 1, 1 } },
+    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoord = { 1, 1 } },
+    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoord = { 0, 1 } },
+    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { 0, 0, +1 }, .texcoord = { 0, 0 } },
 
-    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { -1, 0, 0 }, .texcoords = { 1, 0 } },
-    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { -1, 0, 0 }, .texcoords = { 1, 1 } },
-    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { -1, 0, 0 }, .texcoords = { 0, 1 } },
-    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { -1, 0, 0 }, .texcoords = { 0, 1 } },
-    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { -1, 0, 0 }, .texcoords = { 0, 0 } },
-    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { -1, 0, 0 }, .texcoords = { 1, 0 } },
+    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { -1, 0, 0 }, .texcoord = { 1, 0 } },
+    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { -1, 0, 0 }, .texcoord = { 1, 1 } },
+    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { -1, 0, 0 }, .texcoord = { 0, 1 } },
+    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { -1, 0, 0 }, .texcoord = { 0, 1 } },
+    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { -1, 0, 0 }, .texcoord = { 0, 0 } },
+    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { -1, 0, 0 }, .texcoord = { 1, 0 } },
 
-    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { +1, 0, 0 }, .texcoords = { 1, 0 } },
-    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { +1, 0, 0 }, .texcoords = { 1, 1 } },
-    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { +1, 0, 0 }, .texcoords = { 0, 1 } },
-    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { +1, 0, 0 }, .texcoords = { 0, 1 } },
-    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { +1, 0, 0 }, .texcoords = { 0, 0 } },
-    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { +1, 0, 0 }, .texcoords = { 1, 0 } },
+    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { +1, 0, 0 }, .texcoord = { 1, 0 } },
+    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { +1, 0, 0 }, .texcoord = { 1, 1 } },
+    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { +1, 0, 0 }, .texcoord = { 0, 1 } },
+    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { +1, 0, 0 }, .texcoord = { 0, 1 } },
+    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { +1, 0, 0 }, .texcoord = { 0, 0 } },
+    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { +1, 0, 0 }, .texcoord = { 1, 0 } },
 
-    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 0, 1 } },
-    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 1, 1 } },
-    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 1, 0 } },
-    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 1, 0 } },
-    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 0, 0 } },
-    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 0, 1 } },
+    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 0, 1 } },
+    { .position = { +0.5f, -0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 1, 1 } },
+    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 1, 0 } },
+    { .position = { +0.5f, -0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 1, 0 } },
+    { .position = { -0.5f, -0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 0, 0 } },
+    { .position = { -0.5f, -0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 0, 1 } },
 
-    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 0, 1 } },
-    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 1, 1 } },
-    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 1, 0 } },
-    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 1, 0 } },
-    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 0, 0 } },
-    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoords = { 0, 1 } },
+    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 0, 1 } },
+    { .position = { +0.5f, +0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 1, 1 } },
+    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 1, 0 } },
+    { .position = { +0.5f, +0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 1, 0 } },
+    { .position = { -0.5f, +0.5f, +0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 0, 0 } },
+    { .position = { -0.5f, +0.5f, -0.5f }, .normal = { 0, +1, 0 }, .texcoord = { 0, 1 } },
 };
 
 static Vertex const QUAD_VERTICES[] = {
-    { .position = { -1.0f, +1.0f }, .texcoords = { 0, 1 } },
-    { .position = { -1.0f, -1.0f }, .texcoords = { 0, 0 } },
-    { .position = { +1.0f, -1.0f }, .texcoords = { 1, 0 } },
+    { .position = { -1.0f, +1.0f }, .texcoord = { 0, 1 } },
+    { .position = { -1.0f, -1.0f }, .texcoord = { 0, 0 } },
+    { .position = { +1.0f, -1.0f }, .texcoord = { 1, 0 } },
 
-    { .position = { -1.0f, +1.0f }, .texcoords = { 0, 1 } },
-    { .position = { +1.0f, -1.0f }, .texcoords = { 1, 0 } },
-    { .position = { +1.0f, +1.0f }, .texcoords = { 1, 1 } },
+    { .position = { -1.0f, +1.0f }, .texcoord = { 0, 1 } },
+    { .position = { +1.0f, -1.0f }, .texcoord = { 1, 0 } },
+    { .position = { +1.0f, +1.0f }, .texcoord = { 1, 1 } },
 };
 
 /*
@@ -206,22 +206,22 @@ static Vertex const SKYBOX_VERTICES[] = {
 */
 
 static Vertex const FLOOR_VERTICES[] = {
-    { .position = { +5.0f, -0.5f, +5.0f }, .texcoords = { 2, 0 } },
-    { .position = { -5.0f, -0.5f, +5.0f }, .texcoords = { 0, 0 } },
-    { .position = { -5.0f, -0.5f, -5.0f }, .texcoords = { 0, 2 } },
+    { .position = { +5.0f, -0.5f, +5.0f }, .texcoord = { 2, 0 } },
+    { .position = { -5.0f, -0.5f, +5.0f }, .texcoord = { 0, 0 } },
+    { .position = { -5.0f, -0.5f, -5.0f }, .texcoord = { 0, 2 } },
 
-    { .position = { +5.0f, -0.5f, +5.0f }, .texcoords = { 2, 0 } },
-    { .position = { -5.0f, -0.5f, -5.0f }, .texcoords = { 0, 2 } },
-    { .position = { +5.0f, -0.5f, -5.0f }, .texcoords = { 2, 2 } },
+    { .position = { +5.0f, -0.5f, +5.0f }, .texcoord = { 2, 0 } },
+    { .position = { -5.0f, -0.5f, -5.0f }, .texcoord = { 0, 2 } },
+    { .position = { +5.0f, -0.5f, -5.0f }, .texcoord = { 2, 2 } },
 };
 
 static Vertex const TRANSPARENT_VERTICES[] = {
-    { .position = { 0.0f, +0.5f, 0.0f }, .texcoords = { 1, 1 } },
-    { .position = { 0.0f, -0.5f, 0.0f }, .texcoords = { 1, 0 } },
-    { .position = { 1.0f, -0.5f, 0.0f }, .texcoords = { 0, 0 } },
+    { .position = { 0.0f, +0.5f, 0.0f }, .texcoord = { 1, 1 } },
+    { .position = { 0.0f, -0.5f, 0.0f }, .texcoord = { 1, 0 } },
+    { .position = { 1.0f, -0.5f, 0.0f }, .texcoord = { 0, 0 } },
 
-    { .position = { 0.0f, +0.5f, 0.0f }, .texcoords = { 1, 1 } },
-    { .position = { 1.0f, -0.5f, 0.0f }, .texcoords = { 0, 0 } },
-    { .position = { 1.0f, +0.5f, 0.0f }, .texcoords = { 0, 1 } },
+    { .position = { 0.0f, +0.5f, 0.0f }, .texcoord = { 1, 1 } },
+    { .position = { 1.0f, -0.5f, 0.0f }, .texcoord = { 0, 0 } },
+    { .position = { 1.0f, +0.5f, 0.0f }, .texcoord = { 0, 1 } },
 };
 #endif

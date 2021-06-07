@@ -1,11 +1,11 @@
 #version 330 core
 
 layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoords;
+layout (location = 1) in vec2 aTexCoord;
 
-out vec2 tex_coords;
+out vec2 texcoord;
 
 void main() {
-    tex_coords = aTexCoords;
+    texcoord = aTexCoord;
     gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
 }

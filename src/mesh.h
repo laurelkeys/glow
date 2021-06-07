@@ -9,7 +9,7 @@
 typedef struct Vertex {
     vec3 position;
     vec3 normal;
-    vec2 texcoords;
+    vec2 texcoord;
 #if 0
     vec3 tangent;
     vec3 bitangent; // cross(normal, tangent)

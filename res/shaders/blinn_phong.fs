@@ -34,7 +34,7 @@ struct Material {
 
 in vec3 frag_pos;
 in vec3 frag_normal;
-in vec2 tex_coords;
+in vec2 texcoord;
 
 uniform bool use_blinn_phong;
 uniform vec3 view_pos;
@@ -62,10 +62,10 @@ void main() {
 }
 
 vec3 light_color(Components light, vec3 light_dir, vec3 normal, vec3 view_dir) {
-    vec3 ambient = light.ambient * texture(material.diffuse, tex_coords).rgb;
+    vec3 ambient = light.ambient * texture(material.diffuse, texcoord).rgb;
 
     float diff = max(dot(normal, light_dir), 0.0);
-    vec3 diffuse = light.diffuse * diff * texture(material.diffuse, tex_coords).rgb;
+    vec3 diffuse = light.diffuse * diff * texture(material.diffuse, texcoord).rgb;
 
     float spec = 0.0;
     if (use_blinn_phong) {
@@ -75,7 +75,7 @@ vec3 light_color(Components light, vec3 light_dir, vec3 normal, vec3 view_dir) {
         vec3 reflect_dir = reflect(-light_dir, normal);
         spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
     }
-    vec3 specular = light.specular * spec * texture(material.specular, tex_coords).rgb;
+    vec3 specular = light.specular * spec * texture(material.specular, texcoord).rgb;
 
     return ambient + diffuse + specular;
 }
