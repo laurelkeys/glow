@@ -15,19 +15,20 @@ def debug_print(*args, **kwargs):
     print("===", *args, "===\033[0m", **kwargs)
 
 
-def main(cmake, make, run, config, generator, args):
+def main(cmake, make, run, config, generator, warnings, args):
     if generator is not None:
         global CMAKE_GENERATOR
         CMAKE_GENERATOR = generator
     else:
         generator = "default generator" if CMAKE_GENERATOR is None else CMAKE_GENERATOR
 
-    cmake_cmd = f"cd {BUILD_DIR} && cmake .."
-    cmake_cmd += " " if CMAKE_GENERATOR is None else f' -G "{CMAKE_GENERATOR}"'
-    cmake_cmd += " " if CMAKE_C_COMPILER is None else f" -DCMAKE_C_COMPILER={CMAKE_C_COMPILER}"
-    cmake_cmd += " " if CMAKE_CXX_COMPILER is None else f" -DCMAKE_CXX_COMPILER={CMAKE_CXX_COMPILER}"
-
     if cmake:
+        cmake_cmd = f"cd {BUILD_DIR} && cmake .."
+        cmake_cmd += " " if CMAKE_GENERATOR is None else f' -G "{CMAKE_GENERATOR}"'
+        cmake_cmd += " " if CMAKE_C_COMPILER is None else f" -DCMAKE_C_COMPILER={CMAKE_C_COMPILER}"
+        cmake_cmd += " " if CMAKE_CXX_COMPILER is None else f" -DCMAKE_CXX_COMPILER={CMAKE_CXX_COMPILER}"
+        cmake_cmd += f" -DGLOW_WARNINGS={'ON' if warnings else 'OFF'}"
+
         debug_print(f"Running CMake inside {BUILD_DIR} with {generator}")
         shutil.rmtree(BUILD_DIR, ignore_errors=True)
         os.mkdir(BUILD_DIR)
@@ -80,6 +81,11 @@ if __name__ == "__main__":
         type=str,
         help="Specify a build system generator used with --cmake",
     )
+    parser.add_argument(
+        "--warnings", "-W",
+        action="store_true",
+        help="Enable compiler warnings",
+    )
 
     args, glow_args = parser.parse_known_args()
 
@@ -94,5 +100,6 @@ if __name__ == "__main__":
         args.run,
         args.config,
         args.generator,
+        args.warnings,
         glow_args,
     )

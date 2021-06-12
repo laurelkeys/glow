@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 
     while (!glfwWindowShouldClose(window)) {
         clock_tick(&clock, glfwGetTime());
-        update_fps(&fps, window, clock.time);
+        update_frame_counter(&fps, clock.time);
         process_input(window, clock.time_increment);
 
         if (fps.last_update_time == clock.time) {

@@ -60,3 +60,15 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_INCLUDE_NONE)
 target_link_libraries(${PROJECT_NAME} glfw glad stb assimp)
 
 # ----------------------------------------------------------------------------------------
+
+option(GLOW_WARNINGS "GLOW_WARNINGS" OFF)
+
+if(GLOW_WARNINGS)
+    if(MSVC)
+        target_compile_options(${PROJECT_NAME} PRIVATE /W4) # /WX
+    else()
+        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic) # -Werror
+    endif()
+endif()
+
+# ----------------------------------------------------------------------------------------

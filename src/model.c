@@ -54,7 +54,6 @@ static bool fetch_from_preloaded_textures_with_type(
 }
 
 static Mesh process_assimp_mesh_into_alloc_mesh(
-    Model const *model,
     MeshTextures const *mesh_textures,
     struct aiMesh const *mesh,
     struct aiScene const *scene,
@@ -143,7 +142,7 @@ static bool process_assimp_node_to_alloc_model_meshes(
         struct aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
         assert(model->meshes_len < model->meshes_capacity);
         model->meshes[(model->meshes_len)++] =
-            process_assimp_mesh_into_alloc_mesh(model, mesh_textures, mesh, scene, err);
+            process_assimp_mesh_into_alloc_mesh(mesh_textures, mesh, scene, err);
     }
 
     // Recursively process node's children.
