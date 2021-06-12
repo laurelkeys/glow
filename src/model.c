@@ -2,6 +2,9 @@
 
 #include "console.h"
 #include "file.h"
+#include "mesh.h"
+#include "shader.h"
+#include "texture.h"
 
 #include <assimp/cimport.h>
 #include <assimp/postprocess.h>
@@ -304,13 +307,13 @@ void dealloc_model(Model *model) {
     free(model->meshes);
 }
 
-void draw_model_with_shader(Model const *model, Shader const shader) {
+void draw_model_with_shader(Model const *model, Shader const *shader) {
     for (usize i = 0; i < model->meshes_len; ++i) {
         draw_mesh_with_shader(&model->meshes[i], shader);
     }
 }
 
-void draw_textureless_model_with_shader(Model const *model, Shader const shader) {
+void draw_textureless_model_with_shader(Model const *model, Shader const *shader) {
     for (usize i = 0; i < model->meshes_len; ++i) {
         usize const textures_len = model->meshes[i].textures_len;
         // @Hack: ignore textures them while drawing the mesh.

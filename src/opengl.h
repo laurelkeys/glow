@@ -2,9 +2,6 @@
 
 #include "prelude.h"
 
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
-
 #define INFO_LOG_LENGTH 1024
 
 // Forward declaration.

@@ -3,6 +3,9 @@
 #include "console.h"
 #include "maths.h"
 
+#include <GLFW/glfw3.h>
+#include <glad/glad.h>
+
 static void error_callback(int error, char const *description) {
     GLOW_WARNING("glfw error %d: %s", error, description);
 }

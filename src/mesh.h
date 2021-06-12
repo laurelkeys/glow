@@ -3,8 +3,10 @@
 #include "prelude.h"
 
 #include "maths.h"
-#include "shader.h"
-#include "texture.h"
+
+// Forward declarations.
+typedef struct Shader Shader;
+typedef struct Texture Texture;
 
 typedef struct Vertex {
     vec3 position;
@@ -42,4 +44,4 @@ Mesh new_mesh(
     usize textures_len);
 void dealloc_mesh(Mesh *mesh);
 
-void draw_mesh_with_shader(Mesh const *mesh, Shader const shader);
+void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader);

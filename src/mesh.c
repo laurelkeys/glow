@@ -2,8 +2,12 @@
 
 #include "console.h"
 #include "opengl.h"
+#include "shader.h"
+#include "texture.h"
 
 #include <stdio.h>
+
+#include <glad/glad.h>
 
 static uint
 init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices_len) {
@@ -82,7 +86,7 @@ void dealloc_mesh(Mesh *mesh) {
         snprintf((name), MAX_NAME_LEN + 1, NAME_TYPE "%d", type_count); \
     }
 
-void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
+void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
     uint ambient = 0;
     uint diffuse = 0;
     uint specular = 0;
@@ -107,7 +111,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const shader) {
                 return;
         }
         uint const texture_unit = GL_TEXTURE0 + (uint) i;
-        set_shader_sampler2D(shader, name, texture_unit);
+        set_shader_sampler2D(*shader, name, texture_unit);
         bind_texture_to_unit(mesh->textures[i], texture_unit);
     }
 

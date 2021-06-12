@@ -12,6 +12,8 @@
 
 #include <stdio.h>
 
+#include <GLFW/glfw3.h>
+#include <glad/glad.h>
 #include <stb_image.h>
 
 #ifndef GLOW_SHADERS_
@@ -130,9 +132,15 @@ int main(int argc, char *argv[]) {
     glEnable(GL_DEPTH_TEST);
 
     while (!glfwWindowShouldClose(window)) {
-        clock_tick(&clock);
+        clock_tick(&clock, glfwGetTime());
         update_fps(&fps, window, clock.time);
         process_input(window, clock.time_increment);
+
+        if (fps.last_update_time == clock.time) {
+            char title[32];
+            snprintf(title, sizeof(title), "glow | %d fps", fps.rate);
+            glfwSetWindowTitle(window, title);
+        }
 
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);

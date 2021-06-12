@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include <glad/glad.h>
+
 #define SHADER_TYPE(shader_type)                        \
     ((shader_type) == GL_VERTEX_SHADER     ? "vertex"   \
      : (shader_type) == GL_FRAGMENT_SHADER ? "fragment" \

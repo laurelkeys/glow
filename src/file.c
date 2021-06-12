@@ -1,6 +1,5 @@
 #include "file.h"
 
-#include <stdio.h>
 #include <string.h>
 
 usize file_size_in_bytes(FILE *fp) {

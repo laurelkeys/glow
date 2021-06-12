@@ -1,9 +1,10 @@
 #include "texture.h"
 
 #include "console.h"
-#include "opengl.h"
 
 #include <stb_image.h>
+
+#include <glad/glad.h>
 
 // clang-format off
 static int const FILTER[] = { [TextureFilter_Nearest] = GL_NEAREST, [TextureFilter_Linear] = GL_LINEAR };
