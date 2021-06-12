@@ -18,6 +18,7 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
+    glfwWindowHint(GLFW_SAMPLES, settings.msaa);
 
     GLFWwindow *window = NULL;
     if (settings.fullscreen) {
@@ -35,7 +36,7 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     if (!window) { return (*err = Err_Glfw_Window, NULL); }
 
     glfwMakeContextCurrent(window);
-    if (settings.vsync) { glfwSwapInterval(1); }
+    glfwSwapInterval(settings.vsync ? 1 : 0);
     if (settings.set_callbacks_fn) { settings.set_callbacks_fn(window); }
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {

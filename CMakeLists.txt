@@ -37,6 +37,7 @@ set(FILE_HEADERS
     src/shader.h
     src/texture.h
     src/vertices.h
+    src/window.h
     src/prelude.h)
 
 # ----------------------------------------------------------------------------------------

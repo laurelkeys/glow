@@ -8,6 +8,7 @@
 #include "shader.h"
 #include "texture.h"
 #include "vertices.h"
+#include "window.h"
 
 #include <stdio.h>
 
@@ -49,6 +50,8 @@ void setup_shaders(void);
 void process_input(GLFWwindow *window, f32 delta_time);
 void set_window_callbacks(GLFWwindow *window);
 
+// @Todo: continue from "Geometry Shader" https://learnopengl.com/Advanced-OpenGL/Geometry-Shader
+
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
@@ -61,6 +64,8 @@ int main(int argc, char *argv[]) {
 
     GLFWwindow *const window = init_opengl(window_settings, &err);
     if (err) { goto main_err; }
+
+    /* glfwSetWindowUserPointer(GLFWwindow *window, void *pointer); */
 
     // @Volatile: use these same files in `process_input`.
     cube_shader = TRY_NEW_SHADER("simple_envmap", &err);
@@ -117,19 +122,17 @@ int main(int argc, char *argv[]) {
         glDeleteBuffers(1, &vbo);
     }
 
-    f32 last_frame = 0; // time of last frame
-    f32 delta_time = 0; // time between consecutive frames
-
+    Clock clock = { 0 };
+    Fps fps = { 0 };
     setup_shaders();
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
     glEnable(GL_DEPTH_TEST);
 
     while (!glfwWindowShouldClose(window)) {
-        f32 const curr_frame = glfwGetTime();
-        delta_time = curr_frame - last_frame;
-        last_frame = curr_frame;
-        process_input(window, delta_time);
+        clock_tick(&clock);
+        update_fps(&fps, window, clock.time);
+        process_input(window, clock.time_increment);
 
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
@@ -196,6 +199,7 @@ main_err:
     }
 
 main_exit:
+    glfwDestroyWindow(window);
     glfwTerminate();
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
@@ -252,6 +256,9 @@ static void framebuffer_size_callback(GLFWwindow *window, int render_width, int 
     glViewport(0, 0, render_width, render_height);
     camera.aspect = (f32) render_width / (f32) render_height;
 }
+static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    // Do nothing.
+}
 static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
     if (mouse_is_first) {
         mouse_last.x = xpos;
@@ -270,9 +277,14 @@ static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
 static void scroll_callback(GLFWwindow *window, f64 xoffset, f64 yoffset) {
     update_camera_fovy(&camera, (f32) yoffset);
 }
+static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    // Do nothing.
+}
 
 void set_window_callbacks(GLFWwindow *window) {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_pos_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
 }

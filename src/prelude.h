@@ -49,6 +49,8 @@ typedef unsigned int uint;
         (b) = tmp;       \
     } while (0)
 
+#define STATIC_ASSERT(expr) enum { CONCATIFY(ASSERT_line_, __LINE__) = 1 / (expr) }
+
 /*
 #define FOR(type, begin, end)  \
     for (                      \

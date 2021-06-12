@@ -571,7 +571,7 @@ quat quat_from_axis_angle(vec3 const axis, f32 angle_in_radians) {
     f32 const half_angle_in_radians = 0.5f * angle_in_radians;
     return (quat) {
         .re = cosf(half_angle_in_radians),
-        .im = vec3_scl(axis, sinf(half_angle_in_radians)),
+        .im = vec3_scl(vec3_normalize(axis), sinf(half_angle_in_radians)),
     };
 }
 #endif
