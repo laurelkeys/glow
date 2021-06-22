@@ -18,6 +18,9 @@ typedef struct Vertex {
 #endif
 } Vertex;
 
+// @Speed: currently a Texture is no larger than two ints (it's an uint plus an enum),
+// so it is cheap enough to copy. But if it ever gets larger, it'd be better to store
+// texture handles inside of Mesh instead (i.e. usize indices into the model's array).
 typedef struct Mesh {
     Vertex *vertices; // @Ownership
     usize vertices_len;

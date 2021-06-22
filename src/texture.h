@@ -43,6 +43,9 @@ typedef enum TextureMaterialType {
     TextureMaterialType_Ambient,
     TextureMaterialType_Diffuse,
     TextureMaterialType_Specular,
+    // @Fixme: add new values where needed (and tag modified places with @Volatile!)
+    TextureMaterialType_Normal,
+    TextureMaterialType_Height,
 } TextureMaterialType;
 
 typedef enum TextureTargetType {
@@ -65,6 +68,8 @@ Texture new_texture_from_filepath_with_settings(
     TextureSettings const settings, char const *image_path, Err *err);
 
 void bind_texture_to_unit(Texture const texture, uint texture_unit);
+
+char const *sampler_name_from_texture_material(TextureMaterialType const material);
 
 #if 1
 // @Note: the expected order for the 6 faces is: Right, Left, Top, Bottom, Front, Back.

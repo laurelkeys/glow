@@ -146,6 +146,15 @@ void bind_texture_to_unit(Texture const texture, uint texture_unit) {
     glBindTexture(TEXTURE_TARGET[texture.target], texture.id);
 }
 
+char const *sampler_name_from_texture_material(TextureMaterialType const material) {
+    switch (material) {
+        case TextureMaterialType_Ambient: return "texture_ambient";
+        case TextureMaterialType_Diffuse: return "texture_diffuse";
+        case TextureMaterialType_Specular: return "texture_specular";
+        default: assert(false); return "";
+    }
+}
+
 #if 1
 Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
     uint texture_id;

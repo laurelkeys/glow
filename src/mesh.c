@@ -73,35 +73,36 @@ void dealloc_mesh(Mesh *mesh) {
     glDeleteVertexArrays(1, &mesh->vao);
 }
 
-// @Fixme: stop using hard-coded names.
-#define NAME_AMBIENT "material.ambient"
-#define NAME_DIFFUSE "material.diffuse"
-#define NAME_SPECULAR "material.specular"
-#define MAX_NAME_LEN \
-    (MAX3(sizeof(NAME_AMBIENT "99"), sizeof(NAME_DIFFUSE "99"), sizeof(NAME_SPECULAR "99")))
-#define SET_NAME(name, NAME_TYPE, type_count)                           \
-    if (type_count++ == 0) {                                            \
-        snprintf((name), MAX_NAME_LEN + 1, NAME_TYPE);                  \
-    } else {                                                            \
-        snprintf((name), MAX_NAME_LEN + 1, NAME_TYPE "%d", type_count); \
-    }
+#define MAX_SAMPLER_NAME_LEN 64
+
+static void set_sampler_name_from_texture_material(
+    char **name, usize max_len, TextureMaterialType const material, uint count) {
+    int n = snprintf(*name, max_len, sampler_name_from_texture_material(material));
+    if (count) { snprintf(*name + n, max_len, "%d", count); }
+}
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
+    // @Todo: replace these variables and the switch-case with an array?
     uint ambient = 0;
     uint diffuse = 0;
     uint specular = 0;
+    uint normal = 0;
+    uint height = 0;
 
     assert(mesh->textures_len <= 99);
-    char name[MAX_NAME_LEN + 1] = { 0 };
+    char name[MAX_SAMPLER_NAME_LEN + 1] = { 0 };
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
         // @Todo: store a char const *material_name in the Texture struct, and use string
         // interning for efficiency, since they will be immutable (and not always unique).
+        uint old_count = 0;
         switch (mesh->textures[i].material) {
-            case TextureMaterialType_Ambient: SET_NAME(name, NAME_AMBIENT, ambient); break;
-            case TextureMaterialType_Diffuse: SET_NAME(name, NAME_DIFFUSE, diffuse); break;
-            case TextureMaterialType_Specular: SET_NAME(name, NAME_SPECULAR, specular); break;
-            // @Incomplete: what's the best way to handle TextureMaterialType_None?
+            case TextureMaterialType_Ambient: old_count = ambient++; break;
+            case TextureMaterialType_Diffuse: old_count = diffuse++; break;
+            case TextureMaterialType_Specular: old_count = specular++; break;
+            case TextureMaterialType_Normal: old_count = normal++; break;
+            case TextureMaterialType_Height: old_count = height++; break;
+            // @Incomplete: what's a good way to handle TextureMaterialType_None?
             default:
                 GLOW_WARNING(
                     "mesh texture with id `%d` has invalid material type: `%d`",
@@ -110,6 +111,9 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
                 assert(false);
                 return;
         }
+        set_sampler_name_from_texture_material(
+            &name, MAX_SAMPLER_NAME_LEN, mesh->textures[i].material, old_count);
+
         uint const texture_unit = GL_TEXTURE0 + (uint) i;
         set_shader_sampler2D(*shader, name, texture_unit);
         bind_texture_to_unit(mesh->textures[i], texture_unit);

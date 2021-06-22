@@ -25,6 +25,17 @@ typedef double f64;
 typedef size_t usize;
 typedef unsigned int uint;
 
+typedef struct str {
+    char const *data;
+    usize len;
+} str;
+
+typedef struct Str {
+    char *data;
+    usize len;
+    usize capacity;
+} Str;
+
 //
 // Macros.
 //

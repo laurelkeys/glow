@@ -4,6 +4,14 @@
 
 #include <stdio.h>
 
+#ifdef _WIN32
+#define SLASH "\\"
+#define SLASH_CHAR '\\'
+#else
+#define SLASH "/"
+#define SLASH_CHAR '/'
+#endif
+
 usize file_size_in_bytes(FILE *fp);
 
 char *alloc_human_readable_size_str(usize size_in_bytes);
