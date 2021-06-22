@@ -6,6 +6,12 @@
 #include <math.h>
 
 //
+// Typedefs.
+//
+
+#include "maths_types.h"
+
+//
 // Constants.
 //
 
@@ -59,19 +65,6 @@ f32 clamp(f32 x, f32 x_min, f32 x_max);
 f32 saturate(f32 x);
 
 f32 move_toward(f32 a, f32 b, f32 amount);
-
-//
-// Vector and matrix typedefs.
-//
-
-// clang-format off
-typedef struct { f32 x, y; } vec2;
-typedef struct { f32 x, y, z; } vec3;
-typedef struct { f32 x, y, z, w; } vec4;
-
-typedef struct { f32 m[3][3]; } mat3;
-typedef struct { f32 m[4][4]; } mat4;
-// clang-format on
 
 //
 // Common vector math.
@@ -200,11 +193,6 @@ mat4 mat4_perspective(f32 fovy, f32 aspect, f32 near, f32 far);
 //
 
 #if 0
-typedef struct quat {
-    f32 re; // scalar part (real)
-    vec3 im; // vector part (imaginary)
-} quat;
-
 void quat_print(char const *name, quat const q);
 quat quat_id(void);
 

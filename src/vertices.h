@@ -2,7 +2,7 @@
 
 #include "prelude.h"
 
-#include "maths.h"
+#include "maths_types.h"
 
 // clang-format off
 static f32 const QUAD_VERTICES[] = {

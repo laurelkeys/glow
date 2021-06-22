@@ -1,7 +1,7 @@
 #include "mesh.h"
 
 #include "console.h"
-#include "opengl.h"
+#include "maths.h"
 #include "shader.h"
 #include "texture.h"
 

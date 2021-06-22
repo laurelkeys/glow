@@ -2,7 +2,7 @@
 
 #include "prelude.h"
 
-#include "maths.h"
+#include "maths_types.h"
 
 static f32 const CAMERA_FOVY_MIN = 1.0f;
 static f32 const CAMERA_FOVY_MAX = 90.0f;

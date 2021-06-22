@@ -2,7 +2,7 @@
 
 #include "prelude.h"
 
-#include "maths.h"
+#include "maths_types.h"
 
 // @Note: we assume that everything (input or output) color-related is in the sRGB color space.
 // Hence, if we want to match the behavior of real light and materials, linear RGB should be used.

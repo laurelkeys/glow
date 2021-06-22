@@ -1,5 +1,7 @@
 #include "camera.h"
 
+#include "maths.h"
+
 // Default value for Camera.
 Camera const Default_Camera = {
     .world_up = { 0, 1, 0 },

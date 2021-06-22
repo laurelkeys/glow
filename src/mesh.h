@@ -2,7 +2,7 @@
 
 #include "prelude.h"
 
-#include "maths.h"
+#include "maths_types.h"
 
 // Forward declarations.
 typedef struct Shader Shader;

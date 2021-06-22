@@ -2,7 +2,7 @@
 
 #include "prelude.h"
 
-#include "maths.h"
+#include "maths_types.h"
 
 typedef struct Shader {
     uint program_id;
