@@ -6,8 +6,56 @@
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 
+static void GLAPIENTRY debug_message_callback(
+    GLenum source,
+    GLenum type,
+    GLuint id,
+    GLenum severity,
+    GLsizei length,
+    const GLchar *message,
+    const void *userParam) {
+    if (/* id == 131169 || */ id == 131185 || id == 131204 || id == 131218) {
+        // 131185: Buffer detailed info
+        // 131204: Texture state usage warning
+        // 131218: Program/shader state performance warning
+        return; // ignore non-significant error / warning codes
+    }
+    char const *source_string =
+        ((source == GL_DEBUG_SOURCE_API)               ? "API"
+         : (source == GL_DEBUG_SOURCE_WINDOW_SYSTEM)   ? "Window System"
+         : (source == GL_DEBUG_SOURCE_SHADER_COMPILER) ? "Shader Compiler"
+         : (source == GL_DEBUG_SOURCE_THIRD_PARTY)     ? "Third Party"
+         : (source == GL_DEBUG_SOURCE_APPLICATION)     ? "Application"
+         : (source == GL_DEBUG_SOURCE_OTHER)           ? "Other"
+                                                       : "");
+    char const *type_string =
+        ((type == GL_DEBUG_TYPE_ERROR)                 ? "Error"
+         : (type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) ? "Deprecated Behaviour"
+         : (type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR)  ? "Undefined Behaviour"
+         : (type == GL_DEBUG_TYPE_PORTABILITY)         ? "Portability"
+         : (type == GL_DEBUG_TYPE_PERFORMANCE)         ? "Performance"
+         : (type == GL_DEBUG_TYPE_MARKER)              ? "Marker"
+         : (type == GL_DEBUG_TYPE_PUSH_GROUP)          ? "Push Group"
+         : (type == GL_DEBUG_TYPE_POP_GROUP)           ? "Pop Group"
+         : (type == GL_DEBUG_TYPE_OTHER)               ? "Other"
+                                                       : "");
+    char const *severity_string =
+        ((severity == GL_DEBUG_SEVERITY_HIGH)           ? "High"
+         : (severity == GL_DEBUG_SEVERITY_MEDIUM)       ? "Medium"
+         : (severity == GL_DEBUG_SEVERITY_LOW)          ? "Low"
+         : (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? "Notification"
+                                                        : "");
+    GLOW_WARNING(
+        "OpenGL debug message %u: raised from '%s' with type '%s' and '%s' severity: `%s`",
+        id,
+        source_string,
+        type_string,
+        severity_string,
+        message);
+}
+
 static void error_callback(int error, char const *description) {
-    GLOW_WARNING("glfw error %d: %s", error, description);
+    GLOW_WARNING("glfw error %d: `%s`", error, description);
 }
 
 GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
@@ -15,13 +63,16 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     if (!glfwInit()) { return (*err = Err_Glfw_Init, NULL); }
 
     // https://www.glfw.org/docs/latest/window.html#window_hints
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
     glfwWindowHint(GLFW_SAMPLES, settings.msaa);
+#ifndef NDEBUG
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+#endif
 
     GLFWwindow *window = NULL;
     if (settings.fullscreen) {
@@ -44,6 +95,15 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         return (*err = Err_Glad_Init, NULL);
+    }
+
+    int flags = 0;
+    glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+    if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(debug_message_callback, 0);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
     }
 
     GLOW_LOG("GL_VERSION = %s", (char *) glGetString(GL_VERSION));

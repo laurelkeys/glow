@@ -20,16 +20,16 @@ typedef struct TextureStore {
 } TextureStore;
 
 static int const STORED_ASSIMP_TYPES[] = {
-    aiTextureType_AMBIENT,
-    aiTextureType_DIFFUSE,
-    aiTextureType_SPECULAR,
+    aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
 };
 
 static TextureMaterialType material_type_from_assimp(enum aiTextureType type) {
     switch (type) {
-        case aiTextureType_AMBIENT: return TextureMaterialType_Ambient;
+        // @Volatile: :SyncWithTextureMaterialType:
         case aiTextureType_DIFFUSE: return TextureMaterialType_Diffuse;
         case aiTextureType_SPECULAR: return TextureMaterialType_Specular;
+        case aiTextureType_HEIGHT: return TextureMaterialType_Normal;
+        case aiTextureType_AMBIENT: return TextureMaterialType_Height;
         default:
             GLOW_WARNING("unhandled assimp aiTextureType: `%d`", type);
             assert(false);
@@ -98,7 +98,6 @@ static bool fetch_stored_textures_with_assimp_type(
         for (usize j = 0; j < texture_store->len; ++j) {
             if (!strncmp(&path.data[0], texture_store->paths[j], path.length)) {
                 found_it = true;
-                // assert(*textures_len < textures_capacity);
                 textures[(*textures_len)++] = texture_store->textures[j];
             }
         }
@@ -259,13 +258,13 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         .meshes_capacity = scene->mNumMeshes,
     };
 
-    // @Note: a material can have multiple textures.
     assert(scene->mNumMaterials > 0);
     usize texture_store_capacity = 0;
     for (uint i = 0; i < scene->mNumMaterials; ++i) {
+        // @Note: a material can have multiple textures.
         struct aiMaterial const *material = scene->mMaterials[i];
         for (usize j = 0; j < ARRAY_LEN(STORED_ASSIMP_TYPES); ++j) {
-            texture_store_capacity += aiGetMaterialTextureCount(material, STORED_ASSIMP_TYPES[i]);
+            texture_store_capacity += aiGetMaterialTextureCount(material, STORED_ASSIMP_TYPES[j]);
         }
     }
     TextureStore texture_store = {
@@ -293,7 +292,7 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
                     assert(!*err);
                 }
             }
-            // assert(texture_store.len == texture_store.capacity);
+            assert(texture_store.len == texture_store.capacity);
         }
 
         // Convert assimp meshes.

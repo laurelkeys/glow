@@ -15,7 +15,10 @@ typedef enum TextureWrap {
 } TextureWrap;
 
 typedef enum TextureFormat {
-    TextureFormat_Rgb = 0,
+    TextureFormat_Default = 0,
+    TextureFormat_R,
+    TextureFormat_Rg,
+    TextureFormat_Rgb,
     TextureFormat_Rgba,
 } TextureFormat;
 
@@ -40,12 +43,11 @@ typedef struct TextureImage {
 
 typedef enum TextureMaterialType {
     TextureMaterialType_None = 0,
-    TextureMaterialType_Ambient,
     TextureMaterialType_Diffuse,
     TextureMaterialType_Specular,
-    // @Fixme: add new values where needed (and tag modified places with @Volatile!)
     TextureMaterialType_Normal,
     TextureMaterialType_Height,
+    // @Volatile: update new values where labeled :SyncWithTextureMaterialType:
 } TextureMaterialType;
 
 typedef enum TextureTargetType {

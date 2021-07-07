@@ -76,43 +76,25 @@ void dealloc_mesh(Mesh *mesh) {
 #define MAX_SAMPLER_NAME_LEN 64
 
 static void set_sampler_name_from_texture_material(
-    char **name, usize max_len, TextureMaterialType const material, uint count) {
-    int n = snprintf(*name, max_len, sampler_name_from_texture_material(material));
-    if (count) { snprintf(*name + n, max_len, "%d", count); }
+    char *name, usize max_len, TextureMaterialType const material, uint count) {
+    int n = snprintf(name, max_len, sampler_name_from_texture_material(material));
+    if (count) { snprintf(name + n, max_len, "%d", count); }
 }
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
-    // @Todo: replace these variables and the switch-case with an array?
-    uint ambient = 0;
-    uint diffuse = 0;
-    uint specular = 0;
-    uint normal = 0;
-    uint height = 0;
+    uint count[6] = { 0 }; // @Volatile: :SyncWithTextureMaterialType:
 
-    assert(mesh->textures_len <= 99);
     char name[MAX_SAMPLER_NAME_LEN + 1] = { 0 };
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
+        TextureMaterialType const material = mesh->textures[i].material;
+        assert(0 < (int) material <= ARRAY_LEN(count)); // TextureMaterialType_None = 0
+
         // @Todo: store a char const *material_name in the Texture struct, and use string
         // interning for efficiency, since they will be immutable (and not always unique).
-        uint old_count = 0;
-        switch (mesh->textures[i].material) {
-            case TextureMaterialType_Ambient: old_count = ambient++; break;
-            case TextureMaterialType_Diffuse: old_count = diffuse++; break;
-            case TextureMaterialType_Specular: old_count = specular++; break;
-            case TextureMaterialType_Normal: old_count = normal++; break;
-            case TextureMaterialType_Height: old_count = height++; break;
-            // @Incomplete: what's a good way to handle TextureMaterialType_None?
-            default:
-                GLOW_WARNING(
-                    "mesh texture with id `%d` has invalid material type: `%d`",
-                    mesh->textures[i].id,
-                    mesh->textures[i].material);
-                assert(false);
-                return;
-        }
         set_sampler_name_from_texture_material(
-            &name, MAX_SAMPLER_NAME_LEN, mesh->textures[i].material, old_count);
+            &name[0], MAX_SAMPLER_NAME_LEN, mesh->textures[i].material, count[material]);
+        count[material] += 1;
 
         uint const texture_unit = GL_TEXTURE0 + (uint) i;
         set_shader_sampler2D(*shader, name, texture_unit);
@@ -126,7 +108,4 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }
 
-#undef SET_NAME
-#undef MAX_NAME_LEN
-#undef NAME_SPECULAR
-#undef NAME_DIFFUSE
+#undef MAX_SAMPLER_NAME_LEN

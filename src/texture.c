@@ -7,29 +7,39 @@
 #include <glad/glad.h>
 
 // clang-format off
-static int const FILTER[] = { [TextureFilter_Nearest] = GL_NEAREST, [TextureFilter_Linear] = GL_LINEAR };
+static int const FILTER[] = {
+    [TextureFilter_Nearest] = GL_NEAREST,
+    [TextureFilter_Linear ] = GL_LINEAR
+};
+
 static int const MIN_MIPMAP_FILTER[][2] = {
     [TextureFilter_Nearest][TextureFilter_Nearest] = GL_NEAREST_MIPMAP_NEAREST,
     [TextureFilter_Nearest][TextureFilter_Linear ] = GL_NEAREST_MIPMAP_LINEAR,
     [TextureFilter_Linear ][TextureFilter_Nearest] = GL_LINEAR_MIPMAP_NEAREST,
     [TextureFilter_Linear ][TextureFilter_Linear ] = GL_LINEAR_MIPMAP_LINEAR,
 };
-// clang-format on
 
 static int const WRAP[] = {
-    [TextureWrap_ClampToEdge] = GL_CLAMP_TO_EDGE,
-    [TextureWrap_ClampToBorder] = GL_CLAMP_TO_BORDER,
+    [TextureWrap_ClampToEdge   ] = GL_CLAMP_TO_EDGE,
+    [TextureWrap_ClampToBorder ] = GL_CLAMP_TO_BORDER,
     [TextureWrap_MirroredRepeat] = GL_MIRRORED_REPEAT,
-    [TextureWrap_Repeat] = GL_REPEAT,
+    [TextureWrap_Repeat        ] = GL_REPEAT,
 };
 
 static int const INTERNAL_FORMAT[] = {
-    [TextureFormat_Rgb] = GL_RGB,
+    [TextureFormat_R   ] = GL_RED,
+    [TextureFormat_Rg  ] = GL_RG,
+    [TextureFormat_Rgb ] = GL_RGB,
     [TextureFormat_Rgba] = GL_RGBA,
 };
 
+STATIC_ASSERT(TextureFormat_R == 1 /* component */);
+STATIC_ASSERT(TextureFormat_Rg == 2 /* components */);
+STATIC_ASSERT(TextureFormat_Rgb == 3 /* components */);
+STATIC_ASSERT(TextureFormat_Rgba == 4 /* components */);
+
 static int const TEXTURE_TARGET[] = {
-    [TextureTargetType_2D] = GL_TEXTURE_2D,
+    [TextureTargetType_2D  ] = GL_TEXTURE_2D,
     [TextureTargetType_Cube] = GL_TEXTURE_CUBE_MAP,
 };
 
@@ -38,6 +48,7 @@ static int const TEXTURE_TARGET_CUBE_FACE[6] = {
     [2] = GL_TEXTURE_CUBE_MAP_POSITIVE_Y, [3] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
     [4] = GL_TEXTURE_CUBE_MAP_POSITIVE_Z, [5] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
 };
+// clang-format on
 
 static int gl_format(int channels) {
     static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
@@ -64,7 +75,7 @@ static int gl_format(int channels) {
 
 // Default value for TextureSettings.
 TextureSettings const Default_TextureSettings = {
-    .format = TextureFormat_Rgb,
+    .format = TextureFormat_Default,
     .generate_mipmap = true,
     .mag_filter = TextureFilter_Linear,
     .min_filter = TextureFilter_Nearest,
@@ -82,7 +93,9 @@ Texture new_texture_from_image_with_settings(
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-        int const internal_format = INTERNAL_FORMAT[settings.format];
+        int const internal_format = settings.format == TextureFormat_Default
+                                        ? gl_format(texture_image.channels)
+                                        : INTERNAL_FORMAT[settings.format];
         int const format = gl_format(texture_image.channels);
         if (internal_format != format) {
             GLOW_WARNING(
@@ -148,9 +161,11 @@ void bind_texture_to_unit(Texture const texture, uint texture_unit) {
 
 char const *sampler_name_from_texture_material(TextureMaterialType const material) {
     switch (material) {
-        case TextureMaterialType_Ambient: return "texture_ambient";
+        // @Volatile: :SyncWithTextureMaterialType:
         case TextureMaterialType_Diffuse: return "texture_diffuse";
         case TextureMaterialType_Specular: return "texture_specular";
+        case TextureMaterialType_Height: return "texture_height";
+        case TextureMaterialType_Normal: return "texture_normal";
         default: assert(false); return "";
     }
 }
