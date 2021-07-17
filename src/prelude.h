@@ -30,12 +30,6 @@ typedef struct str {
     usize len;
 } str;
 
-typedef struct Str {
-    char *data;
-    usize len;
-    usize capacity;
-} Str;
-
 //
 // Macros.
 //

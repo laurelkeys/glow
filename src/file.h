@@ -20,8 +20,8 @@ char *alloc_data_from_filepath(char const *path, Err *err);
 
 char *alloc_str_copy(char const *str);
 
-void replace_back_with_forward_slashes(char *path); // @Note: path is modified in-place
+void replace_back_with_forward_slashes_inplace(char *path);
 
-void terminate_at_last_path_component(char *path); // @Note: path is modified in-place
+void terminate_at_last_path_component_inplace(char *path);
 
 char const *point_at_last_path_component(char const *path);

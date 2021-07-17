@@ -64,7 +64,7 @@ char *alloc_str_copy(char const *str) {
     return memcpy(str_copy, str, len + 1);
 }
 
-void replace_back_with_forward_slashes(char *path) {
+void replace_back_with_forward_slashes_inplace(char *path) {
     // Replace all occurences of '\\' with '/'.
     char *backslash = strchr(path, '\\');
     while (backslash) {
@@ -81,7 +81,7 @@ void replace_back_with_forward_slashes(char *path) {
 #define SLASH_EQ(chr) ('/' == chr)
 #endif
 
-void terminate_at_last_path_component(char *path) {
+void terminate_at_last_path_component_inplace(char *path) {
     usize const len = strlen(path);
     if (len == 0) { return; }
     char *last = &path[len - 1]; // @Robustness: handle drive letter

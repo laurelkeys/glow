@@ -279,7 +279,7 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     } else {
         char *dir_path = alloc_str_copy(model_path);
         DEFER(free(dir_path)) {
-            terminate_at_last_path_component(dir_path); // modifies dir_path in-place
+            terminate_at_last_path_component_inplace(dir_path);
             str const dir_path_str = { .data = dir_path, .len = strlen(dir_path) };
 
             // Pre-load material textures.
