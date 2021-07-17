@@ -19,7 +19,7 @@ target_link_libraries(glad PUBLIC ${CMAKE_DL_LIBS})
 # add_library(stb INTERFACE)
 # target_include_directories(stb INTERFACE stb/)
 
-add_library(stb STATIC stb/stb_image.c)
+add_library(stb STATIC stb/stb_impl.c)
 target_include_directories(stb PUBLIC stb/)
 
 # ----------------------------------------------------------------------------------------

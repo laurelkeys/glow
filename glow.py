@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import argparse
 
@@ -10,8 +11,11 @@ CMAKE_C_COMPILER = None  # "clang"
 CMAKE_CXX_COMPILER = None  # "clang++"
 
 
+start = time.time()
+
 def debug_print(*args, **kwargs):
     print("\033[92m", end="")
+    print(f"Δt: {(time.time() - start):.4f}s")
     print("===", *args, "===\033[0m", **kwargs)
 
 
@@ -43,8 +47,8 @@ def main(cmake, make, run, config, generator, warnings, args):
     if run:
         def exec(exe):
             debug_print(f"Running {exe}")
-            if (err := os.system(f"{exe} {' '.join(args)}")):
-                raise Exception(f"error code = {err}")
+            from subprocess import Popen, PIPE
+            Popen([exe, *args], stdout=PIPE, stderr=PIPE)
         try:
             exec(f".{os.sep}{BUILD_DIR}{config}{os.sep}glow.exe")
         except:
