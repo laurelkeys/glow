@@ -20,6 +20,7 @@ set(FILE_SOURCES
     src/maths.c
     src/mesh.c
     src/model.c
+    src/new_array.c
     src/opengl.c
     src/shader.c
     src/texture.c
@@ -33,6 +34,7 @@ set(FILE_HEADERS
     src/maths.h
     src/mesh.h
     src/model.h
+    src/new_array.h
     src/opengl.h
     src/shader.h
     src/texture.h
