@@ -5,6 +5,8 @@ import argparse
 
 BUILD_DIR = f"build{os.sep}"
 
+CCXX_COMPILER = {"cl":"cl", "gcc":"g++", "clang":"clang++"}
+
 BUILD_CONFIGS = ["Debug", "Release", "RelWithDebInfo"]
 CMAKE_GENERATOR = None  # "Ninja Multi-Config"
 CMAKE_C_COMPILER = None  # "clang"
@@ -14,9 +16,12 @@ CMAKE_CXX_COMPILER = None  # "clang++"
 start = time.time()
 
 def debug_print(*args, **kwargs):
-    print("\033[92m", end="")
-    print(f"Δt: {(time.time() - start):.4f}s")
-    print("===", *args, "===\033[0m", **kwargs)
+    if args:
+        print("\033[92m", end="")
+        print(f"Δt: {(time.time() - start):.4f}s")
+        print("===", *args, "===\033[0m", **kwargs)
+    else:
+        print(f"\033[92mΔt: {(time.time() - start):.4f}s\033[0m")
 
 
 def main(cmake, make, run, config, generator, warnings, args):
@@ -47,13 +52,14 @@ def main(cmake, make, run, config, generator, warnings, args):
     if run:
         def exec(exe):
             debug_print(f"Running {exe}")
-            from subprocess import Popen, PIPE
-            Popen([exe, *args], stdout=PIPE, stderr=PIPE)
+            if (err := os.system(f"{exe} {' '.join(args)}")):
+                raise Exception(f"error code = {err}")
         try:
             exec(f".{os.sep}{BUILD_DIR}{config}{os.sep}glow.exe")
         except:
             exec(f".{os.sep}{BUILD_DIR}glow.exe")
-
+    else:
+        debug_print()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
@@ -90,11 +96,22 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable compiler warnings",
     )
+    parser.add_argument(
+        "--compiler",
+        type=str,
+        choices=CCXX_COMPILER.keys(),
+        help="Specify a C/C++ compiler",
+    )
 
     args, glow_args = parser.parse_known_args()
 
     if not args.cmake and not args.make and not args.run:
         debug_print("Doing nothing, no options passed (try using --help).")
+
+    if args.compiler:
+        CMAKE_C_COMPILER = args.compiler
+        CMAKE_CXX_COMPILER = CCXX_COMPILER[args.compiler]
+
     if glow_args:
         debug_print(f"glow args: {glow_args}")
 
