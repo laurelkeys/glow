@@ -20,7 +20,8 @@ typedef struct TextureStore {
 } TextureStore;
 
 static int const STORED_ASSIMP_TYPES[] = {
-    aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
+    aiTextureType_DIFFUSE, // @Temporary: the simple_texture shader only has a diffuse sampler2D!
+    // aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
 };
 
 static TextureMaterialType material_type_from_assimp(enum aiTextureType type) {

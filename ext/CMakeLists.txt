@@ -46,6 +46,7 @@ option(ASSIMP_NO_EXPORT ON)
 option(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
 option(ASSIMP_BUILD_SAMPLES OFF)
 option(ASSIMP_BUILD_TESTS OFF)
+option(ASSIMP_BUILD_ZLIB ON)
 
 add_subdirectory(assimp)
 

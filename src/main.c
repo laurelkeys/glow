@@ -1,58 +1,14 @@
-#include "prelude.h"
+#include "main.h"
 
-#include "camera.h"
-#include "console.h"
-#include "maths.h"
-#include "model.h"
-#include "opengl.h"
-#include "shader.h"
-#include "texture.h"
-#include "vertices.h"
-#include "window.h"
-
-#include <stdio.h>
-
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
-#include <stb_image.h>
-
-#ifndef GLOW_SHADERS_
-#define GLOW_SHADERS_ ""
-#endif
-#define TRY_NEW_SHADER(name, err_ptr)                                                      \
-    new_shader_from_filepath(GLOW_SHADERS_ name ".vs", GLOW_SHADERS_ name ".fs", err_ptr); \
-    if (*(err_ptr)) { goto main_err; }
-
-#ifndef GLOW_TEXTURES_
-#define GLOW_TEXTURES_ ""
-#endif
-#define TRY_NEW_TEXTURE(filename, err_ptr)                       \
-    new_texture_from_filepath(GLOW_TEXTURES_ filename, err_ptr); \
-    if (*(err_ptr)) { goto main_err; }
-
-#ifndef GLOW_MODELS_
-#define GLOW_MODELS_ ""
-#endif
-#define TRY_ALLOC_NEW_MODEL(filename, err_ptr)                     \
-    alloc_new_model_from_filepath(GLOW_MODELS_ filename, err_ptr); \
-    if (*(err_ptr)) { goto main_err; }
-
-// Global variables.
 Camera camera;
 
 vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
 
-Shader cube_shader;
 Shader skybox_shader;
-
-// Forward declarations.
-void setup_shaders(void);
-void process_input(GLFWwindow *window, f32 delta_time);
-void set_window_callbacks(GLFWwindow *window);
-
-// @Todo: continue from "Geometry Shader" https://learnopengl.com/Advanced-OpenGL/Geometry-Shader
+Shader backpack_shader;
+Shader geometry_shader;
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -70,11 +26,16 @@ int main(int argc, char *argv[]) {
     /* glfwSetWindowUserPointer(GLFWwindow *window, void *pointer); */
 
     // @Volatile: use these same files in `process_input`.
-    cube_shader = TRY_NEW_SHADER("simple_envmap", &err);
     skybox_shader = TRY_NEW_SHADER("simple_skybox", &err);
+    backpack_shader = TRY_NEW_SHADER("simple_texture", &err);
+    // @Todo: geometry_shader
 
     stbi_set_flip_vertically_on_load(true);
-    Texture const cube = TRY_NEW_TEXTURE("container.jpg", &err);
+    Model backpack_model = TRY_ALLOC_NEW_MODEL("backpack/backpack.obj", &err); // true
+    // Model backpack_model = TRY_ALLOC_NEW_MODEL("nanosuit/nanosuit.obj", &err); // false
+    // Model backpack_model = TRY_ALLOC_NEW_MODEL("cyborg/cyborg.obj", &err); // false
+    // Model backpack_model = TRY_ALLOC_NEW_MODEL("planet/planet.obj", &err); // idk?
+    // Model backpack_model = TRY_ALLOC_NEW_MODEL("rock/rock.obj", &err); // true
 
     stbi_set_flip_vertically_on_load(false);
     Texture const skybox = new_cubemap_texture_from_filepaths(
@@ -88,26 +49,6 @@ int main(int argc, char *argv[]) {
         },
         &err);
     if (err) { goto main_err; }
-
-    uint vao_cube;
-    glGenVertexArrays(1, &vao_cube);
-    {
-        uint vbo;
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTICES), CUBE_VERTICES, GL_STATIC_DRAW);
-        glBindVertexArray(vao_cube);
-        DEFER(glBindVertexArray(0)) {
-            int const stride = sizeof(f32) * 8;
-            glEnableVertexAttribArray(0); // position
-            glEnableVertexAttribArray(1); // normal
-            glEnableVertexAttribArray(2); // texture coords
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *) 0);
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 3));
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void *) (sizeof(f32) * 6));
-        }
-        glDeleteBuffers(1, &vbo); // @Note: deleting the VBO is only valid after unbinding the VAO
-    }
 
     uint vao_skybox;
     glGenVertexArrays(1, &vao_skybox);
@@ -142,23 +83,19 @@ int main(int argc, char *argv[]) {
             glfwSetWindowTitle(window, title);
         }
 
-        mat4 const projection = get_camera_projection_matrix(&camera);
-        mat4 const view = get_camera_view_matrix(&camera);
-
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        use_shader(cube_shader);
+        mat4 const projection = get_camera_projection_matrix(&camera);
+        mat4 const view = get_camera_view_matrix(&camera);
+
+        use_shader(backpack_shader);
         {
-            set_shader_vec3(cube_shader, "camera_pos", camera.position);
+            set_shader_mat4(backpack_shader, "local_to_world", mat4_id());
+            set_shader_mat4(backpack_shader, "world_to_view", view);
+            set_shader_mat4(backpack_shader, "view_to_clip", projection);
 
-            set_shader_mat4(cube_shader, "local_to_world", mat4_id());
-            set_shader_mat4(cube_shader, "world_to_view", view);
-            set_shader_mat4(cube_shader, "view_to_clip", projection);
-
-            glBindVertexArray(vao_cube);
-            bind_texture_to_unit(cube, GL_TEXTURE0);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            draw_model_with_shader(&backpack_model, &backpack_shader);
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.
@@ -183,9 +120,9 @@ int main(int argc, char *argv[]) {
     }
 
     glDeleteVertexArrays(1, &vao_skybox);
-    glDeleteVertexArrays(1, &vao_cube);
     glDeleteProgram(skybox_shader.program_id);
-    glDeleteProgram(cube_shader.program_id);
+    glDeleteProgram(backpack_shader.program_id);
+    dealloc_model(&backpack_model);
 
     goto main_exit;
 
@@ -213,9 +150,6 @@ main_exit:
 }
 
 void setup_shaders(void) {
-    use_shader(cube_shader);
-    set_shader_sampler2D(cube_shader, "skybox", GL_TEXTURE0);
-
     use_shader(skybox_shader);
     set_shader_sampler2D(skybox_shader, "skybox", GL_TEXTURE0);
 }
@@ -223,16 +157,6 @@ void setup_shaders(void) {
 //
 // Input processing.
 //
-
-#define IS_PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
-
-#define ON_PRESS(key, is_key_pressed)                                              \
-    (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
-    else if (!is_key_pressed && (is_key_pressed = true))
-
-#define RELOAD_SHADER(name, shader_ptr)          \
-    GLOW_LOG("Hot swapping '" name "' shaders"); \
-    reload_shader_from_filepath((shader_ptr), GLOW_SHADERS_ name ".vs", GLOW_SHADERS_ name ".fs");
 
 void process_input(GLFWwindow *window, f32 delta_time) {
     if IS_PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
@@ -246,15 +170,11 @@ void process_input(GLFWwindow *window, f32 delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
-        RELOAD_SHADER("simple_envmap", &cube_shader);
         RELOAD_SHADER("simple_skybox", &skybox_shader);
+        RELOAD_SHADER("simple_texture", &backpack_shader);
         setup_shaders();
     }
 }
-
-#undef RELOAD_SHADER
-#undef ON_PRESS
-#undef IS_PRESSED
 
 //
 // Window callbacks.

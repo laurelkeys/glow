@@ -4,9 +4,7 @@
 
 // clang-format off
 
-/*
-#include <string.h> // memmove
-*/
+#include <string.h> // size_t, memmove
 
 typedef struct {
     size_t length;
@@ -26,11 +24,8 @@ typedef struct {
 /////// arrclear(T*) -> void;           Sets the length of the array to 0. Does not change allocated storage.
 #define arrclear(a)                     ((a) ? arr__header(a)->length = 0 : 0)
 
-/////// arrlen(T*) -> ptrdiff_t;        Returns the number of elements in the array.
-#define arrlen(a)                       ((a) ? (ptrdiff_t) arr__header(a)->length : 0)
-
-/////// arrlenu(T*) -> size_t;          Returns the number of elements in the array as an unsigned type.
-#define arrlenu(a)                      ((a) ? arr__header(a)->length : 0)
+/////// arrlen(T*) -> size_t;           Returns the number of elements in the array.
+#define arrlen(a)                       ((a) ? arr__header(a)->length : 0)
 
 /////// arrsetlen(T*, int) -> void;     Changes the length of the array to n. Allocates uninitialized slots at the end if necessary.
 #define arrsetlen(a, n)                 (((ptrdiff_t) arrcap(a) < (ptrdiff_t) (n) ? arrsetcap((a), (size_t) (n)), 0 : 0), (a) ? arr__header(a)->length = (size_t) (n) : 0)
@@ -38,10 +33,10 @@ typedef struct {
 /////// arrcap(T*) -> size_t;           Returns the number of total elements the array can contain without needing to be reallocated.
 #define arrcap(a)                       ((a) ? arr__header(a)->capacity : 0)
 
-/////// arrsetcap(T*, int) -> size_t;   Sets the length of allocated storage to at least n. It will not change the length of the array.
+/////// arrsetcap(T*, int) -> void;     Sets the length of allocated storage to at least n. It will not change the length of the array.
 #define arrsetcap(a, n)                 (arr__grow(a, 0, n))
 
-/////// arrpush(T*, T v) -> T;          Appends the item v to the end of array a. Returns v.
+/////// arrpush(T*, T) -> T;            Appends the item v to the end of array a. Returns v.
 #define arrpush(a, v)                   (arr__maybegrow(a, 1), (a)[arr__header(a)->length++] = (v))
 
 /////// arrpop(T*) -> T;                Removes the final element of the array and returns it.
