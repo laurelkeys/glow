@@ -88,7 +88,8 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
         TextureMaterialType const material = mesh->textures[i].material;
-        assert(0 < (int) material <= ARRAY_LEN(count)); // TextureMaterialType_None = 0
+        assert((int) material <= ARRAY_LEN(count));
+        assert((int) material > 0); // TextureMaterialType_None = 0
 
         // @Todo: store a char const *material_name in the Texture struct, and use string
         // interning for efficiency, since they will be immutable (and not always unique).

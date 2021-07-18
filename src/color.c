@@ -1,6 +1,7 @@
 #include "color.h"
 
 #include "console.h"
+#include "maths.h"
 
 // clang-format off
 vec3 convert_color(vec3 const c, ColorSpace const from, ColorSpace const to) {
