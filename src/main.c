@@ -6,20 +6,24 @@ vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
 
-typedef struct ShaderWithPaths {
-    Shader shader;
+typedef struct PathsToShader {
     ShaderStrings paths;
-} ShaderWithPaths;
+    Shader shader;
+} PathsToShader;
 
-ShaderWithPaths skybox = {
-    .paths = { .vertex = GLOW_SHADERS_ "simple_skybox.vs",
-               .fragment = GLOW_SHADERS_ "simple_skybox.fs" },
-};
-ShaderWithPaths backpack = {
-    .paths = { .vertex = GLOW_SHADERS_ "simple_texture.vs",
-               .fragment = GLOW_SHADERS_ "simple_texture.fs",
-               .geometry = GLOW_SHADERS_ "exploding_geometry.gs" },
-};
+PathsToShader skybox = { {
+    .vertex = GLOW_SHADERS_ "simple_skybox.vs",
+    .fragment = GLOW_SHADERS_ "simple_skybox.fs",
+} };
+PathsToShader backpack = { {
+    .vertex = GLOW_SHADERS_ "simple_texture.vs",
+    .fragment = GLOW_SHADERS_ "simple_texture.fs",
+} };
+PathsToShader vis_normals = { {
+    .vertex = GLOW_SHADERS_ "visualize_normals.vs",
+    .fragment = GLOW_SHADERS_ "visualize_normals.fs",
+    .geometry = GLOW_SHADERS_ "visualize_normals.gs",
+} };
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -39,6 +43,7 @@ int main(int argc, char *argv[]) {
     // @Volatile: use these same files in `process_input`.
     skybox.shader = TRY_NEW_SHADER(skybox.paths, &err);
     backpack.shader = TRY_NEW_SHADER(backpack.paths, &err);
+    vis_normals.shader = TRY_NEW_SHADER(vis_normals.paths, &err);
 
     stbi_set_flip_vertically_on_load(true);
     Model backpack_model = TRY_ALLOC_NEW_MODEL("backpack/backpack.obj", &err); // true
@@ -108,6 +113,18 @@ int main(int argc, char *argv[]) {
             set_shader_float(backpack.shader, "time", (f32) clock.time);
 
             draw_model_with_shader(&backpack_model, &backpack.shader);
+        }
+
+        // Draw the same model, but now with a geometry shader to visualize normals.
+        use_shader(vis_normals.shader);
+        {
+            set_shader_mat4(vis_normals.shader, "local_to_world", mat4_id());
+            set_shader_mat4(vis_normals.shader, "world_to_view", view);
+            set_shader_mat4(vis_normals.shader, "view_to_clip", projection);
+
+            set_shader_float(vis_normals.shader, "time", (f32) clock.time);
+
+            draw_model_with_shader(&backpack_model, &vis_normals.shader);
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.
