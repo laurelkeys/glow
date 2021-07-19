@@ -8,13 +8,18 @@ typedef struct Shader {
     uint program_id;
 } Shader;
 
-Shader new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err);
-Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err);
+// @Note: geometry may be null, but vertex and fragment are assumed not to be.
+typedef struct ShaderStrings {
+    char const *vertex;
+    char const *fragment;
+    char const *geometry;
+} ShaderStrings;
 
-bool reload_shader_from_source(
-    Shader *shader, char const *vertex_source, char const *fragment_source);
-bool reload_shader_from_filepath(
-    Shader *shader, char const *vertex_path, char const *fragment_path);
+Shader new_shader_from_source(ShaderStrings const source, Err *err);
+Shader new_shader_from_filepath(ShaderStrings const path, Err *err);
+
+bool reload_shader_from_source(Shader *shader, ShaderStrings const source);
+bool reload_shader_from_filepath(Shader *shader, ShaderStrings const path);
 
 void use_shader(Shader const shader);
 

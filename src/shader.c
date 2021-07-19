@@ -1,6 +1,7 @@
 #include "shader.h"
 
 #include "console.h"
+#include "file.h"
 #include "opengl.h"
 
 #include <stdio.h>
@@ -24,54 +25,61 @@ static uint init_shader(uint type, char const *source, char info_log[INFO_LOG_LE
 
 #undef SHADER_TYPE
 
-Shader new_shader_from_source(char const *vertex_source, char const *fragment_source, Err *err) {
+Shader new_shader_from_source(ShaderStrings const source, Err *err) {
     char info_log[INFO_LOG_LENGTH] = { 0 };
 
-    uint const vertex_id = init_shader(GL_VERTEX_SHADER, vertex_source, info_log, err);
-    uint const fragment_id = init_shader(GL_FRAGMENT_SHADER, fragment_source, info_log, err);
+    uint const vertex_id = init_shader(GL_VERTEX_SHADER, source.vertex, info_log, err);
+    uint const fragment_id = init_shader(GL_FRAGMENT_SHADER, source.fragment, info_log, err);
+
+    bool const has_geometry_shader = source.geometry != NULL;
+    uint const geometry_id =
+        has_geometry_shader ? init_shader(GL_GEOMETRY_SHADER, source.geometry, info_log, err) : 0;
 
     uint const program_id = glCreateProgram();
     glAttachShader(program_id, vertex_id);
     glAttachShader(program_id, fragment_id);
+    if (has_geometry_shader) { glAttachShader(program_id, geometry_id); }
+
     glLinkProgram(program_id);
     if (!program_link_success(program_id, info_log, err)) {
         GLOW_WARNING("shader program linking failed with ```\n%s```", info_log);
     }
 
-    glDeleteShader(vertex_id);
+    if (has_geometry_shader) { glDeleteShader(geometry_id); }
     glDeleteShader(fragment_id);
+    glDeleteShader(vertex_id);
 
     return (Shader) { program_id };
 }
 
-static char *alloc_data_from_filepath(char const *path, Err *err) {
-    FILE *fp = fopen(path, "rb");
-    if (!fp) { return (*err = Err_Fopen, NULL); }
+Shader new_shader_from_filepath(ShaderStrings const path, Err *err) {
+    char *vertex_source = alloc_data_from_filepath(path.vertex, err);
+    if (*err) { return (Shader) { 0 }; }
 
-    fseek(fp, 0, SEEK_END);
-    long const fsize = ftell(fp);
-    rewind(fp); // fseek(fp, 0, SEEK_SET);
-    char *data = calloc(fsize + 1, sizeof(char));
-
-    if (data) {
-        fread(data, 1, fsize, fp);
-    } else {
-        *err = Err_Calloc;
+    char *fragment_source = alloc_data_from_filepath(path.fragment, err);
+    if (*err) {
+        free(vertex_source);
+        return (Shader) { 0 };
     }
 
-    fclose(fp);
-    return data;
-}
+    bool const has_geometry_shader = path.geometry != NULL;
+    char *geometry_source =
+        has_geometry_shader ? alloc_data_from_filepath(path.geometry, err) : NULL;
+    if (*err) {
+        free(fragment_source);
+        free(vertex_source);
+        return (Shader) { 0 };
+    }
 
-Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_path, Err *err) {
-    char *vertex_source = alloc_data_from_filepath(vertex_path, err);
-    if (*err) { return (Shader) { 0 }; }
+    Shader const shader = new_shader_from_source(
+        (ShaderStrings) {
+            .vertex = vertex_source,
+            .fragment = fragment_source,
+            .geometry = geometry_source,
+        },
+        err);
 
-    char *fragment_source = alloc_data_from_filepath(fragment_path, err);
-    if (*err) { return (Shader) { 0 }; }
-
-    Shader const shader = new_shader_from_source(vertex_source, fragment_source, err);
-
+    free(geometry_source);
     free(fragment_source);
     free(vertex_source);
 
@@ -80,11 +88,10 @@ Shader new_shader_from_filepath(char const *vertex_path, char const *fragment_pa
 
 static bool reload_shader(
     Shader *shader,
-    Shader (*new_shader_fn)(char const *, char const *, Err *),
-    char const *vertex,
-    char const *fragment) {
+    Shader (*new_shader_fn)(ShaderStrings const, Err *),
+    ShaderStrings const new_shader_arg) {
     Err err = Err_None;
-    Shader const new_shader = new_shader_fn(vertex, fragment, &err);
+    Shader const new_shader = new_shader_fn(new_shader_arg, &err);
     if (err) { return false; }
 
     glDeleteProgram(shader->program_id);
@@ -92,13 +99,11 @@ static bool reload_shader(
 
     return true;
 }
-bool reload_shader_from_source(
-    Shader *shader, char const *vertex_source, char const *fragment_source) {
-    return reload_shader(shader, new_shader_from_source, vertex_source, fragment_source);
+bool reload_shader_from_source(Shader *shader, ShaderStrings const source) {
+    return reload_shader(shader, new_shader_from_source, source);
 }
-bool reload_shader_from_filepath(
-    Shader *shader, char const *vertex_path, char const *fragment_path) {
-    return reload_shader(shader, new_shader_from_filepath, vertex_path, fragment_path);
+bool reload_shader_from_filepath(Shader *shader, ShaderStrings const path) {
+    return reload_shader(shader, new_shader_from_filepath, path);
 }
 
 void use_shader(Shader const shader) {

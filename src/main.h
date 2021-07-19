@@ -6,6 +6,7 @@
 
 #include "camera.h"
 #include "console.h"
+#include "file.h"
 #include "maths.h"
 #include "model.h"
 #include "opengl.h"
@@ -50,8 +51,8 @@ void set_window_callbacks(GLFWwindow *window);
 // Resource loading macros.
 //
 
-#define TRY_NEW_SHADER(name, err_ptr)                                                      \
-    new_shader_from_filepath(GLOW_SHADERS_ name ".vs", GLOW_SHADERS_ name ".fs", err_ptr); \
+#define TRY_NEW_SHADER(shader_strings_path, err_ptr)        \
+    new_shader_from_filepath(shader_strings_path, err_ptr); \
     if (*(err_ptr)) { goto main_err; }
 
 #define TRY_NEW_TEXTURE(filename, err_ptr)                       \
@@ -71,7 +72,3 @@ void set_window_callbacks(GLFWwindow *window);
 #define ON_PRESS(key, is_key_pressed)                                              \
     (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
     else if (!is_key_pressed && (is_key_pressed = true))
-
-#define RELOAD_SHADER(name, shader_ptr)          \
-    GLOW_LOG("Hot swapping '" name "' shaders"); \
-    reload_shader_from_filepath((shader_ptr), GLOW_SHADERS_ name ".vs", GLOW_SHADERS_ name ".fs");

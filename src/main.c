@@ -6,9 +6,20 @@ vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
 
-Shader skybox_shader;
-Shader backpack_shader;
-Shader geometry_shader;
+typedef struct ShaderWithPaths {
+    Shader shader;
+    ShaderStrings paths;
+} ShaderWithPaths;
+
+ShaderWithPaths skybox = {
+    .paths = { .vertex = GLOW_SHADERS_ "simple_skybox.vs",
+               .fragment = GLOW_SHADERS_ "simple_skybox.fs" },
+};
+ShaderWithPaths backpack = {
+    .paths = { .vertex = GLOW_SHADERS_ "simple_texture.vs",
+               .fragment = GLOW_SHADERS_ "simple_texture.fs",
+               .geometry = GLOW_SHADERS_ "exploding_geometry.gs" },
+};
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -26,19 +37,18 @@ int main(int argc, char *argv[]) {
     /* glfwSetWindowUserPointer(GLFWwindow *window, void *pointer); */
 
     // @Volatile: use these same files in `process_input`.
-    skybox_shader = TRY_NEW_SHADER("simple_skybox", &err);
-    backpack_shader = TRY_NEW_SHADER("simple_texture", &err);
-    // @Todo: geometry_shader
+    skybox.shader = TRY_NEW_SHADER(skybox.paths, &err);
+    backpack.shader = TRY_NEW_SHADER(backpack.paths, &err);
 
     stbi_set_flip_vertically_on_load(true);
     Model backpack_model = TRY_ALLOC_NEW_MODEL("backpack/backpack.obj", &err); // true
     // Model backpack_model = TRY_ALLOC_NEW_MODEL("nanosuit/nanosuit.obj", &err); // false
     // Model backpack_model = TRY_ALLOC_NEW_MODEL("cyborg/cyborg.obj", &err); // false
-    // Model backpack_model = TRY_ALLOC_NEW_MODEL("planet/planet.obj", &err); // idk?
+    // Model backpack_model = TRY_ALLOC_NEW_MODEL("planet/planet.obj", &err); // false
     // Model backpack_model = TRY_ALLOC_NEW_MODEL("rock/rock.obj", &err); // true
 
     stbi_set_flip_vertically_on_load(false);
-    Texture const skybox = new_cubemap_texture_from_filepaths(
+    Texture const skybox_tex = new_cubemap_texture_from_filepaths(
         (char const *[6]) {
             GLOW_TEXTURES_ "skybox/right.jpg", // +X
             GLOW_TEXTURES_ "skybox/left.jpg", // -X
@@ -89,28 +99,30 @@ int main(int argc, char *argv[]) {
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
 
-        use_shader(backpack_shader);
+        use_shader(backpack.shader);
         {
-            set_shader_mat4(backpack_shader, "local_to_world", mat4_id());
-            set_shader_mat4(backpack_shader, "world_to_view", view);
-            set_shader_mat4(backpack_shader, "view_to_clip", projection);
+            set_shader_mat4(backpack.shader, "local_to_world", mat4_id());
+            set_shader_mat4(backpack.shader, "world_to_view", view);
+            set_shader_mat4(backpack.shader, "view_to_clip", projection);
 
-            draw_model_with_shader(&backpack_model, &backpack_shader);
+            set_shader_float(backpack.shader, "time", (f32) clock.time);
+
+            draw_model_with_shader(&backpack_model, &backpack.shader);
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.
         glDepthFunc(GL_LEQUAL);
-        use_shader(skybox_shader);
+        use_shader(skybox.shader);
         {
             mat4 view_without_translation = view;
             view_without_translation.m[0][3] = 0.0f;
             view_without_translation.m[1][3] = 0.0f;
             view_without_translation.m[2][3] = 0.0f;
-            set_shader_mat4(skybox_shader, "world_to_view", view_without_translation);
-            set_shader_mat4(skybox_shader, "view_to_clip", projection);
+            set_shader_mat4(skybox.shader, "world_to_view", view_without_translation);
+            set_shader_mat4(skybox.shader, "view_to_clip", projection);
 
             glBindVertexArray(vao_skybox);
-            bind_texture_to_unit(skybox, GL_TEXTURE0);
+            bind_texture_to_unit(skybox_tex, GL_TEXTURE0);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
         glDepthFunc(GL_LESS);
@@ -120,8 +132,8 @@ int main(int argc, char *argv[]) {
     }
 
     glDeleteVertexArrays(1, &vao_skybox);
-    glDeleteProgram(skybox_shader.program_id);
-    glDeleteProgram(backpack_shader.program_id);
+    glDeleteProgram(skybox.shader.program_id);
+    glDeleteProgram(backpack.shader.program_id);
     dealloc_model(&backpack_model);
 
     goto main_exit;
@@ -150,8 +162,8 @@ main_exit:
 }
 
 void setup_shaders(void) {
-    use_shader(skybox_shader);
-    set_shader_sampler2D(skybox_shader, "skybox", GL_TEXTURE0);
+    use_shader(skybox.shader);
+    set_shader_sampler2D(skybox.shader, "skybox", GL_TEXTURE0);
 }
 
 //
@@ -170,8 +182,12 @@ void process_input(GLFWwindow *window, f32 delta_time) {
 
     if ON_PRESS (TAB, is_tab_pressed) {
         // @Volatile: use the same files as in `main`.
-        RELOAD_SHADER("simple_skybox", &skybox_shader);
-        RELOAD_SHADER("simple_texture", &backpack_shader);
+        GLOW_LOG("Hot swapping skybox shaders");
+        reload_shader_from_filepath(&skybox.shader, skybox.paths);
+
+        GLOW_LOG("Hot swapping backpack shaders");
+        reload_shader_from_filepath(&backpack.shader, backpack.paths);
+
         setup_shaders();
     }
 }
