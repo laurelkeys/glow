@@ -140,6 +140,8 @@ Texture new_texture_from_filepath(char const *image_path, Err *err) {
 }
 Texture new_texture_from_filepath_with_settings(
     TextureSettings const settings, char const *image_path, Err *err) {
+    if (*err) { return (Texture) { 0 }; }
+
     int width, height, channels;
     u8 *data = stbi_load(image_path, &width, &height, &channels, 0);
     if (!data) {
@@ -148,9 +150,12 @@ Texture new_texture_from_filepath_with_settings(
         return (*err = Err_Stbi_Load, (Texture) { 0 });
     }
     assert(1 <= channels && channels <= 4);
-    Texture texture = new_texture_from_image_with_settings(
+
+    Texture const texture = new_texture_from_image_with_settings(
         settings, (TextureImage) { data, width, height, channels });
+
     stbi_image_free(data);
+
     return texture;
 }
 
@@ -200,6 +205,8 @@ Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
 }
 
 Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err) {
+    if (*err) { return (Texture) { 0 }; }
+
     TextureImage texture_images[6] = { 0 };
     for (usize i = 0; i < 6; ++i) {
         int width, height, channels;
@@ -212,8 +219,11 @@ Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err)
         assert(1 <= channels && channels <= 4);
         texture_images[i] = (TextureImage) { data, width, height, channels };
     }
-    Texture texture = new_cubemap_texture_from_images(texture_images);
+
+    Texture const texture = new_cubemap_texture_from_images(texture_images);
+
     for (usize i = 0; i < 6; ++i) { stbi_image_free(texture_images[i].data); }
+
     return texture;
 }
 #endif

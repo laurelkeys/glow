@@ -14,24 +14,29 @@
                                            : "????")
 
 static uint init_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
+    if (*err) { return 0; }
+
     uint const id = glCreateShader(type);
     glShaderSource(id, 1, &source, NULL);
     glCompileShader(id);
     if (!shader_compile_success(id, info_log, err)) {
         GLOW_WARNING("%s shader compilation failed with ```\n%s```", SHADER_TYPE(type), info_log);
     }
+
     return id;
 }
 
 #undef SHADER_TYPE
 
 Shader new_shader_from_source(ShaderStrings const source, Err *err) {
+    if (*err) { return (Shader) { 0 }; }
+
     char info_log[INFO_LOG_LENGTH] = { 0 };
+
+    bool const has_geometry_shader = source.geometry != NULL;
 
     uint const vertex_id = init_shader(GL_VERTEX_SHADER, source.vertex, info_log, err);
     uint const fragment_id = init_shader(GL_FRAGMENT_SHADER, source.fragment, info_log, err);
-
-    bool const has_geometry_shader = source.geometry != NULL;
     uint const geometry_id =
         has_geometry_shader ? init_shader(GL_GEOMETRY_SHADER, source.geometry, info_log, err) : 0;
 
@@ -45,7 +50,7 @@ Shader new_shader_from_source(ShaderStrings const source, Err *err) {
         GLOW_WARNING("shader program linking failed with ```\n%s```", info_log);
     }
 
-    if (has_geometry_shader) { glDeleteShader(geometry_id); }
+    glDeleteShader(geometry_id);
     glDeleteShader(fragment_id);
     glDeleteShader(vertex_id);
 
@@ -53,31 +58,17 @@ Shader new_shader_from_source(ShaderStrings const source, Err *err) {
 }
 
 Shader new_shader_from_filepath(ShaderStrings const path, Err *err) {
-    char *vertex_source = alloc_data_from_filepath(path.vertex, err);
     if (*err) { return (Shader) { 0 }; }
 
-    char *fragment_source = alloc_data_from_filepath(path.fragment, err);
-    if (*err) {
-        free(vertex_source);
-        return (Shader) { 0 };
-    }
-
     bool const has_geometry_shader = path.geometry != NULL;
+
+    char *vertex_source = alloc_data_from_filepath(path.vertex, err);
+    char *fragment_source = alloc_data_from_filepath(path.fragment, err);
     char *geometry_source =
         has_geometry_shader ? alloc_data_from_filepath(path.geometry, err) : NULL;
-    if (*err) {
-        free(fragment_source);
-        free(vertex_source);
-        return (Shader) { 0 };
-    }
 
     Shader const shader = new_shader_from_source(
-        (ShaderStrings) {
-            .vertex = vertex_source,
-            .fragment = fragment_source,
-            .geometry = geometry_source,
-        },
-        err);
+        (ShaderStrings) { vertex_source, fragment_source, geometry_source }, err);
 
     free(geometry_source);
     free(fragment_source);

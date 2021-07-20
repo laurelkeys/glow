@@ -44,6 +44,8 @@ static void store_textures_with_assimp_type(
     struct aiMaterial const *material,
     enum aiTextureType type,
     Err *err) {
+    if (*err) { return; }
+
     uint const count = aiGetMaterialTextureCount(material, type);
     for (uint i = 0; i < count; ++i) {
         struct aiString path = { 0 };
@@ -77,13 +79,15 @@ static void store_textures_with_assimp_type(
     }
 }
 
-static bool fetch_stored_textures_with_assimp_type(
+static bool load_stored_textures_with_assimp_type_into_textures(
     Texture *textures,
     usize *textures_len,
     TextureStore const *texture_store,
     struct aiMaterial const *material,
     enum aiTextureType type,
     Err *err) {
+    if (*err) { return false; }
+
     bool found_all_textures = true;
 
     uint const count = aiGetMaterialTextureCount(material, type);
@@ -111,17 +115,24 @@ static bool fetch_stored_textures_with_assimp_type(
     return found_all_textures;
 }
 
-static Mesh process_assimp_mesh_into_alloc_mesh(
+static Mesh alloc_mesh_from_assimp_mesh(
     TextureStore const *texture_store,
     struct aiMesh const *mesh,
     struct aiScene const *scene,
     Err *err) {
+    if (*err) { return (Mesh) { 0 }; }
+
+    struct aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+
+    //
+    // Allocate space for creating the mesh.
+    //
+
     Vertex *vertices = calloc(mesh->mNumVertices, sizeof(Vertex));
 
     // @Volatile: all faces are assumed to be triangular due to the aiProcess_Triangulate flag.
     uint *indices = calloc(3 * mesh->mNumFaces, sizeof(uint));
 
-    struct aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
     usize textures_capacity = 0;
     for (usize i = 0; i < ARRAY_LEN(STORED_ASSIMP_TYPES); ++i) {
         textures_capacity += aiGetMaterialTextureCount(material, STORED_ASSIMP_TYPES[i]);
@@ -183,9 +194,13 @@ static Mesh process_assimp_mesh_into_alloc_mesh(
 
     usize textures_len = 0;
     for (usize i = 0; i < ARRAY_LEN(STORED_ASSIMP_TYPES); ++i) {
-        fetch_stored_textures_with_assimp_type(
-            textures, &textures_len, texture_store, material, STORED_ASSIMP_TYPES[i], err);
-        assert(!*err);
+        load_stored_textures_with_assimp_type_into_textures(
+            textures,
+            &textures_len,
+            texture_store,
+            material,
+            STORED_ASSIMP_TYPES[i],
+            err); // assert(!*err);
     }
     assert(textures_len == textures_capacity);
 
@@ -198,24 +213,26 @@ static Mesh process_assimp_mesh_into_alloc_mesh(
         textures_len);
 }
 
-static void process_assimp_node_to_alloc_model_meshes(
+static void alloc_into_model_meshes_from_assimp_node(
     Model *model,
     TextureStore const *texture_store,
     struct aiNode const *node,
     struct aiScene const *scene,
     Err *err) {
+    if (*err) { return; }
+
     // Process node's meshes.
     for (uint i = 0; i < node->mNumMeshes; ++i) {
         struct aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
         assert(model->meshes_len < model->meshes_capacity);
         model->meshes[(model->meshes_len)++] =
-            process_assimp_mesh_into_alloc_mesh(texture_store, mesh, scene, err);
+            alloc_mesh_from_assimp_mesh(texture_store, mesh, scene, err); // assert(!*err);
     }
 
     // Recursively process node's children.
     for (uint i = 0; i < node->mNumChildren; ++i) {
-        process_assimp_node_to_alloc_model_meshes(
-            model, texture_store, node->mChildren[i], scene, err);
+        alloc_into_model_meshes_from_assimp_node(
+            model, texture_store, node->mChildren[i], scene, err); // assert(!*err);
     }
 }
 
@@ -241,6 +258,8 @@ static usize count_assimp_nodes(struct aiNode const *node) {
 }
 
 Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
+    if (*err) { return (Model) { 0 }; }
+
     struct aiScene const *scene = aiImportFile(model_path, POST_PROCESS_FLAGS);
 
     if (!scene || !scene->mRootNode || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)) {
@@ -288,9 +307,12 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
                 struct aiMaterial const *material = scene->mMaterials[i];
                 for (usize j = 0; j < ARRAY_LEN(STORED_ASSIMP_TYPES); ++j) {
                     store_textures_with_assimp_type(
-                        &texture_store, dir_path_str, material, STORED_ASSIMP_TYPES[j], err);
+                        &texture_store,
+                        dir_path_str,
+                        material,
+                        STORED_ASSIMP_TYPES[j],
+                        err); // assert(!*err);
                     assert(texture_store.len <= texture_store.capacity);
-                    assert(!*err);
                 }
             }
             assert(texture_store.len == texture_store.capacity);
@@ -298,8 +320,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
 
         // Convert assimp meshes.
         if (!*err) {
-            process_assimp_node_to_alloc_model_meshes(
-                &model, &texture_store, scene->mRootNode, scene, err);
+            alloc_into_model_meshes_from_assimp_node(
+                &model, &texture_store, scene->mRootNode, scene, err); // assert(!*err);
             assert(model.meshes_len == model.meshes_capacity);
         }
 

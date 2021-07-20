@@ -48,27 +48,25 @@ void set_window_callbacks(GLFWwindow *window);
 #endif
 
 //
-// Resource loading macros.
+// Helper structs/enums.
 //
 
-#define TRY_NEW_SHADER(shader_strings_path, err_ptr)        \
-    new_shader_from_filepath(shader_strings_path, err_ptr); \
-    if (*(err_ptr)) { goto main_err; }
+typedef struct PathsToShader {
+    ShaderStrings paths;
+    Shader shader;
+} PathsToShader;
 
-#define TRY_NEW_TEXTURE(filename, err_ptr)                       \
-    new_texture_from_filepath(GLOW_TEXTURES_ filename, err_ptr); \
-    if (*(err_ptr)) { goto main_err; }
+typedef struct PathToModel {
+    char const *path;
+    bool flip_on_load;
+} PathToModel;
 
-#define TRY_ALLOC_NEW_MODEL(filename, err_ptr)                     \
-    alloc_new_model_from_filepath(GLOW_MODELS_ filename, err_ptr); \
-    if (*(err_ptr)) { goto main_err; }
+enum { BACKPACK = 0, NANOSUIT, CYBORG, PLANET, ROCK };
 
-//
-// Input processing macros.
-//
-
-#define IS_PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
-
-#define ON_PRESS(key, is_key_pressed)                                              \
-    (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
-    else if (!is_key_pressed && (is_key_pressed = true))
+static PathToModel const choose_model[] = {
+    [BACKPACK] = { GLOW_MODELS_ "backpack/backpack.obj", true },
+    [NANOSUIT] = { GLOW_MODELS_ "nanosuit/nanosuit.obj", false },
+    [CYBORG] = { GLOW_MODELS_ "cyborg/cyborg.obj", false },
+    [PLANET] = { GLOW_MODELS_ "planet/planet.obj", false },
+    [ROCK] = { GLOW_MODELS_ "rock/rock.obj", true },
+};

@@ -59,6 +59,8 @@ static void error_callback(int error, char const *description) {
 }
 
 GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
+    if (*err) { return NULL; }
+
     glfwSetErrorCallback(error_callback);
     if (!glfwInit()) { return (*err = Err_Glfw_Init, NULL); }
 
@@ -113,6 +115,8 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
 }
 
 bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *err) {
+    if (*err) { return false; }
+
     int success;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
@@ -122,10 +126,13 @@ bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *er
         info_log[CLAMP(length - 1, 0, INFO_LOG_LENGTH - 1)] = '\0';
         return (*err = Err_Shader_Compile, false);
     }
+
     return true;
 }
 
 bool program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err) {
+    if (*err) { return false; }
+
     int success;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
@@ -135,6 +142,7 @@ bool program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err
         info_log[CLAMP(length - 1, 0, INFO_LOG_LENGTH - 1)] = '\0';
         return (*err = Err_Shader_Link, false);
     }
+
     return true;
 }
 

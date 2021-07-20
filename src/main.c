@@ -6,11 +6,6 @@ vec2 mouse_last;
 bool mouse_is_first = true;
 bool is_tab_pressed = false;
 
-typedef struct PathsToShader {
-    ShaderStrings paths;
-    Shader shader;
-} PathsToShader;
-
 PathsToShader skybox = { {
     .vertex = GLOW_SHADERS_ "simple_skybox.vs",
     .fragment = GLOW_SHADERS_ "simple_skybox.fs",
@@ -36,21 +31,16 @@ int main(int argc, char *argv[]) {
     camera.aspect = (f32) window_settings.width / (f32) window_settings.height;
 
     GLFWwindow *const window = init_opengl(window_settings, &err);
-    if (err) { goto main_err; }
 
     /* glfwSetWindowUserPointer(GLFWwindow *window, void *pointer); */
 
     // @Volatile: use these same files in `process_input`.
-    skybox.shader = TRY_NEW_SHADER(skybox.paths, &err);
-    backpack.shader = TRY_NEW_SHADER(backpack.paths, &err);
-    vis_normals.shader = TRY_NEW_SHADER(vis_normals.paths, &err);
+    skybox.shader = new_shader_from_filepath(skybox.paths, &err);
+    backpack.shader = new_shader_from_filepath(backpack.paths, &err);
+    vis_normals.shader = new_shader_from_filepath(vis_normals.paths, &err);
 
-    stbi_set_flip_vertically_on_load(true);
-    Model backpack_model = TRY_ALLOC_NEW_MODEL("backpack/backpack.obj", &err); // true
-    // Model backpack_model = TRY_ALLOC_NEW_MODEL("nanosuit/nanosuit.obj", &err); // false
-    // Model backpack_model = TRY_ALLOC_NEW_MODEL("cyborg/cyborg.obj", &err); // false
-    // Model backpack_model = TRY_ALLOC_NEW_MODEL("planet/planet.obj", &err); // false
-    // Model backpack_model = TRY_ALLOC_NEW_MODEL("rock/rock.obj", &err); // true
+    stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
+    Model backpack_model = alloc_new_model_from_filepath(choose_model[BACKPACK].path, &err);
 
     stbi_set_flip_vertically_on_load(false);
     Texture const skybox_tex = new_cubemap_texture_from_filepaths(
@@ -63,6 +53,8 @@ int main(int argc, char *argv[]) {
             GLOW_TEXTURES_ "skybox/back.jpg", // -Z
         },
         &err);
+
+    // Exit early if there were any errors during setup.
     if (err) { goto main_err; }
 
     uint vao_skybox;
@@ -110,8 +102,6 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(backpack.shader, "world_to_view", view);
             set_shader_mat4(backpack.shader, "view_to_clip", projection);
 
-            set_shader_float(backpack.shader, "time", (f32) clock.time);
-
             draw_model_with_shader(&backpack_model, &backpack.shader);
         }
 
@@ -122,9 +112,7 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(vis_normals.shader, "world_to_view", view);
             set_shader_mat4(vis_normals.shader, "view_to_clip", projection);
 
-            set_shader_float(vis_normals.shader, "time", (f32) clock.time);
-
-            draw_model_with_shader(&backpack_model, &vis_normals.shader);
+            draw_textureless_model_with_shader(&backpack_model, &vis_normals.shader);
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.
@@ -186,6 +174,12 @@ void setup_shaders(void) {
 //
 // Input processing.
 //
+
+#define IS_PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
+
+#define ON_PRESS(key, is_key_pressed)                                              \
+    (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
+    else if (!is_key_pressed && (is_key_pressed = true))
 
 void process_input(GLFWwindow *window, f32 delta_time) {
     if IS_PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }

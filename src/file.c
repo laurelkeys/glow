@@ -41,25 +41,26 @@ char *alloc_human_readable_size_str(usize size_in_bytes) {
 }
 
 char *alloc_data_from_filepath(char const *path, Err *err) {
+    if (*err) { return NULL; }
+
     FILE *fp = fopen(path, "rb");
     if (!fp) { return (*err = Err_Fopen, NULL); }
 
     usize const fsize = file_size_in_bytes(fp);
     char *data = calloc(fsize + 1, sizeof(char));
-
-    if (data) {
-        fread(data, 1, fsize, fp);
-    } else {
-        *err = Err_Calloc;
+    if (!data) {
+        fclose(fp);
+        return (*err = Err_Calloc, NULL);
     }
 
+    fread(data, 1, fsize, fp);
     fclose(fp);
     return data;
 }
 
 char *alloc_str_copy(char const *str) {
     usize const len = strlen(str);
-    char *str_copy = malloc(len + 1);
+    char *str_copy = calloc(len + 1, sizeof(char));
     if (!str_copy) { return NULL; }
     return memcpy(str_copy, str, len + 1);
 }
