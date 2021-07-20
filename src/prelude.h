@@ -25,10 +25,10 @@ typedef double f64;
 typedef size_t usize;
 typedef unsigned int uint;
 
-typedef struct str {
+typedef struct Str {
     char const *data;
     usize len;
-} str;
+} Str;
 
 //
 // Macros.

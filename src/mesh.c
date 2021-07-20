@@ -9,8 +9,7 @@
 
 #include <glad/glad.h>
 
-static uint
-init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices_len) {
+uint init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices_len) {
     uint vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -43,27 +42,6 @@ init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices
     glDeleteBuffers(1, &vbo);
 
     return vao;
-}
-
-Mesh new_mesh(
-    Vertex *vertices,
-    usize vertices_len,
-    uint *indices,
-    usize indices_len,
-    Texture *textures,
-    usize textures_len) {
-    return (Mesh) {
-        vertices,
-        vertices_len,
-
-        indices,
-        indices_len,
-
-        textures,
-        textures_len,
-
-        init_mesh_vao(vertices, vertices_len, indices, indices_len),
-    };
 }
 
 void dealloc_mesh(Mesh *mesh) {
