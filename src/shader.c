@@ -20,7 +20,7 @@ static uint init_shader(uint type, char const *source, char info_log[INFO_LOG_LE
     glShaderSource(id, 1, &source, NULL);
     glCompileShader(id);
     if (!shader_compile_success(id, info_log, err)) {
-        GLOW_WARNING("%s shader compilation failed with ```\n%s```", SHADER_TYPE(type), info_log);
+        GLOW_WARNING("%s shader compilation failed with: `\n%s`", SHADER_TYPE(type), info_log);
     }
 
     return id;
@@ -47,7 +47,7 @@ Shader new_shader_from_source(ShaderStrings const source, Err *err) {
 
     glLinkProgram(program_id);
     if (!program_link_success(program_id, info_log, err)) {
-        GLOW_WARNING("shader program linking failed with ```\n%s```", info_log);
+        GLOW_WARNING("shader program linking failed with: `\n%s`", info_log);
     }
 
     glDeleteShader(geometry_id);

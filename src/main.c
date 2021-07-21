@@ -124,10 +124,34 @@ int main(int argc, char *argv[]) {
     vec2 translations[100] = { 0 };
     {
         int instance_index = 0;
-        float const offset = 1.5f;
+        float const offset = 2.0f;
         for (int y = -10; y < 10; y += 2) {
             for (int x = -10; x < 10; x += 2) {
                 translations[instance_index++] = (vec2) { x * offset, y * offset };
+            }
+        }
+    }
+
+    // Use instanced arrays instead of passing the offset values as uniforms to the shader.
+    // @Note: these are defined as a vertex attribute (allowing us to store much more data)
+    // that are updated per instance instead of per vertex.
+    for (usize i = 0; i < backpack_model.meshes_len; ++i) {
+        glBindVertexArray(backpack_model.meshes[i].vao);
+        DEFER(glBindVertexArray(0)) {
+            glEnableVertexAttribArray(3); // offset
+
+            uint vbo_instance;
+            glGenBuffers(1, &vbo_instance);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_instance);
+            DEFER(glBindBuffer(GL_ARRAY_BUFFER, 0)) {
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    sizeof(vec2) * ARRAY_LEN(translations),
+                    &translations[0],
+                    GL_STATIC_DRAW);
+
+                glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), (void *) 0);
+                glVertexAttribDivisor(3, /*divisor*/ 1);
             }
         }
     }
@@ -142,7 +166,7 @@ int main(int argc, char *argv[]) {
         process_input(window, clock.time_increment);
 
         if (fps.last_update_time == clock.time) {
-            char title[32];
+            char title[32]; // 32 seems large enough..
             snprintf(title, sizeof(title), "glow | %d fps", fps.rate);
             glfwSetWindowTitle(window, title);
         }
@@ -167,13 +191,26 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(backpack.shader, "world_to_view", view);
             set_shader_mat4(backpack.shader, "view_to_clip", projection);
 
-            char string_buf[sizeof("offsets[99]") + 1] = { 0 };
-            for (int i = 0; i < 100; ++i) {
-                snprintf(&string_buf[0], ARRAY_LEN(string_buf), "offsets[%d]", i);
-                set_shader_vec2(backpack.shader, string_buf, translations[i]);
+            // @Note: this is pretty much `draw_textureless_model_with_shader` being inlined,
+            // but with `glDrawElementsInstanced` instead of `glDrawElements` in the call to
+            // `draw_mesh_with_shader`.
+            for (usize i = 0; i < backpack_model.meshes_len; ++i) {
+                Mesh *mesh = &backpack_model.meshes[i];
+                // @Hack: ignore textures while drawing the mesh.
+                usize const textures_len = mesh->textures_len;
+                DEFER(mesh->textures_len = textures_len) {
+                    mesh->textures_len = 0;
+                    glBindVertexArray(mesh->vao);
+                    DEFER(glBindVertexArray(0)) {
+                        glDrawElementsInstanced(
+                            GL_TRIANGLES,
+                            mesh->indices_len,
+                            GL_UNSIGNED_INT,
+                            0,
+                            /*instancecount*/ ARRAY_LEN(translations));
+                    }
+                }
             }
-
-            draw_textureless_model_with_shader(&backpack_model, &backpack.shader);
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.

@@ -82,9 +82,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
 
     glBindVertexArray(mesh->vao);
     DEFER(glBindVertexArray(0)) {
-        // glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
-        // @Temporary: just testing instancing without changing all function arguments...
-        glDrawElementsInstanced(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0, 100);
+        glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
     }
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }

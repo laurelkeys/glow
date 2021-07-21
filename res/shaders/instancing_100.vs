@@ -1,10 +1,9 @@
 #version 330
 
 layout (location = 0) in vec3 aPos;
+layout (location = 3) in vec2 aOffset; // @Note: mesh.c's `init_mesh_vao` sets locations 0, 1 and 2
 
 out vec3 color;
-
-uniform vec2 offsets[100];
 
 uniform mat4 local_to_world; // model
 uniform mat4 world_to_view; // view
@@ -19,7 +18,5 @@ vec3 hsv2rgb(vec3 c) {
 
 void main() {
     color = hsv2rgb(vec3(float(gl_InstanceID) / 99.0, 1.0, 1.0));
-    vec3 offset = vec3(offsets[gl_InstanceID], -10.0);
-    vec4 position = vec4(aPos+ offset, 1.0) * local_to_world * world_to_view * view_to_clip;
-    gl_Position = position ;
+    gl_Position = vec4(aPos + vec3(aOffset, -10.0), 1.0) * local_to_world * world_to_view * view_to_clip;
 }

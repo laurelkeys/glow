@@ -8,6 +8,7 @@
 #include "console.h"
 #include "file.h"
 #include "maths.h"
+#include "mesh.h"
 #include "model.h"
 #include "opengl.h"
 #include "shader.h"
