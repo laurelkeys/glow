@@ -23,7 +23,7 @@ PathsToShader vis_normals = { {
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    WindowSettings const window_settings = { 800, 600, set_window_callbacks };
+    WindowSettings const window_settings = { 1280, 720, set_window_callbacks };
     mouse_last.x = (f32) window_settings.width / 2.0f;
     mouse_last.y = (f32) window_settings.height / 2.0f;
 
@@ -72,12 +72,64 @@ int main(int argc, char *argv[]) {
         glDeleteBuffers(1, &vbo);
     }
 
+#define MSAA 1
+#define MSAA_SAMPLES 16
+
+    // Configure the MSAA framebuffer.
+    uint fbo_msaa;
+    glGenFramebuffers(1, &fbo_msaa);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_msaa);
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        // Create a multisampled color attachment texture.
+        uint texure_ms;
+        glGenTextures(1, &texure_ms);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, texure_ms);
+        DEFER(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0)) {
+            glTexImage2DMultisample(
+                /*target*/ GL_TEXTURE_2D_MULTISAMPLE,
+                /*samples*/ MSAA_SAMPLES,
+                /*internalformat*/ GL_RGB,
+                /*width*/ window_settings.width,
+                /*height*/ window_settings.height,
+                /*fixedsamplelocations*/ GL_TRUE);
+        }
+
+        glFramebufferTexture2D(
+            /*target*/ GL_FRAMEBUFFER,
+            /*attachment*/ GL_COLOR_ATTACHMENT0,
+            /*textarget*/ GL_TEXTURE_2D_MULTISAMPLE,
+            /*texture*/ texure_ms,
+            /*level*/ 0);
+
+        // Create a multisampled renderbuffer object for depth and stencil attachments.
+        uint rbo_ms;
+        glGenRenderbuffers(1, &rbo_ms);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo_ms);
+        DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+            glRenderbufferStorageMultisample(
+                /*target*/ GL_RENDERBUFFER,
+                /*samples*/ MSAA_SAMPLES,
+                /*internalformat*/ GL_DEPTH24_STENCIL8,
+                /*width*/ window_settings.width,
+                /*height*/ window_settings.height);
+        }
+
+        glFramebufferRenderbuffer(
+            /*target*/ GL_FRAMEBUFFER,
+            /*attachment*/ GL_DEPTH_STENCIL_ATTACHMENT,
+            /*renderbuffertarget*/ GL_RENDERBUFFER,
+            /*renderbuffer*/ rbo_ms);
+
+        // Check if the framebuffer is complete.
+        int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE) {
+            GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
+        }
+    }
+
     Clock clock = { 0 };
     Fps fps = { 0 };
     setup_shaders();
-
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
-    glEnable(GL_DEPTH_TEST);
 
     while (!glfwWindowShouldClose(window)) {
         clock_tick(&clock, glfwGetTime());
@@ -95,6 +147,14 @@ int main(int argc, char *argv[]) {
 
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
+
+#if MSAA
+        // Draw the scene to the multisampled framebuffer.
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo_msaa);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+#endif
 
         use_shader(backpack.shader);
         {
@@ -131,6 +191,20 @@ int main(int argc, char *argv[]) {
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
         glDepthFunc(GL_LESS);
+
+#if MSAA
+        // Blit the multisampled framebuffer to the default one.
+        // glBlitNamedFramebuffer(
+        //     /*readFramebuffer*/ fbo_msaa,
+        //     /*drawFramebuffer*/ 0,
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_msaa);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(
+            /*src*/ 0, 0, window_settings.width, window_settings.height,
+            /*dst*/ 0, 0, window_settings.width, window_settings.height,
+            /*mask*/ GL_COLOR_BUFFER_BIT, /*filter*/ GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#endif
 
         glfwSwapBuffers(window);
         glfwPollEvents();

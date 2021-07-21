@@ -104,7 +104,7 @@ static bool load_stored_textures_with_assimp_type_into_mesh_textures(
         for (usize j = 0; j < texture_store->len; ++j) {
             if (!strncmp(&path.data[0], texture_store->paths[j], path.length)) {
                 found_it = true;
-                mesh->textures[(mesh->textures_len)++] = texture_store->textures[j];
+                mesh->textures[mesh->textures_len++] = texture_store->textures[j];
             }
         }
         if (!found_it) { GLOW_WARNING("could not find texture: `%s`", &path.data[0]); }
@@ -220,7 +220,7 @@ static void alloc_into_model_meshes_from_assimp_node(
     for (uint i = 0; i < ai_node->mNumMeshes; ++i) {
         struct aiMesh *ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
         assert(model->meshes_len < model->meshes_capacity);
-        model->meshes[(model->meshes_len)++] =
+        model->meshes[model->meshes_len++] =
             alloc_mesh_from_assimp_mesh(texture_store, ai_mesh, ai_scene, err); // assert(!*err);
     }
 
@@ -234,7 +234,7 @@ static void alloc_into_model_meshes_from_assimp_node(
 // clang-format off
 static uint const POST_PROCESS_FLAGS = 0
     | aiProcess_ValidateDataStructure
-    | aiProcess_Triangulate // @Volatile: `process_assimp_mesh_to_alloc_mesh` relies on this
+    | aiProcess_Triangulate // @Volatile: `alloc_mesh_from_assimp_mesh` relies on this
     | aiProcess_FlipUVs
     | aiProcess_JoinIdenticalVertices
     | aiProcess_CalcTangentSpace

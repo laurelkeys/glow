@@ -95,9 +95,14 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     glfwSwapInterval(settings.vsync ? 1 : 0);
     if (settings.set_callbacks_fn) { settings.set_callbacks_fn(window); }
 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
+
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         return (*err = Err_Glad_Init, NULL);
     }
+
+    glEnable(GL_DEPTH_TEST); // @Cleanup
+    if (settings.msaa > 0) { glEnable(GL_MULTISAMPLE); }
 
     int flags = 0;
     glGetIntegerv(GL_CONTEXT_FLAGS, &flags);

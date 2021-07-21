@@ -175,7 +175,6 @@ char const *sampler_name_from_texture_material(TextureMaterialType const materia
     }
 }
 
-#if 1
 Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
     uint texture_id;
     glGenTextures(1, &texture_id);
@@ -187,7 +186,7 @@ Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
             glTexImage2D(
                 /*target*/ target,
                 /*level*/ 0,
-                /*internalFormat*/ format,
+                /*internalFormat*/ format, // @Cleanup
                 /*width*/ texture_images[i].width,
                 /*height*/ texture_images[i].height,
                 /*border*/ 0,
@@ -226,4 +225,3 @@ Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err)
 
     return texture;
 }
-#endif
