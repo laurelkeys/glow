@@ -20,7 +20,7 @@ typedef struct TextureStore {
 } TextureStore;
 
 // @Cleanup: this isn't great... maybe it could be specified as an arg when creating the model?
-static int const STORED_ASSIMP_TYPES[] = {
+static enum aiTextureType const STORED_ASSIMP_TYPES[] = {
     aiTextureType_DIFFUSE, // aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
 };
 
@@ -116,6 +116,44 @@ static bool load_stored_textures_with_assimp_type_into_mesh_textures(
     return found_all_textures;
 }
 
+static usize count_assimp_material_textures_with_assimp_types(
+    struct aiMaterial const *ai_material,
+    enum aiTextureType const ai_types[],
+    usize ai_types_len) {
+    usize count = 0;
+    for (usize j = 0; j < ai_types_len; ++j) {
+        // @Note: a aiMaterial can have multiple textures.
+        count += aiGetMaterialTextureCount(ai_material, ai_types[j]);
+    }
+    return count;
+}
+
+static TextureStore alloc_texture_store_for_assimp_types(
+    struct aiScene const *ai_scene, enum aiTextureType const ai_types[], usize ai_types_len) {
+    usize texture_store_capacity = 0;
+    for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
+        struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
+        texture_store_capacity +=
+            count_assimp_material_textures_with_assimp_types(ai_material, ai_types, ai_types_len);
+    }
+
+    return (TextureStore) {
+        .paths = calloc(texture_store_capacity, sizeof(char *)),
+        .textures = calloc(texture_store_capacity, sizeof(Texture)),
+        .len = 0,
+        .capacity = texture_store_capacity,
+    };
+}
+
+static void dealloc_texture_store(TextureStore *texture_store) {
+    // @Note: dealloc paths in reverse order using unsigned wrap around.
+    for (usize i = texture_store->len - 1; i < texture_store->len; --i) {
+        free(texture_store->paths[i]);
+    }
+    free(texture_store->textures);
+    free(texture_store->paths);
+}
+
 static Mesh alloc_mesh_from_assimp_mesh(
     TextureStore const *texture_store,
     struct aiMesh const *ai_mesh,
@@ -125,10 +163,9 @@ static Mesh alloc_mesh_from_assimp_mesh(
 
     struct aiMaterial *ai_material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
 
-    usize textures_capacity = 0;
-    for (usize i = 0; i < ARRAY_LEN(STORED_ASSIMP_TYPES); ++i) {
-        textures_capacity += aiGetMaterialTextureCount(ai_material, STORED_ASSIMP_TYPES[i]);
-    }
+    usize const textures_capacity = count_assimp_material_textures_with_assimp_types(
+        ai_material, STORED_ASSIMP_TYPES, ARRAY_LEN(STORED_ASSIMP_TYPES));
+
     assert(textures_capacity <= texture_store->capacity);
 
     Mesh mesh = {
@@ -263,9 +300,9 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     }
 
     GLOW_LOG("Loading model: `%s`", model_path);
-    assert(count_assimp_nodes(ai_scene->mRootNode) - 1 == ai_scene->mNumMeshes);
+    assert(ai_scene->mNumMeshes > 0 && ai_scene->mNumMaterials > 0);
+    assert(ai_scene->mNumMeshes == count_assimp_nodes(ai_scene->mRootNode) - 1);
 
-    assert(ai_scene->mNumMeshes > 0);
     Model model = {
         .path = model_path,
         .meshes = calloc(ai_scene->mNumMeshes, sizeof(Mesh)),
@@ -273,22 +310,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         .meshes_capacity = ai_scene->mNumMeshes,
     };
 
-    assert(ai_scene->mNumMaterials > 0);
-    usize texture_store_capacity = 0;
-    for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
-        // @Note: a aiMaterial can have multiple textures.
-        struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
-        for (usize j = 0; j < ARRAY_LEN(STORED_ASSIMP_TYPES); ++j) {
-            texture_store_capacity +=
-                aiGetMaterialTextureCount(ai_material, STORED_ASSIMP_TYPES[j]);
-        }
-    }
-    TextureStore texture_store = {
-        .paths = calloc(texture_store_capacity, sizeof(char *)),
-        .textures = calloc(texture_store_capacity, sizeof(Texture)),
-        .len = 0,
-        .capacity = texture_store_capacity,
-    };
+    TextureStore texture_store = alloc_texture_store_for_assimp_types(
+        ai_scene, STORED_ASSIMP_TYPES, ARRAY_LEN(STORED_ASSIMP_TYPES));
 
     if (!model.meshes || !texture_store.paths || !texture_store.textures) {
         *err = Err_Calloc;
@@ -321,10 +344,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
             assert(model.meshes_len == model.meshes_capacity);
         }
 
-        // Clean up the temporary mesh texture data used to create model.meshes.
-        for (usize i = 0; i < texture_store.len; ++i) { free(texture_store.paths[i]); }
-        free(texture_store.paths);
-        free(texture_store.textures);
+        // Clean up the temporary mesh texture data allocated to create model.meshes.
+        dealloc_texture_store(&texture_store);
     }
 
     // Clean up assimp scene data.
