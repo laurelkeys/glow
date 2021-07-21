@@ -14,7 +14,8 @@ static void GLAPIENTRY debug_message_callback(
     GLsizei length,
     const GLchar *message,
     const void *userParam) {
-    if (/* id == 131169 || */ id == 131185 || id == 131204 || id == 131218) {
+    if (id == 131169 || id == 131185 || id == 131204 || id == 131218) {
+        // 131169: Framebuffer detailed info
         // 131185: Buffer detailed info
         // 131204: Texture state usage warning
         // 131218: Program/shader state performance warning

@@ -11,13 +11,8 @@ PathsToShader skybox = { {
     .fragment = GLOW_SHADERS_ "simple_skybox.fs",
 } };
 PathsToShader backpack = { {
-    .vertex = GLOW_SHADERS_ "simple_texture.vs",
-    .fragment = GLOW_SHADERS_ "simple_texture.fs",
-} };
-PathsToShader vis_normals = { {
-    .vertex = GLOW_SHADERS_ "visualize_normals.vs",
-    .fragment = GLOW_SHADERS_ "visualize_normals.fs",
-    .geometry = GLOW_SHADERS_ "visualize_normals.gs",
+    .vertex = GLOW_SHADERS_ "instancing_100.vs",
+    .fragment = GLOW_SHADERS_ "instancing_100.fs",
 } };
 
 int main(int argc, char *argv[]) {
@@ -37,7 +32,6 @@ int main(int argc, char *argv[]) {
     // @Volatile: use these same files in `process_input`.
     skybox.shader = new_shader_from_filepath(skybox.paths, &err);
     backpack.shader = new_shader_from_filepath(backpack.paths, &err);
-    vis_normals.shader = new_shader_from_filepath(vis_normals.paths, &err);
 
     stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
     Model backpack_model = alloc_new_model_from_filepath(choose_model[BACKPACK].path, &err);
@@ -73,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
 #define MSAA 1
-#define MSAA_SAMPLES 16
+#define MSAA_SAMPLES 4
 
     // Configure the MSAA framebuffer.
     uint fbo_msaa;
@@ -127,6 +121,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    vec2 translations[100] = { 0 };
+    {
+        int instance_index = 0;
+        float const offset = 1.5f;
+        for (int y = -10; y < 10; y += 2) {
+            for (int x = -10; x < 10; x += 2) {
+                translations[instance_index++] = (vec2) { x * offset, y * offset };
+            }
+        }
+    }
+
     Clock clock = { 0 };
     Fps fps = { 0 };
     setup_shaders();
@@ -162,17 +167,13 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(backpack.shader, "world_to_view", view);
             set_shader_mat4(backpack.shader, "view_to_clip", projection);
 
-            draw_model_with_shader(&backpack_model, &backpack.shader);
-        }
+            char string_buf[sizeof("offsets[99]") + 1] = { 0 };
+            for (int i = 0; i < 100; ++i) {
+                snprintf(&string_buf[0], ARRAY_LEN(string_buf), "offsets[%d]", i);
+                set_shader_vec2(backpack.shader, string_buf, translations[i]);
+            }
 
-        // Draw the same model, but now with a geometry shader to visualize normals.
-        use_shader(vis_normals.shader);
-        {
-            set_shader_mat4(vis_normals.shader, "local_to_world", mat4_id());
-            set_shader_mat4(vis_normals.shader, "world_to_view", view);
-            set_shader_mat4(vis_normals.shader, "view_to_clip", projection);
-
-            draw_textureless_model_with_shader(&backpack_model, &vis_normals.shader);
+            draw_textureless_model_with_shader(&backpack_model, &backpack.shader);
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.
@@ -200,9 +201,16 @@ int main(int argc, char *argv[]) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_msaa);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         glBlitFramebuffer(
-            /*src*/ 0, 0, window_settings.width, window_settings.height,
-            /*dst*/ 0, 0, window_settings.width, window_settings.height,
-            /*mask*/ GL_COLOR_BUFFER_BIT, /*filter*/ GL_NEAREST);
+            /*src*/ 0,
+            0,
+            window_settings.width,
+            window_settings.height,
+            /*dst*/ 0,
+            0,
+            window_settings.width,
+            window_settings.height,
+            /*mask*/ GL_COLOR_BUFFER_BIT,
+            /*filter*/ GL_NEAREST);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
 
