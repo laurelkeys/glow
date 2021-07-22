@@ -134,9 +134,9 @@ vec3 oklab_to_linear_rgb(vec3 const c) {
 
 vec3 linear_rgb_to_ciexyz(vec3 const c) {
     vec3 ciexyz = {
-        0.412453 * c.x + 0.357580 * c.y + 0.180423 * c.z,
-        0.212671 * c.x + 0.715160 * c.y + 0.072169 * c.z,
-        0.019334 * c.x + 0.119193 * c.y + 0.950227 * c.z,
+        0.412453f * c.x + 0.357580f * c.y + 0.180423f * c.z,
+        0.212671f * c.x + 0.715160f * c.y + 0.072169f * c.z,
+        0.019334f * c.x + 0.119193f * c.y + 0.950227f * c.z,
     };
     CLAMP_MIN3(ciexyz, 0.0f);
     return ciexyz;

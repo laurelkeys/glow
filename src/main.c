@@ -1,40 +1,51 @@
 #include "main.h"
 
-Camera camera;
+static Camera camera;
 
-vec2 mouse_last;
-bool mouse_is_first = true;
-bool is_tab_pressed = false;
+static vec2 mouse_last;
+static bool mouse_is_first = true;
+static bool is_tab_pressed = false;
 
-PathsToShader skybox = { {
+static PathsToShader skybox = { {
     .vertex = GLOW_SHADERS_ "simple_skybox.vs",
     .fragment = GLOW_SHADERS_ "simple_skybox.fs",
 } };
-PathsToShader backpack = { {
-    .vertex = GLOW_SHADERS_ "instancing_100.vs",
-    .fragment = GLOW_SHADERS_ "instancing_100.fs",
+static PathsToShader planet = { {
+    .vertex = GLOW_SHADERS_ "instancing_texture_test.vs",
+    .fragment = GLOW_SHADERS_ "instancing_texture_test.fs",
 } };
+static PathsToShader rock = { {
+    .vertex = GLOW_SHADERS_ "instancing_texture_test.vs",
+    .fragment = GLOW_SHADERS_ "instancing_texture_test.fs",
+} };
+
+#define RANDOM(a, b) ((a) + ((b) - (a)) * ((f32) rand() / (f32) RAND_MAX))
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    WindowSettings const window_settings = { 1280, 720, set_window_callbacks };
+    WindowSettings const window_settings = { 800, 600, set_window_callbacks };
     mouse_last.x = (f32) window_settings.width / 2.0f;
     mouse_last.y = (f32) window_settings.height / 2.0f;
 
-    camera = new_camera_at((vec3) { 0, 0, 3 });
+    camera = new_camera_at((vec3) { 0, 0, 55 });
     camera.aspect = (f32) window_settings.width / (f32) window_settings.height;
+    camera.movement_speed = 50.0f;
+    camera.far = 1000.0f;
 
     GLFWwindow *const window = init_opengl(window_settings, &err);
-
     /* glfwSetWindowUserPointer(GLFWwindow *window, void *pointer); */
 
     // @Volatile: use these same files in `process_input`.
     skybox.shader = new_shader_from_filepath(skybox.paths, &err);
-    backpack.shader = new_shader_from_filepath(backpack.paths, &err);
+    planet.shader = new_shader_from_filepath(planet.paths, &err);
+    rock.shader = new_shader_from_filepath(rock.paths, &err);
 
-    stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
-    Model backpack_model = alloc_new_model_from_filepath(choose_model[BACKPACK].path, &err);
+    stbi_set_flip_vertically_on_load(choose_model[PLANET].flip_on_load);
+    Model planet_model = alloc_new_model_from_filepath(choose_model[PLANET].path, &err);
+
+    stbi_set_flip_vertically_on_load(choose_model[ROCK].flip_on_load);
+    Model rock_model = alloc_new_model_from_filepath(choose_model[ROCK].path, &err);
 
     stbi_set_flip_vertically_on_load(false);
     Texture const skybox_tex = new_cubemap_texture_from_filepaths(
@@ -68,6 +79,7 @@ int main(int argc, char *argv[]) {
 
 #define MSAA 1
 #define MSAA_SAMPLES 4
+    // @Note: we could just pass .msaa = MSAA_SAMPLES to WindowSettings instead.
 
     // Configure the MSAA framebuffer.
     uint fbo_msaa;
@@ -121,6 +133,29 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    f32 const offset = 2.5f; // 25.0f;
+    f32 const radius = 50.0f; // 150.0f;
+    usize const amount = 1000; // 100000;
+    srand((uint) glfwGetTime()); // initialize random seed
+    mat4 *model_matrices = calloc(amount, sizeof(mat4));
+    for (usize i = 0; i < amount; ++i) {
+        f32 const rotation_angle = RANDOM(0.0f, 360.0f);
+        f32 const translation_angle = ((f32) i / (f32) amount) * 360.0f;
+
+        vec3 const displacement = {
+            .x = RANDOM(-offset, offset) + sinf(translation_angle) * radius,
+            .y = RANDOM(-offset, offset) * 0.4f,
+            .z = RANDOM(-offset, offset) + cosf(translation_angle) * radius,
+        };
+
+        mat4 const T = mat4_translate(displacement);
+        mat4 const S = mat4_scale(vec3_of(RANDOM(0.05f, 0.25f)));
+        mat4 const R = mat4_rotate(rotation_angle, (vec3) { 0.4f, 0.6f, 0.8f });
+
+        model_matrices[i] = mat4_mul(T, mat4_mul(S, R));
+    }
+
+    /*
     vec2 translations[100] = { 0 };
     {
         int instance_index = 0;
@@ -151,10 +186,11 @@ int main(int argc, char *argv[]) {
                     GL_STATIC_DRAW);
 
                 glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), (void *) 0);
-                glVertexAttribDivisor(3, /*divisor*/ 1);
+                glVertexAttribDivisor(3, 1);
             }
         }
     }
+    */
 
     Clock clock = { 0 };
     Fps fps = { 0 };
@@ -185,31 +221,25 @@ int main(int argc, char *argv[]) {
         glEnable(GL_DEPTH_TEST);
 #endif
 
-        use_shader(backpack.shader);
+        use_shader(planet.shader);
         {
-            set_shader_mat4(backpack.shader, "local_to_world", mat4_id());
-            set_shader_mat4(backpack.shader, "world_to_view", view);
-            set_shader_mat4(backpack.shader, "view_to_clip", projection);
+            mat4 const model =
+                mat4_mul(mat4_translate((vec3) { 0.0f, -3.0f, 0.0f }), mat4_scale(vec3_of(4.0f)));
+            set_shader_mat4(planet.shader, "local_to_world", model);
+            set_shader_mat4(planet.shader, "world_to_view", view);
+            set_shader_mat4(planet.shader, "view_to_clip", projection);
 
-            // @Note: this is pretty much `draw_textureless_model_with_shader` being inlined,
-            // but with `glDrawElementsInstanced` instead of `glDrawElements` in the call to
-            // `draw_mesh_with_shader`.
-            for (usize i = 0; i < backpack_model.meshes_len; ++i) {
-                Mesh *mesh = &backpack_model.meshes[i];
-                // @Hack: ignore textures while drawing the mesh.
-                usize const textures_len = mesh->textures_len;
-                DEFER(mesh->textures_len = textures_len) {
-                    mesh->textures_len = 0;
-                    glBindVertexArray(mesh->vao);
-                    DEFER(glBindVertexArray(0)) {
-                        glDrawElementsInstanced(
-                            GL_TRIANGLES,
-                            mesh->indices_len,
-                            GL_UNSIGNED_INT,
-                            0,
-                            /*instancecount*/ ARRAY_LEN(translations));
-                    }
-                }
+            draw_model_with_shader(&planet_model, &planet.shader);
+        }
+
+        use_shader(rock.shader);
+        {
+            set_shader_mat4(rock.shader, "world_to_view", view);
+            set_shader_mat4(rock.shader, "view_to_clip", projection);
+
+            for (usize i = 0; i < amount; ++i) {
+                set_shader_mat4(rock.shader, "local_to_world", model_matrices[i]);
+                draw_model_with_shader(&rock_model, &rock.shader);
             }
         }
 
@@ -238,11 +268,11 @@ int main(int argc, char *argv[]) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_msaa);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         glBlitFramebuffer(
-            /*src*/ 0,
+            0,
             0,
             window_settings.width,
             window_settings.height,
-            /*dst*/ 0,
+            0,
             0,
             window_settings.width,
             window_settings.height,
@@ -257,13 +287,18 @@ int main(int argc, char *argv[]) {
 
     glDeleteVertexArrays(1, &vao_skybox);
     glDeleteProgram(skybox.shader.program_id);
-    glDeleteProgram(backpack.shader.program_id);
-    dealloc_model(&backpack_model);
+    glDeleteProgram(planet.shader.program_id);
+    glDeleteProgram(rock.shader.program_id);
+    dealloc_model(&planet_model);
+    dealloc_model(&rock_model);
+    free(model_matrices);
 
     goto main_exit;
 
 main_err:
     switch (err) {
+        case Err_None: break;
+        case Err_Unkown: GLOW_ERROR("unkown error"); break;
         case Err_Glfw_Init: GLOW_ERROR("failed to initialize glfw"); break;
         case Err_Glfw_Window: GLOW_ERROR("failed to create glfw window"); break;
         case Err_Glad_Init: GLOW_ERROR("failed to initialize glad"); break;
@@ -311,12 +346,12 @@ void process_input(GLFWwindow *window, f32 delta_time) {
     if IS_PRESSED (Q) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
 
     if ON_PRESS (TAB, is_tab_pressed) {
-        // @Volatile: use the same files as in `main`.
-        GLOW_LOG("Hot swapping skybox shaders");
-        reload_shader_from_filepath(&skybox.shader, skybox.paths);
+        GLOW_LOG("Hot swapping shaders");
 
-        GLOW_LOG("Hot swapping backpack shaders");
-        reload_shader_from_filepath(&backpack.shader, backpack.paths);
+        // @Volatile: use the same files as in `main`.
+        reload_shader_from_filepath(&skybox.shader, skybox.paths);
+        reload_shader_from_filepath(&planet.shader, planet.paths);
+        reload_shader_from_filepath(&rock.shader, rock.paths);
 
         setup_shaders();
     }

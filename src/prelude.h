@@ -67,9 +67,9 @@ typedef struct Str {
         ++it.index, ++it.value)
 */
 
-#define DEFER(f, ...)                                                 \
+#define DEFER(f)                                                      \
     for (int CONCATIFY(i__, __LINE__) = 0; !CONCATIFY(i__, __LINE__); \
-         (CONCATIFY(i__, __LINE__) += 1), f, ##__VA_ARGS__)
+         (CONCATIFY(i__, __LINE__) += 1), f)
 
 //
 // Miscellaneous.

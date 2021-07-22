@@ -21,7 +21,7 @@ typedef struct TextureStore {
 
 // @Cleanup: this isn't great... maybe it could be specified as an arg when creating the model?
 static enum aiTextureType const STORED_ASSIMP_TYPES[] = {
-    aiTextureType_DIFFUSE, // aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
+    aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
 };
 
 static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_type) {
@@ -103,8 +103,9 @@ static bool load_stored_textures_with_assimp_type_into_mesh_textures(
         bool found_it = false;
         for (usize j = 0; j < texture_store->len; ++j) {
             if (!strncmp(&path.data[0], texture_store->paths[j], path.length)) {
-                found_it = true;
                 mesh->textures[mesh->textures_len++] = texture_store->textures[j];
+                found_it = true;
+                break;
             }
         }
         if (!found_it) { GLOW_WARNING("could not find texture: `%s`", &path.data[0]); }
@@ -185,31 +186,18 @@ static Mesh alloc_mesh_from_assimp_mesh(
     //
 
     bool const has_texcoord = (ai_mesh->mTextureCoords[0] != NULL);
-
-    if (has_texcoord) {
-        for (uint i = 0; i < ai_mesh->mNumVertices; ++i) {
-            struct aiVector3D position = ai_mesh->mVertices[i];
-            struct aiVector3D normal = ai_mesh->mNormals[i];
-            struct aiVector3D texcoord = ai_mesh->mTextureCoords[0][i];
-            /* struct aiVector3D tangent = ai_mesh->mTangents[i]; */
-            /* struct aiVector3D bitangent = ai_mesh->mBitangents[i]; */
-            mesh.vertices[mesh.vertices_len++] = (Vertex) {
-                { position.x, position.y, position.z },
-                { normal.x, normal.y, normal.z },
-                { texcoord.x, texcoord.y },
-                /* { tangent.x, tangent.y, tangent.z }, */
-                /* { bitangent.x, bitangent.y, bitangent.z }, */
-            };
-        }
-    } else {
-        for (uint i = 0; i < ai_mesh->mNumVertices; ++i) {
-            struct aiVector3D position = ai_mesh->mVertices[i];
-            struct aiVector3D normal = ai_mesh->mNormals[i];
-            mesh.vertices[mesh.vertices_len++] = (Vertex) {
-                { position.x, position.y, position.z },
-                { normal.x, normal.y, normal.z },
-            };
-        }
+    for (uint i = 0; i < ai_mesh->mNumVertices; ++i) {
+        struct aiVector3D position = ai_mesh->mVertices[i];
+        struct aiVector3D normal = ai_mesh->mNormals[i];
+        struct aiVector3D texcoord =
+            has_texcoord ? ai_mesh->mTextureCoords[0][i] : (struct aiVector3D) { 0 };
+        /* struct aiVector3D tangent = ai_mesh->mTangents[i]; */
+        /* struct aiVector3D bitangent = ai_mesh->mBitangents[i]; */
+        mesh.vertices[mesh.vertices_len++] = (Vertex) {
+            { position.x, position.y, position.z },
+            { normal.x, normal.y, normal.z },
+            { texcoord.x, texcoord.y },
+        };
     }
     assert(mesh.vertices_len == ai_mesh->mNumVertices);
 
@@ -224,7 +212,7 @@ static Mesh alloc_mesh_from_assimp_mesh(
         mesh.indices[mesh.indices_len++] = ai_mesh->mFaces[i].mIndices[1];
         mesh.indices[mesh.indices_len++] = ai_mesh->mFaces[i].mIndices[2];
     }
-    assert(mesh.indices_len = 3 * ai_mesh->mNumFaces);
+    assert(mesh.indices_len == 3 * ai_mesh->mNumFaces);
 
     //
     // Mesh textures.

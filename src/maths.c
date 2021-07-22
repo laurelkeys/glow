@@ -297,9 +297,8 @@ static f32 mat4_minor(mat4 const m, int r, int c) {
     return mat3_determinant(cut_down);
 }
 static f32 mat4_cofactor(mat4 const m, int r, int c) {
-    f32 const sign = (r + c) % 2 == 0 ? 1 : -1;
     f32 const minor = mat4_minor(m, r, c);
-    return sign * minor;
+    return ((r + c) % 2 == 0) ? minor : -minor;
 }
 static mat4 mat4_adjoint(mat4 const m) {
     mat4 adjoint;
