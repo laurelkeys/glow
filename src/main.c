@@ -1,5 +1,10 @@
 #include "main.h"
 
+#define USE_MSAA 1
+#define MSAA_SAMPLES 4
+
+#define USE_INSTANCED_RENDERING 1
+
 static Camera camera;
 
 static vec2 mouse_last;
@@ -15,7 +20,11 @@ static PathsToShader planet = { {
     .fragment = GLOW_SHADERS_ "instancing_texture_test.fs",
 } };
 static PathsToShader rock = { {
+#if USE_INSTANCED_RENDERING
+    .vertex = GLOW_SHADERS_ "instancing_texture_test2.vs",
+#else
     .vertex = GLOW_SHADERS_ "instancing_texture_test.vs",
+#endif
     .fragment = GLOW_SHADERS_ "instancing_texture_test.fs",
 } };
 
@@ -77,10 +86,6 @@ int main(int argc, char *argv[]) {
         glDeleteBuffers(1, &vbo);
     }
 
-#define MSAA 1
-#define MSAA_SAMPLES 4
-    // @Note: we could just pass .msaa = MSAA_SAMPLES to WindowSettings instead.
-
     // Configure the MSAA framebuffer.
     uint fbo_msaa;
     glGenFramebuffers(1, &fbo_msaa);
@@ -135,9 +140,9 @@ int main(int argc, char *argv[]) {
 
     f32 const offset = 2.5f; // 25.0f;
     f32 const radius = 50.0f; // 150.0f;
-    usize const amount = 1000; // 100000;
-    srand((uint) glfwGetTime()); // initialize random seed
+    usize const amount = 10000; // 100000;
     mat4 *model_matrices = calloc(amount, sizeof(mat4));
+    srand((uint) glfwGetTime()); // initialize random seed
     for (usize i = 0; i < amount; ++i) {
         f32 const rotation_angle = RANDOM(0.0f, 360.0f);
         f32 const translation_angle = ((f32) i / (f32) amount) * 360.0f;
@@ -155,42 +160,42 @@ int main(int argc, char *argv[]) {
         model_matrices[i] = mat4_mul(T, mat4_mul(S, R));
     }
 
-    /*
-    vec2 translations[100] = { 0 };
-    {
-        int instance_index = 0;
-        float const offset = 2.0f;
-        for (int y = -10; y < 10; y += 2) {
-            for (int x = -10; x < 10; x += 2) {
-                translations[instance_index++] = (vec2) { x * offset, y * offset };
+#if USE_INSTANCED_RENDERING
+    // Use instanced arrays instead of passing the model matrix values as uniforms to the shader.
+    // @Note: these are defined as a vertex attribute (allowing us to store much more data) that
+    // are updated per instance (with `divisor` = 1) instead of per vertex (with `divisor` = 0).
+
+    uint vbo_instance;
+    glGenBuffers(1, &vbo_instance);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_instance);
+    DEFER(glBindBuffer(GL_ARRAY_BUFFER, 0)) {
+        glBufferData(GL_ARRAY_BUFFER, sizeof(mat4) * amount, &model_matrices[0], GL_STATIC_DRAW);
+        for (usize i = 0; i < rock_model.meshes_len; ++i) {
+            glBindVertexArray(rock_model.meshes[i].vao);
+            DEFER(glBindVertexArray(0)) {
+                // Set attribute pointers for the model matrix (mat4 = vec4 x 4).
+                glEnableVertexAttribArray(3);
+                glEnableVertexAttribArray(4);
+                glEnableVertexAttribArray(5);
+                glEnableVertexAttribArray(6);
+
+                glVertexAttribPointer(
+                    3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 0));
+                glVertexAttribPointer(
+                    4, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 1));
+                glVertexAttribPointer(
+                    5, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 2));
+                glVertexAttribPointer(
+                    6, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 3));
+
+                glVertexAttribDivisor(3, /*divisor*/ 1);
+                glVertexAttribDivisor(4, /*divisor*/ 1);
+                glVertexAttribDivisor(5, /*divisor*/ 1);
+                glVertexAttribDivisor(6, /*divisor*/ 1);
             }
         }
     }
-
-    // Use instanced arrays instead of passing the offset values as uniforms to the shader.
-    // @Note: these are defined as a vertex attribute (allowing us to store much more data)
-    // that are updated per instance instead of per vertex.
-    for (usize i = 0; i < backpack_model.meshes_len; ++i) {
-        glBindVertexArray(backpack_model.meshes[i].vao);
-        DEFER(glBindVertexArray(0)) {
-            glEnableVertexAttribArray(3); // offset
-
-            uint vbo_instance;
-            glGenBuffers(1, &vbo_instance);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo_instance);
-            DEFER(glBindBuffer(GL_ARRAY_BUFFER, 0)) {
-                glBufferData(
-                    GL_ARRAY_BUFFER,
-                    sizeof(vec2) * ARRAY_LEN(translations),
-                    &translations[0],
-                    GL_STATIC_DRAW);
-
-                glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), (void *) 0);
-                glVertexAttribDivisor(3, 1);
-            }
-        }
-    }
-    */
+#endif
 
     Clock clock = { 0 };
     Fps fps = { 0 };
@@ -213,7 +218,7 @@ int main(int argc, char *argv[]) {
         mat4 const projection = get_camera_projection_matrix(&camera);
         mat4 const view = get_camera_view_matrix(&camera);
 
-#if MSAA
+#if USE_MSAA
         // Draw the scene to the multisampled framebuffer.
         glBindFramebuffer(GL_FRAMEBUFFER, fbo_msaa);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -237,10 +242,29 @@ int main(int argc, char *argv[]) {
             set_shader_mat4(rock.shader, "world_to_view", view);
             set_shader_mat4(rock.shader, "view_to_clip", projection);
 
+#if USE_INSTANCED_RENDERING
+            // @Hack: we know there's a single texture (which is actually a normal, not diffuse).
+            assert(rock_model.meshes_len == 1 && rock_model.meshes[0].textures_len == 1);
+
+            set_shader_sampler2D(rock.shader, "texture_diffuse", GL_TEXTURE0);
+            bind_texture_to_unit(rock_model.meshes[0].textures[0], GL_TEXTURE0);
+
+            // @Note: this is pretty much `draw_model_with_shader` inlined,
+            // but with `glDrawElementsInstanced` and not `glDrawElements`.
+            DEFER(glBindVertexArray(0)) {
+                for (usize i = 0; i < rock_model.meshes_len; ++i) {
+                    Mesh *mesh = &rock_model.meshes[i];
+                    glBindVertexArray(mesh->vao);
+                    glDrawElementsInstanced(
+                        GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0, amount);
+                }
+            }
+#else
             for (usize i = 0; i < amount; ++i) {
                 set_shader_mat4(rock.shader, "local_to_world", model_matrices[i]);
                 draw_model_with_shader(&rock_model, &rock.shader);
             }
+#endif
         }
 
         // Change the depth function to make sure the skybox passes the depth tests.
@@ -260,7 +284,7 @@ int main(int argc, char *argv[]) {
         }
         glDepthFunc(GL_LESS);
 
-#if MSAA
+#if USE_MSAA
         // Blit the multisampled framebuffer to the default one.
         // glBlitNamedFramebuffer(
         //     /*readFramebuffer*/ fbo_msaa,
