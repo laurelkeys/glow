@@ -26,7 +26,7 @@ static int const WRAP[] = {
     [TextureWrap_Repeat        ] = GL_REPEAT,
 };
 
-static int const INTERNAL_FORMAT[] = {
+static int const FORMAT[] = {
     [TextureFormat_R   ] = GL_RED,
     [TextureFormat_Rg  ] = GL_RG,
     [TextureFormat_Rgb ] = GL_RGB,
@@ -38,12 +38,12 @@ STATIC_ASSERT(TextureFormat_Rg == 2 /* components */);
 STATIC_ASSERT(TextureFormat_Rgb == 3 /* components */);
 STATIC_ASSERT(TextureFormat_Rgba == 4 /* components */);
 
-static int const TEXTURE_TARGET[] = {
+static int const TARGET_TYPE[] = {
     [TextureTargetType_2D  ] = GL_TEXTURE_2D,
     [TextureTargetType_Cube] = GL_TEXTURE_CUBE_MAP,
 };
 
-static int const TEXTURE_TARGET_CUBE_FACE[6] = {
+static int const TARGET_TYPE_CUBE_FACE[6] = {
     [0] = GL_TEXTURE_CUBE_MAP_POSITIVE_X, [1] = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
     [2] = GL_TEXTURE_CUBE_MAP_POSITIVE_Y, [3] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
     [4] = GL_TEXTURE_CUBE_MAP_POSITIVE_Z, [5] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
@@ -93,10 +93,10 @@ Texture new_texture_from_image_with_settings(
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-        int const internal_format = settings.format == TextureFormat_Default
-                                        ? gl_format(texture_image.channels)
-                                        : INTERNAL_FORMAT[settings.format];
         int const format = gl_format(texture_image.channels);
+        int const internal_format = (settings.format == TextureFormat_Default)
+                                        ? gl_format(texture_image.channels)
+                                        : FORMAT[settings.format];
         if (internal_format != format) {
             GLOW_WARNING(
                 "%dx%dx%d texture image has OpenGL format=`0x%x` but internalFormat=`0x%x`",
@@ -159,34 +159,19 @@ Texture new_texture_from_filepath_with_settings(
     return texture;
 }
 
-void bind_texture_to_unit(Texture const texture, uint texture_unit) {
-    glActiveTexture(texture_unit);
-    glBindTexture(TEXTURE_TARGET[texture.target], texture.id);
-}
-
-char const *sampler_name_from_texture_material(TextureMaterialType const material) {
-    switch (material) {
-        // @Volatile: :SyncWithTextureMaterialType:
-        case TextureMaterialType_Diffuse: return "texture_diffuse";
-        case TextureMaterialType_Specular: return "texture_specular";
-        case TextureMaterialType_Height: return "texture_height";
-        case TextureMaterialType_Normal: return "texture_normal";
-        default: assert(false); return "";
-    }
-}
-
+// @Todo: allow the internal format, wrap mode and filter mode to be specified.
 Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
     DEFER(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)) {
         for (usize i = 0; i < 6; ++i) {
-            int const target = TEXTURE_TARGET_CUBE_FACE[i];
+            int const target = TARGET_TYPE_CUBE_FACE[i];
             int const format = gl_format(texture_images[i].channels);
             glTexImage2D(
                 /*target*/ target,
                 /*level*/ 0,
-                /*internalFormat*/ format, // @Cleanup
+                /*internalFormat*/ format,
                 /*width*/ texture_images[i].width,
                 /*height*/ texture_images[i].height,
                 /*border*/ 0,
@@ -221,7 +206,12 @@ Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err)
 
     Texture const texture = new_cubemap_texture_from_images(texture_images);
 
-    for (usize i = 0; i < 6; ++i) { stbi_image_free(texture_images[i].data); }
+    for (usize i = 5; i < 6; --i) { stbi_image_free(texture_images[i].data); }
 
     return texture;
+}
+
+void bind_texture_to_unit(Texture const texture, uint texture_unit) {
+    glActiveTexture(texture_unit);
+    glBindTexture(TARGET_TYPE[texture.target], texture.id);
 }

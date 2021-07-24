@@ -29,8 +29,9 @@ static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_
         // @Volatile: :SyncWithTextureMaterialType:
         case aiTextureType_DIFFUSE: return TextureMaterialType_Diffuse;
         case aiTextureType_SPECULAR: return TextureMaterialType_Specular;
-        case aiTextureType_HEIGHT: return TextureMaterialType_Normal;
-        case aiTextureType_AMBIENT: return TextureMaterialType_Height;
+        case aiTextureType_AMBIENT: return TextureMaterialType_Ambient;
+        case aiTextureType_NORMALS: return TextureMaterialType_Normal;
+        case aiTextureType_HEIGHT: return TextureMaterialType_Height;
         default:
             GLOW_WARNING("unhandled assimp aiTextureType: `%d`", ai_type);
             assert(false);
@@ -59,9 +60,9 @@ static void store_textures_with_assimp_type(
         // @Note: we assume all texture paths are relative to dir_path.
         usize const full_path_len = dir_path.len + 1 + path.length; // + 1 for the slash
         char *full_path = calloc(full_path_len + 1, sizeof(char));
-        DEFER(free(full_path)) {
-            snprintf(full_path, full_path_len + 1, "%s" SLASH "%s", dir_path.data, &path.data[0]);
+        snprintf(full_path, full_path_len + 1, "%s" SLASH "%s", dir_path.data, &path.data[0]);
 
+        DEFER(free(full_path)) {
             // Load and store the mesh texture together with its path so that
             // we can find it later on (when buillding the meshes themselves).
             assert(texture_store->len < texture_store->capacity);
@@ -147,7 +148,6 @@ static TextureStore alloc_texture_store_for_assimp_types(
 }
 
 static void dealloc_texture_store(TextureStore *texture_store) {
-    // @Note: dealloc paths in reverse order using unsigned wrap around.
     for (usize i = texture_store->len - 1; i < texture_store->len; --i) {
         free(texture_store->paths[i]);
     }
@@ -252,7 +252,7 @@ static void alloc_into_model_meshes_from_assimp_node(
     // Recursively process node's children.
     for (uint i = 0; i < ai_node->mNumChildren; ++i) {
         alloc_into_model_meshes_from_assimp_node(
-            model, texture_store, ai_node->mChildren[i], ai_scene, err); // assert(!*err);
+            model, texture_store, ai_node->mChildren[i], ai_scene, err);
     }
 }
 
@@ -305,10 +305,10 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         *err = Err_Calloc;
     } else {
         char *dir_path = alloc_str_copy(model_path);
-        DEFER(free(dir_path)) {
-            terminate_at_last_path_component_inplace(dir_path);
-            Str const dir_path_str = { .data = dir_path, .len = strlen(dir_path) };
+        terminate_at_last_path_component_inplace(dir_path);
+        Str const dir_path_str = { .data = dir_path, .len = strlen(dir_path) };
 
+        DEFER(free(dir_path)) {
             // Pre-load aiMaterial textures.
             for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
                 struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
@@ -326,15 +326,13 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         }
 
         // Convert assimp meshes.
-        if (!*err) {
-            alloc_into_model_meshes_from_assimp_node(
-                &model, &texture_store, ai_scene->mRootNode, ai_scene, err); // assert(!*err);
-            assert(model.meshes_len == model.meshes_capacity);
-        }
-
-        // Clean up the temporary mesh texture data allocated to create model.meshes.
-        dealloc_texture_store(&texture_store);
+        alloc_into_model_meshes_from_assimp_node(
+            &model, &texture_store, ai_scene->mRootNode, ai_scene, err);
+        assert(model.meshes_len == model.meshes_capacity);
     }
+
+    // Clean up the temporary mesh texture data allocated to create model.meshes.
+    dealloc_texture_store(&texture_store);
 
     // Clean up assimp scene data.
     aiReleaseImport(ai_scene);
@@ -349,7 +347,9 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
 }
 
 void dealloc_model(Model *model) {
-    for (usize i = 0; i < model->meshes_len; ++i) { dealloc_mesh(&model->meshes[i]); }
+    for (usize i = model->meshes_len - 1; i < model->meshes_len; --i) {
+        dealloc_mesh(&model->meshes[i]);
+    }
     free(model->meshes);
 }
 

@@ -53,11 +53,14 @@ add_executable(
 
 # ----------------------------------------------------------------------------------------
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_MODELS_="${PROJECT_SOURCE_DIR}/res/models/")
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_SHADERS_="${PROJECT_SOURCE_DIR}/res/shaders/")
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLOW_TEXTURES_="${PROJECT_SOURCE_DIR}/res/textures/")
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE GLOW_MODELS_="${PROJECT_SOURCE_DIR}/res/models/"
+    PRIVATE GLOW_SHADERS_="${PROJECT_SOURCE_DIR}/res/shaders/"
+    PRIVATE GLOW_TEXTURES_="${PROJECT_SOURCE_DIR}/res/textures/"
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_INCLUDE_NONE)
+    PUBLIC  GLFW_INCLUDE_NONE
+
+    PUBLIC  _CRT_SECURE_NO_WARNINGS)
 
 target_link_libraries(${PROJECT_NAME} glfw glad stb assimp)
 

@@ -45,6 +45,7 @@ typedef enum TextureMaterialType {
     TextureMaterialType_None = 0,
     TextureMaterialType_Diffuse,
     TextureMaterialType_Specular,
+    TextureMaterialType_Ambient,
     TextureMaterialType_Normal,
     TextureMaterialType_Height,
     // @Volatile: update new values where labeled :SyncWithTextureMaterialType:
@@ -69,11 +70,9 @@ Texture new_texture_from_filepath(char const *image_path, Err *err);
 Texture new_texture_from_filepath_with_settings(
     TextureSettings const settings, char const *image_path, Err *err);
 
-void bind_texture_to_unit(Texture const texture, uint texture_unit);
-
-char const *sampler_name_from_texture_material(TextureMaterialType const material);
-
 // @Note: the expected order for the 6 faces is: Right, Left, Top, Bottom, Front, Back.
 // Which follows the GL_TEXTURE_CUBE_MAP_*_* constants for: +X, -X, +Y, -Y, +Z, and -Z.
 Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]);
 Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err);
+
+void bind_texture_to_unit(Texture const texture, uint texture_unit);

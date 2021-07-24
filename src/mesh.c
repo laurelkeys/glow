@@ -45,34 +45,44 @@ uint init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize in
 }
 
 void dealloc_mesh(Mesh *mesh) {
-    free(mesh->vertices);
-    free(mesh->indices);
     free(mesh->textures);
+    free(mesh->indices);
+    free(mesh->vertices);
     glDeleteVertexArrays(1, &mesh->vao);
 }
 
-#define MAX_SAMPLER_NAME_LEN 64
+// @Volatile: :SyncWithTextureMaterialType:
+static char const *SAMPLER_NAME_FROM_MATERIAL_TYPE[] = {
+    [TextureMaterialType_Diffuse] = "texture_diffuse",
+    [TextureMaterialType_Specular] = "texture_specular",
+    [TextureMaterialType_Ambient] = "texture_ambient",
+    [TextureMaterialType_Normal] = "texture_normal",
+    [TextureMaterialType_Height] = "texture_height",
+};
+
+// @Volatile: :SyncWithTextureMaterialType:
+STATIC_ASSERT(ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE) == 6);
 
 static void set_sampler_name_from_texture_material(
     char *name, usize max_len, TextureMaterialType const material, uint count) {
-    int n = snprintf(name, max_len, sampler_name_from_texture_material(material));
+    int n = snprintf(name, max_len, SAMPLER_NAME_FROM_MATERIAL_TYPE[material]);
     if (count) { snprintf(name + n, max_len, "%d", count); }
 }
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
-    uint count[6] = { 0 }; // @Volatile: :SyncWithTextureMaterialType:
-
-    char name[MAX_SAMPLER_NAME_LEN + 1] = { 0 };
+    uint count[ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE)] = { 0 };
+    char name[24 + 1] = { 0 }; // @Note: large enough for SAMPLER_NAME_FROM_MATERIAL_TYPE
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
         TextureMaterialType const material = mesh->textures[i].material;
         assert((int) material <= (int) ARRAY_LEN(count));
-        assert((int) material > 0); // TextureMaterialType_None = 0
+        assert((int) material > 0); // 0 = TextureMaterialType_None
 
         // @Todo: store a char const *material_name in the Texture struct, and use string
         // interning for efficiency, since they will be immutable (and not always unique).
         set_sampler_name_from_texture_material(
-            &name[0], MAX_SAMPLER_NAME_LEN, mesh->textures[i].material, count[material]);
+            &name[0], ARRAY_LEN(name), mesh->textures[i].material, count[material]);
+
         count[material] += 1;
 
         uint const texture_unit = GL_TEXTURE0 + (uint) i;
@@ -84,7 +94,6 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
     DEFER(glBindVertexArray(0)) {
         glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
     }
+
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }
-
-#undef MAX_SAMPLER_NAME_LEN

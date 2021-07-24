@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
         glDeleteBuffers(1, &vbo);
     }
 
+#if USE_MSAA
     // Configure the MSAA framebuffer.
     uint fbo_msaa;
     glGenFramebuffers(1, &fbo_msaa);
@@ -137,6 +138,7 @@ int main(int argc, char *argv[]) {
             GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
         }
     }
+#endif
 
     f32 const offset = 2.5f; // 25.0f;
     f32 const radius = 50.0f; // 150.0f;
@@ -309,13 +311,19 @@ int main(int argc, char *argv[]) {
         glfwPollEvents();
     }
 
-    glDeleteVertexArrays(1, &vao_skybox);
-    glDeleteProgram(skybox.shader.program_id);
-    glDeleteProgram(planet.shader.program_id);
-    glDeleteProgram(rock.shader.program_id);
-    dealloc_model(&planet_model);
-    dealloc_model(&rock_model);
+#if USE_INSTANCED_RENDERING
+    glDeleteBuffers(1, &vbo_instance);
+#endif
     free(model_matrices);
+#if USE_MSAA
+    glDeleteFramebuffers(1, &fbo_msaa);
+#endif
+    glDeleteVertexArrays(1, &vao_skybox);
+    dealloc_model(&rock_model);
+    dealloc_model(&planet_model);
+    glDeleteProgram(rock.shader.program_id);
+    glDeleteProgram(planet.shader.program_id);
+    glDeleteProgram(skybox.shader.program_id);
 
     goto main_exit;
 
