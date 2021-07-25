@@ -32,6 +32,9 @@ static inline void setup_shaders(void);
 static inline void process_input(GLFWwindow *window, f32 delta_time);
 static void set_window_callbacks(GLFWwindow *window);
 
+static inline void begin_frame(GLFWwindow *window, int width, int height);
+static inline void end_frame(GLFWwindow *window, int width, int height);
+
 //
 // Resource path macros.
 //

@@ -51,6 +51,8 @@
 #define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))
 #define CLAMP_MIN(x, a) (((x) < (a)) ? (a) : (x))
 
+#define RANDOM(a, b) ((a) + ((b) - (a)) * ((f32) rand() / (f32) RAND_MAX))
+
 #define DIV_CEIL(dividend, divisor) ((dividend) / (divisor) + ((dividend) % (divisor) ? 1 : 0))
 
 //

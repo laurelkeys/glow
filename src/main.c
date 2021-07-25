@@ -1,14 +1,9 @@
 #include "main.h"
 
-#define USE_MSAA 1
-#define MSAA_SAMPLES 4
-
 #define USE_USE_SHADOW_MAPPING 1
 #define SHADOW_MAP_RESOLUTION 1024
 
 #define USE_INSTANCED_RENDERING 1
-
-#define RANDOM(a, b) ((a) + ((b) - (a)) * ((f32) rand() / (f32) RAND_MAX))
 
 static bool is_tab_pressed = false;
 static bool mouse_is_first = true;
@@ -30,8 +25,6 @@ static Model rock_model;
 typedef struct Resources {
     uint vao_skybox;
 
-    uint fbo_msaa;
-
     uint fbo_depth_map;
 
     usize instance_count;
@@ -40,15 +33,12 @@ typedef struct Resources {
 
 static inline Resources create_resources(Err *err, int width, int height);
 static inline void destroy_resources(Resources *r, int width, int height);
-
-static inline void begin_frame(GLFWwindow *window, int width, int height);
 static inline void draw_frame(Resources const *r, int width, int height);
-static inline void end_frame(GLFWwindow *window, int width, int height);
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    WindowSettings const window_settings = { 800, 600, set_window_callbacks };
+    WindowSettings const window_settings = { 800, 600, set_window_callbacks, .msaa = 4 };
 
     GLFWwindow *window = init_opengl(window_settings, &err);
     if (err) { goto main_exit_opengl; }
@@ -172,62 +162,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
             }
         }
     }
-
-    //
-    // MSAA framebuffer (fbo_msaa).
-    //
-
-#if USE_MSAA
-    glGenFramebuffers(1, &r.fbo_msaa);
-    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_msaa);
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        // Create a multisample texture for the color attachment.
-        uint tex_ms;
-        glGenTextures(1, &tex_ms);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex_ms);
-        DEFER(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0)) {
-            glTexImage2DMultisample(
-                /*target*/ GL_TEXTURE_2D_MULTISAMPLE,
-                /*samples*/ MSAA_SAMPLES,
-                /*internalformat*/ GL_RGB,
-                /*width*/ width,
-                /*height*/ height,
-                /*fixedsamplelocations*/ GL_TRUE);
-        }
-
-        // Create a multisampled renderbuffer object for depth and stencil attachments.
-        uint rbo_ms;
-        glGenRenderbuffers(1, &rbo_ms);
-        glBindRenderbuffer(GL_RENDERBUFFER, rbo_ms);
-        DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
-            glRenderbufferStorageMultisample(
-                /*target*/ GL_RENDERBUFFER,
-                /*samples*/ MSAA_SAMPLES,
-                /*internalformat*/ GL_DEPTH24_STENCIL8,
-                /*width*/ width,
-                /*height*/ height);
-        }
-
-        // Attach the texture and renderbuffer to the framebuffer.
-        glFramebufferTexture2D(
-            /*target*/ GL_FRAMEBUFFER,
-            /*attachment*/ GL_COLOR_ATTACHMENT0,
-            /*textarget*/ GL_TEXTURE_2D_MULTISAMPLE,
-            /*texture*/ tex_ms,
-            /*level*/ 0);
-        glFramebufferRenderbuffer(
-            /*target*/ GL_FRAMEBUFFER,
-            /*attachment*/ GL_DEPTH_STENCIL_ATTACHMENT,
-            /*renderbuffertarget*/ GL_RENDERBUFFER,
-            /*renderbuffer*/ rbo_ms);
-
-        // Check if the framebuffer is complete.
-        int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        if (status != GL_FRAMEBUFFER_COMPLETE) {
-            GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
-        }
-    }
-#endif
 
     //
     // Shadow mapping framebuffer (fbo_depth_map).
@@ -358,9 +292,6 @@ static inline void destroy_resources(Resources *r, int width, int height) {
 #if USE_USE_SHADOW_MAPPING
     glDeleteFramebuffers(1, &r->fbo_depth_map);
 #endif
-#if USE_MSAA
-    glDeleteFramebuffers(1, &r->fbo_msaa);
-#endif
     glDeleteVertexArrays(1, &r->vao_skybox);
 
     dealloc_model(&rock_model);
@@ -404,14 +335,6 @@ static inline void end_frame(GLFWwindow *window, int width, int height) {
 static inline void draw_frame(Resources const *r, int width, int height) {
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);
-
-#if USE_MSAA
-    // Draw the scene to the multisampled framebuffer.
-    glBindFramebuffer(GL_FRAMEBUFFER, r->fbo_msaa);
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
-#endif
 
     use_shader(planet.shader);
     {
@@ -472,16 +395,6 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         }
     }
     glDepthFunc(GL_LESS);
-
-#if USE_MSAA
-    // Blit the multisampled framebuffer to the default one.
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, r->fbo_msaa);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glBlitFramebuffer(
-            0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    }
-#endif
 }
 
 //
