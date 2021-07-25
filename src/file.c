@@ -44,13 +44,17 @@ char *alloc_data_from_filepath(char const *path, Err *err) {
     if (*err) { return NULL; }
 
     FILE *fp = fopen(path, "rb");
-    if (!fp) { return (*err = Err_Fopen, NULL); }
+    if (!fp) {
+        *err = Err_Fopen;
+        return NULL;
+    }
 
     usize const fsize = file_size_in_bytes(fp);
     char *data = calloc(fsize + 1, sizeof(char));
     if (!data) {
         fclose(fp);
-        return (*err = Err_Calloc, NULL);
+        *err = Err_Calloc;
+        return NULL;
     }
 
     fread(data, 1, fsize, fp);

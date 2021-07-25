@@ -63,7 +63,10 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     if (*err) { return NULL; }
 
     glfwSetErrorCallback(error_callback);
-    if (!glfwInit()) { return (*err = Err_Glfw_Init, NULL); }
+    if (!glfwInit()) {
+        *err = Err_Glfw_Init;
+        return NULL;
+    }
 
     // https://www.glfw.org/docs/latest/window.html#window_hints
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -90,7 +93,10 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
         window = glfwCreateWindow(settings.width, settings.height, "glow", NULL, NULL);
     }
 
-    if (!window) { return (*err = Err_Glfw_Window, NULL); }
+    if (!window) {
+        *err = Err_Glfw_Window;
+        return NULL;
+    }
 
     glfwMakeContextCurrent(window);
     glfwSwapInterval(settings.vsync ? 1 : 0);
@@ -99,7 +105,8 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        return (*err = Err_Glad_Init, NULL);
+        *err = Err_Glad_Init;
+        return NULL;
     }
 
     glEnable(GL_DEPTH_TEST); // @Cleanup
@@ -130,7 +137,8 @@ bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *er
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
         glGetShaderInfoLog(shader, INFO_LOG_LENGTH, NULL, info_log);
         info_log[CLAMP(length - 1, 0, INFO_LOG_LENGTH - 1)] = '\0';
-        return (*err = Err_Shader_Compile, false);
+        *err = Err_Shader_Compile;
+        return false;
     }
 
     return true;
@@ -146,7 +154,8 @@ bool program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
         glGetProgramInfoLog(program, INFO_LOG_LENGTH, NULL, info_log);
         info_log[CLAMP(length - 1, 0, INFO_LOG_LENGTH - 1)] = '\0';
-        return (*err = Err_Shader_Link, false);
+        *err = Err_Shader_Link;
+        return false;
     }
 
     return true;

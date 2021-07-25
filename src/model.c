@@ -97,7 +97,8 @@ static bool load_stored_textures_with_assimp_type_into_mesh_textures(
         if (aiGetMaterialTexture(
                 ai_material, ai_type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
             != aiReturn_SUCCESS) {
-            return (*err = Err_Assimp_Get_Texture, false);
+            *err = Err_Assimp_Get_Texture;
+            return false;
         }
 
         // Find (and copy) the pre-loaded texture by comparing its path.
@@ -178,7 +179,8 @@ static Mesh alloc_mesh_from_assimp_mesh(
     if (!mesh.vertices || !mesh.indices || !mesh.textures) {
         // @Todo: make sure it's ok to call this when vao = 0.
         dealloc_mesh(&mesh);
-        return (*err = Err_Calloc, (Mesh) { 0 });
+        *err = Err_Calloc;
+        return (Mesh) { 0 };
     }
 
     //
@@ -284,7 +286,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
 
     if (!ai_scene || !ai_scene->mRootNode || (ai_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)) {
         GLOW_WARNING("assimp import failed with: `%s`", aiGetErrorString());
-        return (*err = Err_Assimp_Import, (Model) { 0 });
+        *err = Err_Assimp_Import;
+        return (Model) { 0 };
     }
 
     GLOW_LOG("Loading model: `%s`", model_path);

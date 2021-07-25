@@ -147,7 +147,8 @@ Texture new_texture_from_filepath_with_settings(
     if (!data) {
         GLOW_WARNING("failed to load image from path: `%s`", image_path);
         GLOW_WARNING("stbi_failure_reason() returned: `%s`", stbi_failure_reason());
-        return (*err = Err_Stbi_Load, (Texture) { 0 });
+        *err = Err_Stbi_Load;
+        return (Texture) { 0 };
     }
     assert(1 <= channels && channels <= 4);
 
@@ -198,7 +199,8 @@ Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err)
         if (!data) {
             GLOW_WARNING("failed to load image from path: `%s`", i, image_paths[i]);
             GLOW_WARNING("stbi_failure_reason() returned: `%s`", stbi_failure_reason());
-            return (*err = Err_Stbi_Load, (Texture) { 0 });
+            *err = Err_Stbi_Load;
+            return (Texture) { 0 };
         }
         assert(1 <= channels && channels <= 4);
         texture_images[i] = (TextureImage) { data, width, height, channels };
