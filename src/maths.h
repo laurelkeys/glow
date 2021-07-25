@@ -42,8 +42,10 @@
 #define MIN4(a, b, c, d) (MIN(MIN((a), (b)), MIN((c), (d))))
 #define MAX4(a, b, c, d) (MAX(MAX((a), (b)), MAX((c), (d))))
 
-#define IS_ZERO(a) (((a) == 0.0) || (fabs(a) < FLT_EPSILON))
-#define IS_EQ(a, b) (((a) == (b)) || (fabs((a) - (b)) < FLT_EPSILON))
+#define APPROX_EQ(a, b, eps) (((a) == (b)) || (fabs((a) - (b)) < (eps)))
+#define APPROX_ZERO(a, eps) APPROX_EQ((a), 0.0, (eps))
+#define IS_EQ(a, b) APPROX_EQ((a), (b), FLT_EPSILON)
+#define IS_ZERO(a) IS_EQ((a), 0.0, FLT_EPSILON)
 
 #define CLAMP(x, a, b) (((x) < (a)) ? (a) : ((x) > (b)) ? (b) : (x))
 #define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))

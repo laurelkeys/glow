@@ -56,6 +56,10 @@ typedef struct Str {
 
 #define STATIC_ASSERT(expr) enum { CONCATIFY(ASSERT_line_, __LINE__) = 1 / (expr) }
 
+#define STRUCT_EQ(a, b)       \
+    ((sizeof(a) == sizeof(b)) \
+     && (0 == memcmp((void const *) &(a), (void const *) &(b), sizeof(a))))
+
 /*
 #define FOR(type, begin, end)  \
     for (                      \

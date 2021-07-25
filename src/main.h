@@ -28,9 +28,9 @@
 // Forward declarations.
 //
 
-void setup_shaders(void);
-void process_input(GLFWwindow *window, f32 delta_time);
-void set_window_callbacks(GLFWwindow *window);
+static inline void setup_shaders(void);
+static inline void process_input(GLFWwindow *window, f32 delta_time);
+static void set_window_callbacks(GLFWwindow *window);
 
 //
 // Resource path macros.

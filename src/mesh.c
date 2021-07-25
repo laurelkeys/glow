@@ -25,17 +25,16 @@ uint init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize in
         glBufferData(
             GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * indices_len, &indices[0], GL_STATIC_DRAW);
 
-        uint const stride = sizeof(Vertex);
-        glVertexAttribPointer(
-            0, 3, GL_FLOAT, GL_FALSE, stride, (void *) offsetof(Vertex, position));
-        glVertexAttribPointer(
-            1, 3, GL_FLOAT, GL_FALSE, stride, (void *) offsetof(Vertex, normal));
-        glVertexAttribPointer(
-            2, 2, GL_FLOAT, GL_FALSE, stride, (void *) offsetof(Vertex, texcoord));
+        glEnableVertexAttribArray(0); // position
+        glEnableVertexAttribArray(1); // normal
+        glEnableVertexAttribArray(2); // texcoord
 
-        glEnableVertexAttribArray(0); // vertex position
-        glEnableVertexAttribArray(1); // vertex normal
-        glEnableVertexAttribArray(2); // vertex texcoord
+        glVertexAttribPointer(
+            0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, position));
+        glVertexAttribPointer(
+            1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, normal));
+        glVertexAttribPointer(
+            2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, texcoord));
     }
 
     glDeleteBuffers(1, &ebo);
@@ -45,10 +44,11 @@ uint init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize in
 }
 
 void dealloc_mesh(Mesh *mesh) {
+    // @Note: we are not calling glDeleteTextures.
+    glDeleteVertexArrays(1, &mesh->vao);
     free(mesh->textures);
     free(mesh->indices);
     free(mesh->vertices);
-    glDeleteVertexArrays(1, &mesh->vao);
 }
 
 // @Volatile: :SyncWithTextureMaterialType:
