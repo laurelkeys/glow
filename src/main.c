@@ -1,6 +1,6 @@
 #include "main.h"
 
-#define USE_USE_SHADOW_MAPPING 1
+#define USE_SHADOW_MAPPING 1
 #define SHADOW_MAP_RESOLUTION 1024
 
 #define USE_INSTANCED_RENDERING 1
@@ -14,21 +14,20 @@ static Fps fps = { 0 };
 static Camera camera;
 
 static PathsToShader skybox;
-static PathsToShader planet;
-static PathsToShader rock;
+static PathsToShader debug_quad;
+static PathsToShader shadow_mapping;
 
 static Texture skybox_texture;
-
-static Model planet_model;
-static Model rock_model;
+static Texture wood_texture;
 
 typedef struct Resources {
     uint vao_skybox;
 
-    uint fbo_depth_map;
+    vec3 light_position;
+    uint vao_plane;
 
-    usize instance_count;
-    mat4 *instance_model_matrices;
+    uint fbo_depth_map;
+    uint tex_depth_map;
 } Resources;
 
 static inline Resources create_resources(Err *err, int width, int height);
@@ -43,7 +42,7 @@ int main(int argc, char *argv[]) {
     GLFWwindow *window = init_opengl(window_settings, &err);
     if (err) { goto main_exit_opengl; }
 
-    int w, h;
+    int w = 0, h = 0;
     glfwGetWindowSize(window, &w, &h);
     assert(w > 0 && h > 0);
 
@@ -102,22 +101,20 @@ main_exit_opengl:
 //
 
 static inline Resources create_resources(Err *err, int width, int height) {
+    Resources r = { 0 };
+
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
     skybox.paths.fragment = GLOW_SHADERS_ "simple_skybox.fs";
 
-    planet.paths.vertex = GLOW_SHADERS_ "instancing_texture_test.vs";
-    planet.paths.fragment = GLOW_SHADERS_ "instancing_texture_test.fs";
+    debug_quad.paths.vertex = GLOW_SHADERS_ "debug_quad_depth.vs";
+    debug_quad.paths.fragment = GLOW_SHADERS_ "debug_quad_depth.fs";
 
-#if USE_INSTANCED_RENDERING
-    rock.paths.vertex = GLOW_SHADERS_ "instancing_texture_test2.vs";
-#else
-    rock.paths.vertex = GLOW_SHADERS_ "instancing_texture_test.vs";
-#endif
-    rock.paths.fragment = GLOW_SHADERS_ "instancing_texture_test.fs";
+    shadow_mapping.paths.vertex = GLOW_SHADERS_ "shadow_mapping_depth.vs";
+    shadow_mapping.paths.fragment = GLOW_SHADERS_ "shadow_mapping_depth.fs";
 
     skybox.shader = new_shader_from_filepath(skybox.paths, err);
-    planet.shader = new_shader_from_filepath(planet.paths, err);
-    rock.shader = new_shader_from_filepath(rock.paths, err);
+    debug_quad.shader = new_shader_from_filepath(debug_quad.paths, err);
+    shadow_mapping.shader = new_shader_from_filepath(shadow_mapping.paths, err);
 
     stbi_set_flip_vertically_on_load(false);
     skybox_texture = new_cubemap_texture_from_filepaths(
@@ -131,13 +128,8 @@ static inline Resources create_resources(Err *err, int width, int height) {
         },
         err);
 
-    stbi_set_flip_vertically_on_load(choose_model[ROCK].flip_on_load);
-    rock_model = alloc_new_model_from_filepath(choose_model[ROCK].path, err);
-
-    stbi_set_flip_vertically_on_load(choose_model[PLANET].flip_on_load);
-    planet_model = alloc_new_model_from_filepath(choose_model[PLANET].path, err);
-
-    Resources r = { 0 };
+    stbi_set_flip_vertically_on_load(true);
+    wood_texture = new_texture_from_filepath(GLOW_TEXTURES_ "wood.png", err);
 
     // Exit early if there were any errors during setup.
     if (*err != Err_None) { return r; }
@@ -164,41 +156,73 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // Shadow mapping framebuffer (fbo_depth_map).
+    // Scene description (vao_plane, light_position).
     //
 
-#if USE_USE_SHADOW_MAPPING
+    r.light_position = (vec3) { -2.0f, 4.0f, -1.0f };
+
+    glGenVertexArrays(1, &r.vao_plane);
+    {
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        DEFER(glDeleteBuffers(1, &vbo)) {
+            glBindVertexArray(r.vao_plane);
+            DEFER(glBindVertexArray(0)) {
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(
+                    GL_ARRAY_BUFFER, sizeof(PLANE_VERTICES), PLANE_VERTICES, GL_STATIC_DRAW);
+
+                glEnableVertexAttribArray(0); // position
+                glEnableVertexAttribArray(1); // normal
+                glEnableVertexAttribArray(2); // texcoord
+
+                glVertexAttribPointer(
+                    0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 0));
+                glVertexAttribPointer(
+                    1, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 3));
+                glVertexAttribPointer(
+                    2, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 6));
+            }
+        }
+    }
+
+    //
+    // Shadow mapping (fbo_depth_map).
+    //
+
+#if USE_SHADOW_MAPPING
+    // Create a depth texture to be rendered from the lights' point of view.
+    glGenTextures(1, &r.tex_depth_map);
+    glBindTexture(GL_TEXTURE_2D, r.tex_depth_map);
+    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+        glTexImage2D(
+            /*target*/ GL_TEXTURE_2D,
+            /*level*/ 0,
+            /*internalFormat*/ GL_DEPTH_COMPONENT,
+            /*width*/ SHADOW_MAP_RESOLUTION,
+            /*height*/ SHADOW_MAP_RESOLUTION,
+            /*border*/ 0,
+            /*format*/ GL_DEPTH_COMPONENT,
+            /*type*/ GL_FLOAT,
+            /*data*/ NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
+
+    // Attach it to the fbo's depth buffer.
     glGenFramebuffers(1, &r.fbo_depth_map);
     glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_depth_map);
     DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        // Create a depth texture to be rendered from the lights' point of view.
-        uint tex_depth_map;
-        glGenTextures(1, &tex_depth_map);
-        glBindTexture(GL_TEXTURE_2D, tex_depth_map);
-        DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-            glTexImage2D(
-                /*target*/ GL_TEXTURE_2D,
-                /*level*/ 0,
-                /*internalFormat*/ GL_DEPTH_COMPONENT,
-                /*width*/ SHADOW_MAP_RESOLUTION,
-                /*height*/ SHADOW_MAP_RESOLUTION,
-                /*border*/ 0,
-                /*format*/ GL_DEPTH_COMPONENT,
-                /*type*/ GL_FLOAT,
-                /*data*/ NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        }
-
-        // Attach it to the fbo's depth buffer and specify no color buffer for rendering.
         glFramebufferTexture2D(
             /*target*/ GL_FRAMEBUFFER,
             /*attachment*/ GL_DEPTH_ATTACHMENT,
             /*textarget*/ GL_TEXTURE_2D,
-            /*texture*/ tex_depth_map,
+            /*texture*/ r.tex_depth_map,
             /*level*/ 0);
+
+        // Specify no color buffer for rendering.
         glDrawBuffer(GL_NONE);
         glReadBuffer(GL_NONE);
 
@@ -210,76 +234,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 #endif
 
-    //
-    // Instanced rendering (instance_count, instance_model_matrices).
-    //
-
-    f32 const offset = 2.5f; // 25.0f;
-    f32 const radius = 50.0f; // 150.0f;
-    r.instance_count = 10000; // 100000;
-    r.instance_model_matrices = calloc(r.instance_count, sizeof(mat4));
-
-    srand((uint) glfwGetTime()); // initialize random seed
-    for (usize i = 0; i < r.instance_count; ++i) {
-        f32 const rotation_angle = RANDOM(0.0f, 360.0f);
-        f32 const translation_angle = ((f32) i / (f32) r.instance_count) * 360.0f;
-
-        vec3 const displacement = {
-            .x = RANDOM(-offset, offset) + sinf(translation_angle) * radius,
-            .y = RANDOM(-offset, offset) * 0.4f,
-            .z = RANDOM(-offset, offset) + cosf(translation_angle) * radius,
-        };
-
-        mat4 const T = mat4_translate(displacement);
-        mat4 const S = mat4_scale(vec3_of(RANDOM(0.05f, 0.25f)));
-        mat4 const R = mat4_rotate(rotation_angle, (vec3) { 0.4f, 0.6f, 0.8f });
-
-        r.instance_model_matrices[i] = mat4_mul(T, mat4_mul(S, R));
-    }
-
-#if USE_INSTANCED_RENDERING
-    // Use instanced arrays instead of passing the model matrix values as uniforms to the shader.
-    // @Note: these are defined as a vertex attribute (allowing us to store much more data) that
-    // are updated per instance (with `divisor` = 1) instead of per vertex (with `divisor` = 0).
-
-    uint vbo_instance;
-    glGenBuffers(1, &vbo_instance);
-    DEFER(glDeleteBuffers(1, &vbo_instance)) {
-        DEFER(glBindVertexArray(0)) {
-            glBindBuffer(GL_ARRAY_BUFFER, vbo_instance);
-            glBufferData(
-                GL_ARRAY_BUFFER,
-                sizeof(mat4) * r.instance_count,
-                &r.instance_model_matrices[0],
-                GL_STATIC_DRAW);
-
-            for (usize i = 0; i < rock_model.meshes_len; ++i) {
-                glBindVertexArray(rock_model.meshes[i].vao);
-
-                // Set attribute pointers for the model matrix (mat4 = vec4 x 4).
-                glEnableVertexAttribArray(3);
-                glEnableVertexAttribArray(4);
-                glEnableVertexAttribArray(5);
-                glEnableVertexAttribArray(6);
-
-                glVertexAttribPointer(
-                    3, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 0));
-                glVertexAttribPointer(
-                    4, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 1));
-                glVertexAttribPointer(
-                    5, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 2));
-                glVertexAttribPointer(
-                    6, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (void *) (sizeof(vec4) * 3));
-
-                glVertexAttribDivisor(3, /*divisor*/ 1);
-                glVertexAttribDivisor(4, /*divisor*/ 1);
-                glVertexAttribDivisor(5, /*divisor*/ 1);
-                glVertexAttribDivisor(6, /*divisor*/ 1);
-            }
-        }
-    }
-#endif
-
     return r;
 }
 
@@ -287,23 +241,22 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
 
-    free(r->instance_model_matrices);
-
-#if USE_USE_SHADOW_MAPPING
+#if USE_SHADOW_MAPPING
     glDeleteFramebuffers(1, &r->fbo_depth_map);
 #endif
+    glDeleteVertexArrays(1, &r->vao_plane);
     glDeleteVertexArrays(1, &r->vao_skybox);
 
-    dealloc_model(&rock_model);
-    dealloc_model(&planet_model);
+    glDeleteTextures(1, &wood_texture.id);
+    glDeleteTextures(1, &skybox_texture.id);
 
-    glDeleteProgram(rock.shader.program_id);
-    glDeleteProgram(planet.shader.program_id);
+    glDeleteProgram(shadow_mapping.shader.program_id);
+    glDeleteProgram(debug_quad.shader.program_id);
     glDeleteProgram(skybox.shader.program_id);
 }
 
 //
-// Frame rendering, with pre- and post-processing.
+// Frame rendering pre- and post-processing.
 //
 
 static inline void begin_frame(GLFWwindow *window, int width, int height) {
@@ -319,9 +272,6 @@ static inline void begin_frame(GLFWwindow *window, int width, int height) {
         snprintf(title, sizeof(title), "glow | %d fps", fps.rate);
         glfwSetWindowTitle(window, title);
     }
-
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 static inline void end_frame(GLFWwindow *window, int width, int height) {
@@ -332,50 +282,52 @@ static inline void end_frame(GLFWwindow *window, int width, int height) {
     glfwPollEvents();
 }
 
+//
+// Frame rendering.
+//
+
 static inline void draw_frame(Resources const *r, int width, int height) {
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);
 
-    use_shader(planet.shader);
-    {
-        mat4 const model =
-            mat4_mul(mat4_translate((vec3) { 0.0f, -3.0f, 0.0f }), mat4_scale(vec3_of(4.0f)));
-        set_shader_mat4(planet.shader, "local_to_world", model);
-        set_shader_mat4(planet.shader, "world_to_view", view);
-        set_shader_mat4(planet.shader, "view_to_clip", projection);
+#if USE_SHADOW_MAPPING
+    // @Note: first render to depth map, then render the scene as normal
+    // with shadow mapping (by using the depth map).
 
-        draw_model_with_shader(&planet_model, &planet.shader);
-    }
+    glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+    DEFER(glViewport(0, 0, width, height)) {
+        glBindFramebuffer(GL_FRAMEBUFFER, r->fbo_depth_map);
+        DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+            glClear(GL_DEPTH_BUFFER_BIT);
 
-    use_shader(rock.shader);
-    {
-        set_shader_mat4(rock.shader, "world_to_view", view);
-        set_shader_mat4(rock.shader, "view_to_clip", projection);
+            use_shader(shadow_mapping.shader);
+            {
+                // Use an orthographic projection matrix to model a directional light source
+                // (i.e. all its rays are parallel), so there is no perspective deform.
+                mat4 const light_projection =
+                    mat4_ortho(-10, 10, -10, 10, /*near*/ 1.0f, /*far*/ 7.5f);
 
-#if USE_INSTANCED_RENDERING
-        // @Hack: we know there's a single texture (which is actually a normal, not diffuse).
-        assert(rock_model.meshes_len == 1 && rock_model.meshes[0].textures_len == 1);
+                mat4 const light_view =
+                    mat4_lookat(r->light_position, /*target*/ (vec3) { 0 }, (vec3) { 0, 1, 0 });
 
-        set_shader_sampler2D(rock.shader, "texture_diffuse", GL_TEXTURE0);
-        bind_texture_to_unit(rock_model.meshes[0].textures[0], GL_TEXTURE0);
-
-        // @Note: this is pretty much `draw_model_with_shader` inlined,
-        // but with `glDrawElementsInstanced` and not `glDrawElements`.
-        DEFER(glBindVertexArray(0)) {
-            for (usize i = 0; i < rock_model.meshes_len; ++i) {
-                Mesh *mesh = &rock_model.meshes[i];
-                glBindVertexArray(mesh->vao);
-                glDrawElementsInstanced(
-                    GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0, r->instance_count);
+                set_shader_mat4(
+                    shadow_mapping.shader,
+                    "world_to_light_space",
+                    mat4_mul(light_projection, light_view));
             }
+
+            // @Todo: render the scene.
         }
-#else
-        for (usize i = 0; i < r->instance_count; ++i) {
-            set_shader_mat4(rock.shader, "local_to_world", r->instance_model_matrices[i]);
-            draw_model_with_shader(&rock_model, &rock.shader);
-        }
-#endif
     }
+#endif
+
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+#if USE_SHADOW_MAPPING
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
+#endif
 
     // Change the depth function to make sure the skybox passes the depth tests.
     glDepthFunc(GL_LEQUAL);
@@ -402,6 +354,9 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 //
 
 static inline void setup_shaders(void) {
+    use_shader(debug_quad.shader);
+    set_shader_sampler2D(debug_quad.shader, "depth_map", GL_TEXTURE0);
+
     use_shader(skybox.shader);
     set_shader_sampler2D(skybox.shader, "skybox", GL_TEXTURE0);
 }
@@ -430,8 +385,8 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
         GLOW_LOG("Hot swapping shaders");
 
         reload_shader_from_filepath(&skybox.shader, skybox.paths);
-        reload_shader_from_filepath(&planet.shader, planet.paths);
-        reload_shader_from_filepath(&rock.shader, rock.paths);
+        reload_shader_from_filepath(&debug_quad.shader, debug_quad.paths);
+        reload_shader_from_filepath(&shadow_mapping.shader, shadow_mapping.paths);
 
         setup_shaders();
     }

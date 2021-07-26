@@ -127,6 +127,17 @@ static f32 const TRANSPARENT_VERTICES[] = {
      1.0f, -0.5f,  0.0f,    0.0f, 0.0f,
      1.0f,  0.5f,  0.0f,    0.0f, 1.0f,
 };
+
+static f32 const PLANE_VERTICES[] = {
+    // positions              // normals           // texture coords
+     25.0f, -0.5f,  25.0f,    0.0f, 1.0f, 0.0f,    25.0f,  0.0f,
+    -25.0f, -0.5f,  25.0f,    0.0f, 1.0f, 0.0f,     0.0f,  0.0f,
+    -25.0f, -0.5f, -25.0f,    0.0f, 1.0f, 0.0f,     0.0f, 25.0f,
+
+     25.0f, -0.5f,  25.0f,    0.0f, 1.0f, 0.0f,     25.0f,  0.0f,
+    -25.0f, -0.5f, -25.0f,    0.0f, 1.0f, 0.0f,      0.0f, 25.0f,
+     25.0f, -0.5f, -25.0f,    0.0f, 1.0f, 0.0f,     25.0f, 10.0f,
+};
 // clang-format on
 
 #if 0
