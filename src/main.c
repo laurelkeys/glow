@@ -331,8 +331,9 @@ static inline void begin_frame(GLFWwindow *window, int width, int height) {
     process_input(window, clock.time_increment);
 
     if (fps.last_update_time == clock.time) {
-        char title[32]; // 32 seems large enough..
-        snprintf(title, sizeof(title), "glow | %d fps", fps.rate);
+        char title[64]; // 64 seems large enough..
+        int const rate = (int) round(1000.0 / fps.frame_interval);
+        snprintf(title, sizeof(title), "glow | %d fps (%.3f ms)", rate, fps.frame_interval);
         glfwSetWindowTitle(window, title);
     }
 }
