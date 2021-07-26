@@ -25,9 +25,11 @@ typedef struct Resources {
 
     vec3 light_position;
     uint vao_plane;
+    uint vao_cube;
 
     uint fbo_depth_map;
     uint tex_depth_map;
+    uint vao_debug_quad;
 } Resources;
 
 static inline Resources create_resources(Err *err, int width, int height);
@@ -49,10 +51,8 @@ int main(int argc, char *argv[]) {
     mouse_last.x = 0.5f * w;
     mouse_last.y = 0.5f * h;
 
-    camera = new_camera_at((vec3) { 0, 0, 55 });
+    camera = new_camera_at((vec3) { 0, 0, 3 });
     camera.aspect = (f32) w / (f32) h;
-    camera.movement_speed = 50.0f;
-    camera.far = 1000.0f;
 
     Resources r = create_resources(&err, w, h);
     if (err) { goto main_exit; }
@@ -106,8 +106,8 @@ static inline Resources create_resources(Err *err, int width, int height) {
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
     skybox.paths.fragment = GLOW_SHADERS_ "simple_skybox.fs";
 
-    debug_quad.paths.vertex = GLOW_SHADERS_ "debug_quad_depth.vs";
-    debug_quad.paths.fragment = GLOW_SHADERS_ "debug_quad_depth.fs";
+    debug_quad.paths.vertex = GLOW_SHADERS_ "simple_quad.vs";
+    debug_quad.paths.fragment = GLOW_SHADERS_ "simple_quad_depth.fs";
 
     shadow_mapping.paths.vertex = GLOW_SHADERS_ "shadow_mapping_depth.vs";
     shadow_mapping.paths.fragment = GLOW_SHADERS_ "shadow_mapping_depth.fs";
@@ -156,7 +156,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // Scene description (vao_plane, light_position).
+    // Scene description (light_position, vao_plane, vao_cube).
     //
 
     r.light_position = (vec3) { -2.0f, 4.0f, -1.0f };
@@ -181,16 +181,83 @@ static inline Resources create_resources(Err *err, int width, int height) {
                 glVertexAttribPointer(
                     1, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 3));
                 glVertexAttribPointer(
-                    2, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 6));
+                    2, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 6));
+            }
+        }
+    }
+
+    glGenVertexArrays(1, &r.vao_cube);
+    {
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        DEFER(glDeleteBuffers(1, &vbo)) {
+            glBindVertexArray(r.vao_cube);
+            DEFER(glBindVertexArray(0)) {
+                f32 cube_vertices_ndc[ARRAY_LEN(CUBE_VERTICES)];
+                memcpy(cube_vertices_ndc, CUBE_VERTICES, sizeof(CUBE_VERTICES));
+                for (usize i = 0; i < ARRAY_LEN(CUBE_VERTICES); i += 8) {
+                    // Map [-0.5, 0.5] to [-1.0. 1.0].
+                    cube_vertices_ndc[i + 0] *= 2.0f;
+                    cube_vertices_ndc[i + 1] *= 2.0f;
+                    cube_vertices_ndc[i + 2] *= 2.0f;
+                }
+
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    sizeof(cube_vertices_ndc),
+                    cube_vertices_ndc,
+                    GL_STATIC_DRAW);
+
+                glEnableVertexAttribArray(0); // position
+                glEnableVertexAttribArray(1); // normal
+                glEnableVertexAttribArray(2); // texcoord
+
+                glVertexAttribPointer(
+                    0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 0));
+                glVertexAttribPointer(
+                    1, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 3));
+                glVertexAttribPointer(
+                    2, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 6));
             }
         }
     }
 
     //
-    // Shadow mapping (fbo_depth_map).
+    // Shadow mapping (fbo_depth_map, tex_depth_map, vao_debug_quad).
     //
 
 #if USE_SHADOW_MAPPING
+    glGenVertexArrays(1, &r.vao_debug_quad);
+    {
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        DEFER(glDeleteBuffers(1, &vbo)) {
+            glBindVertexArray(r.vao_debug_quad);
+            DEFER(glBindVertexArray(0)) {
+                // @Note: use GL_TRIANGLE_STRIP to draw it.
+                f32 const quad_vertices_ndc[] = {
+                    -1, 1, 0, 1, -1, -1, 0, 0, 1, 1, 1, 1, 1, -1, 1, 0,
+                };
+
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    sizeof(quad_vertices_ndc),
+                    quad_vertices_ndc,
+                    GL_STATIC_DRAW);
+
+                glEnableVertexAttribArray(0); // position (2D)
+                glEnableVertexAttribArray(1); // texcoord
+
+                glVertexAttribPointer(
+                    0, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 4, (void *) (sizeof(f32) * 0));
+                glVertexAttribPointer(
+                    1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 4, (void *) (sizeof(f32) * 2));
+            }
+        }
+    }
+
     // Create a depth texture to be rendered from the lights' point of view.
     glGenTextures(1, &r.tex_depth_map);
     glBindTexture(GL_TEXTURE_2D, r.tex_depth_map);
@@ -226,14 +293,11 @@ static inline Resources create_resources(Err *err, int width, int height) {
         glDrawBuffer(GL_NONE);
         glReadBuffer(GL_NONE);
 
-        // Check if the framebuffer is complete.
-        int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        if (status != GL_FRAMEBUFFER_COMPLETE) {
-            GLOW_WARNING("framebuffer is incomplete, status: `0x%x`", status);
-        }
+        check_bound_framebuffer_is_complete();
     }
 #endif
 
+    assert(*err == Err_None);
     return r;
 }
 
@@ -286,13 +350,48 @@ static inline void end_frame(GLFWwindow *window, int width, int height) {
 // Frame rendering.
 //
 
+#define NEAR_PLANE 1.0f
+#define FAR_PLANE 7.5f
+
+static inline void render_scene_with_shader(Shader const shader, Resources const *r) {
+    DEFER(glBindVertexArray(0)) {
+        mat4 model = mat4_id();
+        set_shader_mat4(shader, "local_to_world", model);
+        glBindVertexArray(r->vao_plane);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        model = mat4_mul(mat4_translate((vec3) { 0.0f, 1.5f, 0.0 }), mat4_scale(vec3_of(0.5f)));
+        set_shader_mat4(shader, "local_to_world", model);
+        glBindVertexArray(r->vao_cube);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        model = mat4_mul(mat4_translate((vec3) { 2.0f, 0.0f, 1.0 }), mat4_scale(vec3_of(0.5f)));
+        set_shader_mat4(shader, "local_to_world", model);
+        glBindVertexArray(r->vao_cube);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        model = mat4_mul(
+            mat4_translate((vec3) { -1.0f, 0.0f, 2.0 }),
+            mat4_mul(mat4_rotate(RADIANS(60), (vec3) { 1, 0, 1 }), mat4_scale(vec3_of(0.25))));
+        set_shader_mat4(shader, "local_to_world", model);
+        glBindVertexArray(r->vao_cube);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+}
+
 static inline void draw_frame(Resources const *r, int width, int height) {
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);
 
+    // Use an orthographic projection matrix to model a directional light source
+    // (i.e. all its rays are parallel), so there is no perspective deform.
+    mat4 const light_projection = mat4_ortho(-10, 10, -10, 10, NEAR_PLANE, FAR_PLANE);
+    mat4 const light_view =
+        mat4_lookat(r->light_position, /*target*/ (vec3) { 0 }, /*up*/ (vec3) { 0, 1, 0 });
+
 #if USE_SHADOW_MAPPING
-    // @Note: first render to depth map, then render the scene as normal
-    // with shadow mapping (by using the depth map).
+    // @Note: first render depth values to a texture, from the light's perspective,
+    // then render the scene as normal with shadow mapping (by using the depth map).
 
     glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
     DEFER(glViewport(0, 0, width, height)) {
@@ -302,21 +401,15 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 
             use_shader(shadow_mapping.shader);
             {
-                // Use an orthographic projection matrix to model a directional light source
-                // (i.e. all its rays are parallel), so there is no perspective deform.
-                mat4 const light_projection =
-                    mat4_ortho(-10, 10, -10, 10, /*near*/ 1.0f, /*far*/ 7.5f);
-
-                mat4 const light_view =
-                    mat4_lookat(r->light_position, /*target*/ (vec3) { 0 }, (vec3) { 0, 1, 0 });
-
                 set_shader_mat4(
                     shadow_mapping.shader,
                     "world_to_light_space",
                     mat4_mul(light_projection, light_view));
-            }
 
-            // @Todo: render the scene.
+                bind_texture_to_unit(wood_texture, GL_TEXTURE0);
+
+                render_scene_with_shader(shadow_mapping.shader, r);
+            }
         }
     }
 #endif
@@ -325,10 +418,23 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 #if USE_SHADOW_MAPPING
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
+    // Render the depth map to a fullscreen quad for visual debugging.
+    use_shader(debug_quad.shader);
+    {
+        set_shader_float(debug_quad.shader, "near_plane", NEAR_PLANE);
+        set_shader_float(debug_quad.shader, "far_plane", FAR_PLANE);
+
+        glBindVertexArray(r->vao_debug_quad);
+        DEFER(glBindVertexArray(0)) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
+
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+    }
 #endif
 
+#if !USE_SHADOW_MAPPING
     // Change the depth function to make sure the skybox passes the depth tests.
     glDepthFunc(GL_LEQUAL);
     use_shader(skybox.shader);
@@ -347,6 +453,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         }
     }
     glDepthFunc(GL_LESS);
+#endif
 }
 
 //

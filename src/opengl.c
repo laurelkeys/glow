@@ -127,6 +127,30 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     return window;
 }
 
+bool check_bound_framebuffer_is_complete() {
+    int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status == GL_FRAMEBUFFER_COMPLETE) { return true; }
+
+    // clang-format off
+    GLOW_WARNING(
+        "framebuffer is incomplete, status: `0x%x` (%s)",
+        status,
+        ((status == GL_FRAMEBUFFER_UNDEFINED)                       ? "GL_FRAMEBUFFER_UNDEFINED"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)         ? "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT) ? "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER)        ? "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER)        ? "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"
+        : (status == GL_FRAMEBUFFER_UNSUPPORTED)                   ? "GL_FRAMEBUFFER_UNSUPPORTED"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE)        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE)        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
+        : (status == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)      ? "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"
+                                                                    : ""));
+    // clang-format on
+
+    assert(false);
+    return false;
+}
+
 bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *err) {
     if (*err) { return false; }
 
