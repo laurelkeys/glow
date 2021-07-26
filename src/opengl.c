@@ -69,8 +69,8 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     }
 
     // https://www.glfw.org/docs/latest/window.html#window_hints
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -109,17 +109,20 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
         return NULL;
     }
 
-    glEnable(GL_DEPTH_TEST); // @Cleanup
-    if (settings.msaa > 0) { glEnable(GL_MULTISAMPLE); }
-
     int flags = 0;
     glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
     if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(debug_message_callback, 0);
-        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
     }
+#ifndef NDEBUG
+    assert((bool) GLAD_GL_KHR_debug == (bool) (flags & GL_CONTEXT_FLAG_DEBUG_BIT));
+#endif
+
+    glEnable(GL_DEPTH_TEST); // @Cleanup
+    if (settings.msaa > 0) { glEnable(GL_MULTISAMPLE); }
 
     GLOW_LOG("GL_VERSION = %s", (char *) glGetString(GL_VERSION));
     GLOW_LOG("GL_RENDERER = %s", (char *) glGetString(GL_RENDERER));
