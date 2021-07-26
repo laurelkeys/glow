@@ -1,9 +1,6 @@
 #include "main.h"
 
-#define USE_SHADOW_MAPPING 1
 #define SHADOW_MAP_RESOLUTION 1024
-
-#define USE_INSTANCED_RENDERING 1
 
 static bool is_tab_pressed = false;
 static bool mouse_is_first = true;
@@ -27,9 +24,9 @@ typedef struct Resources {
     uint vao_plane;
     uint vao_cube;
 
-    uint fbo_depth_map;
-    uint tex_depth_map;
     uint vao_debug_quad;
+    uint tex_depth_map;
+    uint fbo_depth_map;
 } Resources;
 
 static inline Resources create_resources(Err *err, int width, int height);
@@ -224,10 +221,9 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // Shadow mapping (fbo_depth_map, tex_depth_map, vao_debug_quad).
+    // Shadow mapping (vao_debug_quad, tex_depth_map, fbo_depth_map).
     //
 
-#if USE_SHADOW_MAPPING
     glGenVertexArrays(1, &r.vao_debug_quad);
     {
         uint vbo;
@@ -295,7 +291,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
         check_bound_framebuffer_is_complete();
     }
-#endif
 
     assert(*err == Err_None);
     return r;
@@ -305,13 +300,17 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
 
-#if USE_SHADOW_MAPPING
     glDeleteFramebuffers(1, &r->fbo_depth_map);
-#endif
+    glDeleteTextures(1, &r->tex_depth_map);
+    glDeleteVertexArrays(1, &r->vao_debug_quad);
+
+    glDeleteVertexArrays(1, &r->vao_cube);
     glDeleteVertexArrays(1, &r->vao_plane);
+
     glDeleteVertexArrays(1, &r->vao_skybox);
 
     glDeleteTextures(1, &wood_texture.id);
+
     glDeleteTextures(1, &skybox_texture.id);
 
     glDeleteProgram(shadow_mapping.shader.program_id);
@@ -389,7 +388,6 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     mat4 const light_view =
         mat4_lookat(r->light_position, /*target*/ (vec3) { 0 }, /*up*/ (vec3) { 0, 1, 0 });
 
-#if USE_SHADOW_MAPPING
     // @Note: first render depth values to a texture, from the light's perspective,
     // then render the scene as normal with shadow mapping (by using the depth map).
 
@@ -412,12 +410,10 @@ static inline void draw_frame(Resources const *r, int width, int height) {
             }
         }
     }
-#endif
 
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-#if USE_SHADOW_MAPPING
     // Render the depth map to a fullscreen quad for visual debugging.
     use_shader(debug_quad.shader);
     {
@@ -432,9 +428,8 @@ static inline void draw_frame(Resources const *r, int width, int height) {
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         }
     }
-#endif
 
-#if !USE_SHADOW_MAPPING
+    /*
     // Change the depth function to make sure the skybox passes the depth tests.
     glDepthFunc(GL_LEQUAL);
     use_shader(skybox.shader);
@@ -453,7 +448,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         }
     }
     glDepthFunc(GL_LESS);
-#endif
+    */
 }
 
 //
