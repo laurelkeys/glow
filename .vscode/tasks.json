@@ -1,0 +1,39 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build (Release)",
+            "group": "build",
+            "type": "shell",
+            "command": "python glow.py --make --config Release",
+            "args": [],
+            "problemMatcher": "$msCompile", // "problemMatcher": "$gcc",
+        },
+        {
+            "label": "Build (RelWithDebInfo)",
+            "group": "build",
+            "type": "shell",
+            "command": "python glow.py --make --config RelWithDebInfo",
+            "args": [],
+            "problemMatcher": "$msCompile", // "problemMatcher": "$gcc",
+        },
+        {
+            "label": "Build (Debug)",
+            "group": "build",
+            "type": "shell",
+            "command": "python glow.py --make --config Debug",
+            "args": [],
+            "problemMatcher": "$msCompile", // "problemMatcher": "$gcc",
+        },
+    ],
+    "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+    }
+}

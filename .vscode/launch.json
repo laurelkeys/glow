@@ -1,0 +1,44 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch (Release)",
+            "request": "launch",
+            "type": "cppvsdbg", // "type": "cppdbg",
+            "program": "${workspaceFolder}/build/Release/glow.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Build (Release)",
+        },
+        {
+            "name": "Launch (RelWithDebInfo)",
+            "request": "launch",
+            "type": "cppvsdbg", // "type": "cppdbg",
+            "program": "${workspaceFolder}/build/RelWithDebInfo/glow.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "Build (RelWithDebInfo)",
+        },
+        {
+            "name": "Launch (Debug)",
+            "request": "launch",
+            "type": "cppvsdbg", // "type": "cppdbg",
+            "program": "${workspaceFolder}/build/Debug/glow.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Build (Debug)",
+        },
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/ext/assimp/include",
+                "${workspaceFolder}/ext/glad/include",
+                "${workspaceFolder}/ext/glfw/include",
+                "${workspaceFolder}/ext/stb"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.18362.0",
+            "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30037/bin/Hostx64/x64/cl.exe",
+            "intelliSenseMode": "windows-msvc-x64",
+            "cStandard": "c17"
+        }
+    ],
+    "version": 4
+}

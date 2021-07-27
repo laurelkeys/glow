@@ -7,7 +7,16 @@
 - License: [MIT, Unlicense](https://github.com/nothings/stb/blob/master/LICENSE)
 - Upstream version: 1ee679c
   - `stb_image.h`: v2.27
-- Local modifications: None
+- Local modifications:
+  - Added a `std_impl.c` file:
+    ```c
+    // Implementation file for stb headers.
+
+    #define STB_IMAGE_IMPLEMENTATION
+    #define STBI_FAILURE_USERMSG
+    #define STBI_NO_THREAD_LOCALS
+    #include "stb_image.h"
+    ```
 
 ### glfw ([`glfw/`](glfw/))
 - URL: https://www.glfw.org/
