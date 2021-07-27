@@ -214,6 +214,7 @@ Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err)
 }
 
 void bind_texture_to_unit(Texture const texture, uint texture_unit) {
+    assert(texture_unit >= GL_TEXTURE0);
     glActiveTexture(texture_unit);
     glBindTexture(TARGET_TYPE[texture.target], texture.id);
 }

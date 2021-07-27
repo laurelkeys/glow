@@ -2,6 +2,7 @@
 
 #define SHADOW_MAP_RESOLUTION 1024
 
+static bool show_debug_quad = false;
 static bool is_tab_pressed = false;
 static bool mouse_is_first = true;
 static vec2 mouse_last = { 0 };
@@ -12,6 +13,7 @@ static Camera camera;
 
 static PathsToShader skybox;
 static PathsToShader debug_quad;
+static PathsToShader test_scene;
 static PathsToShader shadow_mapping;
 
 static Texture skybox_texture;
@@ -36,7 +38,9 @@ static inline void draw_frame(Resources const *r, int width, int height);
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
-    WindowSettings const window_settings = { 800, 600, set_window_callbacks, .msaa = 4 };
+    WindowSettings const window_settings = {
+        800, 600, set_window_callbacks, .msaa = 4, .vsync = true
+    };
 
     GLFWwindow *window = init_opengl(window_settings, &err);
     if (err) { goto main_exit_opengl; }
@@ -106,10 +110,15 @@ static inline Resources create_resources(Err *err, int width, int height) {
     debug_quad.paths.vertex = GLOW_SHADERS_ "simple_quad.vs";
     debug_quad.paths.fragment = GLOW_SHADERS_ "simple_quad_depth.fs";
 
+    test_scene.paths.vertex = GLOW_SHADERS_ "shadow_mapping.vs";
+    test_scene.paths.fragment = GLOW_SHADERS_ "shadow_mapping.fs";
+
     shadow_mapping.paths.vertex = GLOW_SHADERS_ "shadow_mapping_depth.vs";
     shadow_mapping.paths.fragment = GLOW_SHADERS_ "shadow_mapping_depth.fs";
 
+    // @Volatile: use the same shaders as in `process_input`.
     skybox.shader = new_shader_from_filepath(skybox.paths, err);
+    test_scene.shader = new_shader_from_filepath(test_scene.paths, err);
     debug_quad.shader = new_shader_from_filepath(debug_quad.paths, err);
     shadow_mapping.shader = new_shader_from_filepath(shadow_mapping.paths, err);
 
@@ -270,8 +279,8 @@ static inline Resources create_resources(Err *err, int width, int height) {
             /*data*/ NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // GL_CLAMP_TO_EDGE);
     }
 
     // Attach it to the fbo's depth buffer.
@@ -314,6 +323,7 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     glDeleteTextures(1, &skybox_texture.id);
 
     glDeleteProgram(shadow_mapping.shader.program_id);
+    glDeleteProgram(test_scene.shader.program_id);
     glDeleteProgram(debug_quad.shader.program_id);
     glDeleteProgram(skybox.shader.program_id);
 }
@@ -388,10 +398,10 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     mat4 const light_projection = mat4_ortho(-10, 10, -10, 10, NEAR_PLANE, FAR_PLANE);
     mat4 const light_view =
         mat4_lookat(r->light_position, /*target*/ (vec3) { 0 }, /*up*/ (vec3) { 0, 1, 0 });
+    mat4 const light_space_matrix = mat4_mul(light_projection, light_view);
 
     // @Note: first render depth values to a texture, from the light's perspective,
     // then render the scene as normal with shadow mapping (by using the depth map).
-
     glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
     DEFER(glViewport(0, 0, width, height)) {
         glBindFramebuffer(GL_FRAMEBUFFER, r->fbo_depth_map);
@@ -401,9 +411,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
             use_shader(shadow_mapping.shader);
             {
                 set_shader_mat4(
-                    shadow_mapping.shader,
-                    "world_to_light_space",
-                    mat4_mul(light_projection, light_view));
+                    shadow_mapping.shader, "world_to_light_space", light_space_matrix);
 
                 bind_texture_to_unit(wood_texture, GL_TEXTURE0);
 
@@ -415,22 +423,42 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render the depth map to a fullscreen quad for visual debugging.
-    use_shader(debug_quad.shader);
-    {
-        set_shader_float(debug_quad.shader, "near_plane", NEAR_PLANE);
-        set_shader_float(debug_quad.shader, "far_plane", FAR_PLANE);
+    if (show_debug_quad) {
+        // Render the depth map to a fullscreen quad for visual debugging.
+        use_shader(debug_quad.shader);
+        {
+            set_shader_float(debug_quad.shader, "near_plane", NEAR_PLANE);
+            set_shader_float(debug_quad.shader, "far_plane", FAR_PLANE);
 
-        glBindVertexArray(r->vao_debug_quad);
-        DEFER(glBindVertexArray(0)) {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
+            glBindVertexArray(r->vao_debug_quad);
+            DEFER(glBindVertexArray(0)) {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
 
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            }
         }
+        return;
     }
 
-    /*
+    // Render the scene, but now using the generated depth/shadow map.
+    use_shader(test_scene.shader);
+    {
+        set_shader_mat4(test_scene.shader, "world_to_view", view);
+        set_shader_mat4(test_scene.shader, "view_to_clip", projection);
+
+        set_shader_vec3(test_scene.shader, "view_pos", camera.position);
+        set_shader_vec3(test_scene.shader, "light_pos", r->light_position);
+        set_shader_mat4(test_scene.shader, "world_to_light_space", light_space_matrix);
+
+        bind_texture_to_unit(wood_texture, GL_TEXTURE0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
+
+        render_scene_with_shader(test_scene.shader, r);
+    }
+
     // Change the depth function to make sure the skybox passes the depth tests.
     glDepthFunc(GL_LEQUAL);
     use_shader(skybox.shader);
@@ -449,7 +477,6 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         }
     }
     glDepthFunc(GL_LESS);
-    */
 }
 
 //
@@ -457,6 +484,10 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 //
 
 static inline void setup_shaders(void) {
+    use_shader(test_scene.shader);
+    set_shader_sampler2D(test_scene.shader, "texture_diffuse", GL_TEXTURE0);
+    set_shader_sampler2D(test_scene.shader, "shadow_map", GL_TEXTURE1);
+
     use_shader(debug_quad.shader);
     set_shader_sampler2D(debug_quad.shader, "depth_map", GL_TEXTURE0);
 
@@ -487,12 +518,16 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if ON_PRESS (TAB, is_tab_pressed) {
         GLOW_LOG("Hot swapping shaders");
 
+        // @Volatile: use the same shaders as in `create_resources`.
         reload_shader_from_filepath(&skybox.shader, skybox.paths);
+        reload_shader_from_filepath(&test_scene.shader, debug_quad.paths);
         reload_shader_from_filepath(&debug_quad.shader, debug_quad.paths);
         reload_shader_from_filepath(&shadow_mapping.shader, shadow_mapping.paths);
 
         setup_shaders();
     }
+
+    show_debug_quad = IS_PRESSED(LEFT_SHIFT) || IS_PRESSED(RIGHT_SHIFT);
 }
 
 //
