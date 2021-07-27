@@ -33,17 +33,14 @@ float shadowing(vec4 frag_pos_light_space) {
     float closest_depth = texture(shadow_map, proj_coords.xy).r;
     float current_depth = proj_coords.z;
 
-#if PCF
-    // Calculate bias (based on depth map resolution and slope).
+    // Calculate shadow bias (based on depth map resolution and slope).
     vec3 normal = normalize(fs_in.normal);
     vec3 light_dir = normalize(light_pos - fs_in.frag_pos);
     float bias = max(0.05 * (1.0 - dot(normal, light_dir)), 0.005);
-#endif
 
     // Check whether the current fragment is in shadow
 #if !PCF
-    float shadow = (current_depth  > closest_depth) ? 1.0 : 0.0;
-    /* float shadow = ((current_depth - bias) > closest_depth) ? 1.0 : 0.0; */
+    float shadow = ((current_depth - bias) > closest_depth) ? 1.0 : 0.0;
 #else
     float shadow = 0.0;
     vec2 texel_size = 1.0 / textureSize(/*sampler*/ shadow_map, /*lod*/ 0);

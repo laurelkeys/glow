@@ -520,7 +520,7 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
 
         // @Volatile: use the same shaders as in `create_resources`.
         reload_shader_from_filepath(&skybox.shader, skybox.paths);
-        reload_shader_from_filepath(&test_scene.shader, debug_quad.paths);
+        reload_shader_from_filepath(&test_scene.shader, test_scene.paths);
         reload_shader_from_filepath(&debug_quad.shader, debug_quad.paths);
         reload_shader_from_filepath(&shadow_mapping.shader, shadow_mapping.paths);
 
