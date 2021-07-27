@@ -3,6 +3,7 @@
 .clang-format
 
 ext/*
+!ext/README.md
 !ext/CMakeLists.txt
 
 build/

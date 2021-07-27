@@ -15,7 +15,7 @@ uniform sampler2D shadow_map; // ranges [0.0, 1.0]
 uniform vec3 light_pos;
 uniform vec3 view_pos;
 
-#define PCF 0
+#define PCF 1 // percentage-closer filtering
 
 float shadowing(vec4 frag_pos_light_space) {
     // @Note: when we output a clip-space vertex position to gl_Position in the vertex shader,
