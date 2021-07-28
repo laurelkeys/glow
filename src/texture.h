@@ -24,6 +24,9 @@ typedef enum TextureFormat {
 
 typedef struct TextureSettings {
     TextureFormat format;
+    bool apply_srgb_eotf; // @Note: assumes 8-bit-per-channel sRGB or sRGBA types
+    bool highp_bitdepth; // GL_UNSIGNED_BYTE 8 -> 16 bits, GL_FLOAT 16 -> 32 bits
+    bool floating_point; // GL_UNSIGNED_BYTE if false else GL_FLOAT
     bool generate_mipmap;
     TextureFilter mag_filter;
     TextureFilter min_filter;

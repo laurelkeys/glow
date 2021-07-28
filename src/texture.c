@@ -73,9 +73,36 @@ static int gl_format(int channels) {
     }
 }
 
+static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_float) {
+    assert(format == GL_RED | format == GL_RG | format == GL_RGB | format == GL_RGBA);
+
+    // @Note: index = is_highp ? (is_float ? 3 : 2) : (is_float ? 1 : 0)
+    // Reference: https://www.khronos.org/opengl/wiki/Image_Format#Required_formats
+    static int const INTERNAL_FORMAT_R[4] = { GL_R8, GL_R16F, GL_R16, GL_R32F };
+    static int const INTERNAL_FORMAT_RG[4] = { GL_RG8, GL_RG16F, GL_RG16, GL_RG32F };
+    static int const INTERNAL_FORMAT_RGB[4] = { GL_RGB8, GL_RGB16F, GL_RGB16, GL_RGB32F };
+    static int const INTERNAL_FORMAT_RGBA[4] = { GL_RGBA8, GL_RGBA16F, GL_RGBA16, GL_RGBA32F };
+
+    if (is_srgb) {
+        assert(is_highp == false);
+        assert(is_float == false);
+        return (format == GL_RGB) ? GL_SRGB8 : (format == GL_RGBA) ? GL_SRGB8_ALPHA8 : format;
+    }
+
+    int const index = ((!!is_highp) << 1) | (!!is_float);
+    return (format == GL_RED)    ? INTERNAL_FORMAT_R[index]
+           : (format == GL_RG)   ? INTERNAL_FORMAT_RG[index]
+           : (format == GL_RGB)  ? INTERNAL_FORMAT_RGB[index]
+           : (format == GL_RGBA) ? INTERNAL_FORMAT_RGBA[index]
+                                 : format;
+}
+
 // Default value for TextureSettings.
 TextureSettings const Default_TextureSettings = {
     .format = TextureFormat_Default,
+    .apply_srgb_eotf = false,
+    .highp_bitdepth = false,
+    .floating_point = false,
     .generate_mipmap = true,
     .mag_filter = TextureFilter_Linear,
     .min_filter = TextureFilter_Nearest,
@@ -93,19 +120,19 @@ Texture new_texture_from_image_with_settings(
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-        int const format = gl_format(texture_image.channels);
-        int const internal_format = (settings.format == TextureFormat_Default)
-                                        ? gl_format(texture_image.channels)
-                                        : FORMAT[settings.format];
-        if (internal_format != format) {
-            GLOW_WARNING(
-                "%dx%dx%d texture image has OpenGL format=`0x%x` but internalFormat=`0x%x`",
-                texture_image.width,
-                texture_image.height,
-                texture_image.channels,
-                format,
-                internal_format);
+        int format = gl_format(texture_image.channels);
+        if (settings.format != TextureFormat_Default) {
+            assert(format == FORMAT[settings.format]);
+            format = FORMAT[settings.format];
         }
+
+        int const internal_format = gl_internal_format(
+            format,
+            /*is_srgb*/ settings.apply_srgb_eotf,
+            /*is_highp*/ settings.highp_bitdepth,
+            /*is_float*/ settings.floating_point);
+
+        assert(format != internal_format);
 
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
@@ -115,7 +142,7 @@ Texture new_texture_from_image_with_settings(
             /*height*/ texture_image.height,
             /*border*/ 0,
             /*format*/ format,
-            /*type*/ GL_UNSIGNED_BYTE,
+            /*type*/ settings.floating_point ? GL_FLOAT : GL_UNSIGNED_BYTE,
             /*data*/ texture_image.data);
 
         int min_filter;
@@ -151,6 +178,7 @@ Texture new_texture_from_filepath_with_settings(
         return (Texture) { 0 };
     }
     assert(1 <= channels && channels <= 4);
+    assert(!stbi_is_hdr(image_path)); // @Todo: handle HDR images.
 
     Texture const texture = new_texture_from_image_with_settings(
         settings, (TextureImage) { data, width, height, channels });
@@ -160,7 +188,7 @@ Texture new_texture_from_filepath_with_settings(
     return texture;
 }
 
-// @Todo: allow the internal format, wrap mode and filter mode to be specified.
+// @Todo: allow the format, wrap mode and filter mode to be specified.
 Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
     uint texture_id;
     glGenTextures(1, &texture_id);
@@ -169,6 +197,7 @@ Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
         for (usize i = 0; i < 6; ++i) {
             int const target = TARGET_TYPE_CUBE_FACE[i];
             int const format = gl_format(texture_images[i].channels);
+            // @Todo: handle HDR images (see `internalFormat` and `type`):
             glTexImage2D(
                 /*target*/ target,
                 /*level*/ 0,
@@ -203,6 +232,7 @@ Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err)
             return (Texture) { 0 };
         }
         assert(1 <= channels && channels <= 4);
+        assert(!stbi_is_hdr(image_paths[i])); // @Todo: handle HDR images.
         texture_images[i] = (TextureImage) { data, width, height, channels };
     }
 
