@@ -5,6 +5,8 @@
 
 .clang-format
 
+imgui.ini
+
 ext/*
 !ext/README.md
 !ext/CMakeLists.txt

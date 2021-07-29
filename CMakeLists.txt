@@ -3,11 +3,15 @@ cmake_minimum_required(VERSION 3.19)
 project(
     glow
     VERSION 0.1
-    LANGUAGES C)
+    LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(DEFAULT_BUILD_TYPE "RelWithDebInfo")
 
@@ -18,6 +22,7 @@ set(FILE_SOURCES
     src/color.c
     src/dynarray.c
     src/file.c
+    src/imgui_facade.cpp
     src/maths.c
     src/mesh.c
     src/model.c
@@ -33,6 +38,7 @@ set(FILE_HEADERS
     src/console.h
     src/dynarray.h
     src/file.h
+    src/imgui_facade.h
     src/maths.h
     src/mesh.h
     src/model.h
@@ -64,7 +70,7 @@ target_compile_definitions(${PROJECT_NAME}
 
     PUBLIC  _CRT_SECURE_NO_WARNINGS)
 
-target_link_libraries(${PROJECT_NAME} glfw glad stb assimp)
+target_link_libraries(${PROJECT_NAME} glfw glad stb assimp imgui)
 
 # ----------------------------------------------------------------------------------------
 

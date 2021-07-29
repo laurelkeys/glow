@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "console.h"
 #include "file.h"
+#include "imgui_facade.h"
 #include "maths.h"
 #include "mesh.h"
 #include "model.h"

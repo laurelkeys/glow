@@ -73,6 +73,8 @@ int main(int argc, char *argv[]) {
     GLFWwindow *window = init_opengl(window_settings, &err);
     if (err) { goto main_exit_opengl; }
 
+    init_imgui(window);
+
     int w = 0, h = 0;
     glfwGetFramebufferSize(window, &w, &h);
     assert(w > 0 && h > 0);
@@ -102,6 +104,7 @@ int main(int argc, char *argv[]) {
 
 main_exit:
     destroy_resources(&r, w, h);
+    deinit_imgui();
 
 main_exit_opengl:
     deinit_opengl(window);
@@ -527,11 +530,15 @@ static inline void begin_frame(GLFWwindow *window, int width, int height) {
         snprintf(title, sizeof(title), "glow | %d fps (%.3f ms)", rate, fps.frame_interval);
         glfwSetWindowTitle(window, title);
     }
+
+    begin_imgui_frame();
 }
 
 static inline void end_frame(GLFWwindow *window, int width, int height) {
     UNUSED(width);
     UNUSED(height);
+
+    end_imgui_frame();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -573,6 +580,8 @@ static inline void render_scene_with_shader(Shader const shader, Resources const
 #endif
 
 static inline void draw_frame(Resources const *r, int width, int height) {
+    imgui_show_demo_window(); // @Temporary
+
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);
 

@@ -18,6 +18,13 @@
     #include "stb_image.h"
     ```
 
+### `imgui/`
+- URL: https://github.com/ocornut/imgui/
+- License: [MIT](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)
+- Upstream version: 7bfc379
+  - branch: `docking`
+- Local modifications: None
+
 ### `glfw/`
 - URL: https://www.glfw.org/
 - License: [Zlib](https://github.com/glfw/glfw/blob/master/LICENSE.md)

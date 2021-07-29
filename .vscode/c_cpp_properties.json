@@ -7,6 +7,7 @@
                 "${workspaceFolder}/ext/assimp/include",
                 "${workspaceFolder}/ext/glad/include",
                 "${workspaceFolder}/ext/glfw/include",
+                "${workspaceFolder}/ext/imgui",
                 "${workspaceFolder}/ext/stb"
             ],
             "defines": [
