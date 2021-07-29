@@ -5,6 +5,8 @@
 #define SHADOW_MAP_RESOLUTION 2048
 
 static bool show_debug_quad = false;
+static bool is_lmb_pressed = false;
+static bool is_rmb_pressed = false;
 static bool is_tab_pressed = false;
 static bool mouse_is_first = true;
 static vec2 mouse_last = { 0 };
@@ -71,7 +73,7 @@ int main(int argc, char *argv[]) {
     if (err) { goto main_exit_opengl; }
 
     int w = 0, h = 0;
-    glfwGetWindowSize(window, &w, &h);
+    glfwGetWindowSize(window, &w, &h); // glfwGetFramebufferSize
     assert(w > 0 && h > 0);
 
     mouse_last.x = 0.5f * w;
@@ -84,9 +86,11 @@ int main(int argc, char *argv[]) {
     if (err) { goto main_exit; }
 
     setup_shaders();
+    glEnable(GL_DEPTH_TEST);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     while (!glfwWindowShouldClose(window)) {
-        glfwGetWindowSize(window, &w, &h);
+        glfwGetWindowSize(window, &w, &h); // glfwGetFramebufferSize
         begin_frame(window, w, h);
         draw_frame(&r, w, h);
         end_frame(window, w, h);
@@ -98,8 +102,7 @@ main_exit:
     destroy_resources(&r, w, h);
 
 main_exit_opengl:
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    deinit_opengl(window);
 
     switch (err) {
         case Err_None: break;
@@ -190,7 +193,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
     glGenTextures(1, &r.tex_hdr); // floating point color buffer
     glBindTexture(GL_TEXTURE_2D, r.tex_hdr);
-    /* DEFER(glBindTexture(GL_TEXTURE_2D, 0)) */ {
+    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
@@ -207,7 +210,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
     glGenRenderbuffers(1, &r.rbo_hdr); // depth buffer
     glBindRenderbuffer(GL_RENDERBUFFER, r.rbo_hdr);
-    /* DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) */ {
+    DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
     }
 
@@ -741,23 +744,37 @@ static inline void setup_shaders(void) {
 // Input processing.
 //
 
+// clang-format off
 #define IS_PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
+#define IS_RELEASED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_RELEASE)
+/* #define REPEATED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_REPEAT) */
 
-#define ON_PRESS(key, is_key_pressed)                                              \
-    (glfwGetKey(window, GLFW_KEY_##key) != GLFW_PRESS) { is_key_pressed = false; } \
-    else if (!is_key_pressed && (is_key_pressed = true))
+// SHIFT, CONTROL, ALT, SUPER, CAPS_LOCK, NUM_LOCK
+#define IS_PRESSED_MOD(mod) (glfwGetKey(window, GLFW_MOD_##mod) == GLFW_PRESS)
+#define IS_RELEASED_MOD(mod) (glfwGetKey(window, GLFW_MOD_##mod) == GLFW_RELEASE)
+/* #define REPEATED_MOD(mod) (glfwGetKey(window, GLFW_MOD_##mod) == GLFW_REPEAT) */
+
+// LEFT, RIGHT, MIDDLE, 1, 2, 3, 4, 5, 6, 7, 8
+#define IS_PRESSED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_PRESS)
+#define IS_RELEASED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_RELEASE)
+/* #define REPEATED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_REPEAT) */
+// clang-format on
+
+#define ON_PRESS(key, is_key_pressed)                                               \
+    ((glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS || (is_key_pressed = false)) \
+     && (!is_key_pressed && (is_key_pressed = true)))
 
 static inline void process_input(GLFWwindow *window, f32 delta_time) {
-    if IS_PRESSED (ESCAPE) { glfwSetWindowShouldClose(window, true); }
+    if (IS_PRESSED(ESCAPE)) { glfwSetWindowShouldClose(window, true); }
 
-    if IS_PRESSED (W) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
-    if IS_PRESSED (S) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
-    if IS_PRESSED (A) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
-    if IS_PRESSED (D) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
-    if IS_PRESSED (E) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
-    if IS_PRESSED (Q) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
+    if (IS_PRESSED(W)) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
+    if (IS_PRESSED(S)) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
+    if (IS_PRESSED(A)) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
+    if (IS_PRESSED(D)) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
+    if (IS_PRESSED(E)) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
+    if (IS_PRESSED(Q)) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
 
-    if ON_PRESS (TAB, is_tab_pressed) {
+    if (ON_PRESS(TAB, is_tab_pressed)) {
         GLOW_LOG("Hot swapping shaders");
 
         // @Volatile: use the same shaders as in `create_resources`.
@@ -777,9 +794,9 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
     show_debug_quad = IS_PRESSED(LEFT_SHIFT) || IS_PRESSED(RIGHT_SHIFT);
 
 #if USE_HDR_TEST_SCENE
-    tonemap = IS_PRESSED(SPACE);
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) { exposure += 0.01f; }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) { exposure -= 0.01f; }
+    tonemap = !IS_PRESSED(SPACE);
+    if (IS_PRESSED(UP)) { exposure += 0.01f; }
+    if (IS_PRESSED(DOWN)) { exposure -= 0.01f; }
     if (exposure < 0.0f) { exposure = 0.0f; }
 #endif
 }
@@ -788,9 +805,9 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
 // Window callbacks.
 //
 
-static void framebuffer_size_callback(GLFWwindow *window, int render_width, int render_height) {
-    glViewport(0, 0, render_width, render_height);
-    camera.aspect = (f32) render_width / (f32) render_height;
+static void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+    glViewport(0, 0, width, height);
+    camera.aspect = (f32) width / (f32) height;
 }
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     // Do nothing.

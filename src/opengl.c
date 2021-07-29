@@ -102,8 +102,6 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     glfwSwapInterval(settings.vsync ? 1 : 0);
     if (settings.set_callbacks_fn) { settings.set_callbacks_fn(window); }
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // @Cleanup
-
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         *err = Err_Glad_Init;
         return NULL;
@@ -121,13 +119,15 @@ GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
     assert((bool) GLAD_GL_KHR_debug == (bool) (flags & GL_CONTEXT_FLAG_DEBUG_BIT));
 #endif
 
-    glEnable(GL_DEPTH_TEST); // @Cleanup
-    if (settings.msaa > 0) { glEnable(GL_MULTISAMPLE); }
-
     GLOW_LOG("GL_VERSION = %s", (char *) glGetString(GL_VERSION));
     GLOW_LOG("GL_RENDERER = %s", (char *) glGetString(GL_RENDERER));
 
     return window;
+}
+
+void deinit_opengl(GLFWwindow *window) {
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
 
 bool check_bound_framebuffer_is_complete() {

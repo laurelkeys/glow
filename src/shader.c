@@ -13,7 +13,7 @@
      : (shader_type) == GL_FRAGMENT_SHADER ? "fragment" \
                                            : "????")
 
-static uint init_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
+static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
     if (*err) { return 0; }
 
     uint const id = glCreateShader(type);
@@ -35,10 +35,10 @@ Shader new_shader_from_source(ShaderStrings const source, Err *err) {
 
     bool const has_geometry_shader = source.geometry != NULL;
 
-    uint const vertex_id = init_shader(GL_VERTEX_SHADER, source.vertex, info_log, err);
-    uint const fragment_id = init_shader(GL_FRAGMENT_SHADER, source.fragment, info_log, err);
+    uint const vertex_id = make_shader(GL_VERTEX_SHADER, source.vertex, info_log, err);
+    uint const fragment_id = make_shader(GL_FRAGMENT_SHADER, source.fragment, info_log, err);
     uint const geometry_id =
-        has_geometry_shader ? init_shader(GL_GEOMETRY_SHADER, source.geometry, info_log, err) : 0;
+        has_geometry_shader ? make_shader(GL_GEOMETRY_SHADER, source.geometry, info_log, err) : 0;
 
     uint const program_id = glCreateProgram();
     glAttachShader(program_id, vertex_id);

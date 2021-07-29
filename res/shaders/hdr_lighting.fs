@@ -13,7 +13,7 @@ struct Light {
     vec3 color;
 };
 
-#define LIGHTS_LEN 16
+#define LIGHTS_LEN 4
 
 uniform Light lights[LIGHTS_LEN];
 uniform sampler2D texture_diffuse;

@@ -9,7 +9,7 @@
 
 #include <glad/glad.h>
 
-uint init_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices_len) {
+uint make_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices_len) {
     uint vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);

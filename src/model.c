@@ -230,7 +230,7 @@ static Mesh alloc_mesh_from_assimp_mesh(
     }
     assert(mesh.textures_len == textures_capacity);
 
-    mesh.vao = init_mesh_vao(mesh.vertices, mesh.vertices_len, mesh.indices, mesh.indices_len);
+    mesh.vao = make_mesh_vao(mesh.vertices, mesh.vertices_len, mesh.indices, mesh.indices_len);
 
     return mesh;
 }
