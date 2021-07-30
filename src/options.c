@@ -3,11 +3,9 @@
 #include "console.h"
 #include "file.h"
 
+// Reference: https://www.duskborn.com/posts/simple-c-command-line-parser/
 Options parse_args(int argc, char *argv[]) {
-    // Reference: https://www.duskborn.com/posts/simple-c-command-line-parser/
-
     // clang-format off
-    // GLOW_OPTION(short-name, long-name, number-of-trailing-args, description)
 
     #define GLOW_OPTION(s, l, n, d) assert(n <= 1);
     #include "options.inc"
@@ -18,7 +16,7 @@ Options parse_args(int argc, char *argv[]) {
     #include "options.inc"
 
     // Parse command line arguments into options.
-    int positional_arguments = 0;
+    usize positional_arguments = 0;
     for (int i = 1; i < argc; ++i) {
         #define GLOW_OPTION(s, l, n, d)                                                      \
         {                                                                                    \
@@ -36,17 +34,17 @@ Options parse_args(int argc, char *argv[]) {
         argv[++positional_arguments] = argv[i];
     }
 
-#ifndef NDEBUG
-    // @Cleanup: why can't we just have a simple way to join strings in C?
-    usize buf_count = 0;
-    for (int i = 1; i <= positional_arguments; ++i) {
-        buf_count += strlen(argv[i]) + sizeof(", ``");
+    /*
+    // Print argument values for debugging.
+    usize buf_len = strlen(argv[0]) + 2; // "``"
+    for (usize i = 1; i <= positional_arguments; ++i) {
+        buf_len += strlen(argv[i]) + 4; // ", ``"
     }
-    char *buf = calloc(buf_count + strlen(argv[0]) + 2, sizeof(char));
-    int offset = sprintf(buf, "`%s`", argv[0]);
+    char *buf = calloc(buf_len + 1, sizeof(char));
     DEFER(free(buf)) {
-        for (int i = 1; i <= positional_arguments; ++i) {
-            offset += snprintf(buf + offset, buf_count - offset, ", `%s`", argv[i]);
+        int offset = snprintf(buf, buf_len + 1, "`%s`", argv[0]);
+        for (usize i = 1; i <= positional_arguments; ++i) {
+            offset += snprintf(buf + offset, buf_len + 1 - offset, ", `%s`", argv[i]);
         }
         GLOW_DEBUG("%s (positional arguments)", buf);
     }
@@ -54,24 +52,35 @@ Options parse_args(int argc, char *argv[]) {
     #define GLOW_OPTION(s, l, n, d) \
         GLOW_DEBUG("`%s` = %s", #s, (arg_##s != 0) ? arg_##s : "not set");
     #include "options.inc"
-#endif
+    */
 
-    // Exit early if the --help option was parsed.
+    // Exit early if we parsed the --help option.
     if (arg_h) {
         printf("\nusage: %s", point_at_last_path_component(argv[0]));
-
         #define GLOW_OPTION(s, l, n, d) \
             printf((!n ? " [%s]" : " [%s=<arg>]"), "--" #l);
         #include "options.inc"
+        printf("\n\n"); // @Note: add any positional arguments in here, e.g.: printf(" <args>\n\n");
 
-        printf(" <args>\n\n"); // positional arguments
+        int align_len = 0;
+        #define GLOW_OPTION(s, l, n, d)                                                            \
+        {                                                                                          \
+            int len = !n ? strlen("  --" #l ", -" #s) : strlen("  --" #l "=<arg>, -" #s " <arg>"); \
+            if (len > align_len) { align_len = len; }                                              \
+        }
+        #include "options.inc"
 
-        #define GLOW_OPTION(s, l, n, d) \
-            printf((!n ? "  %s, %s %s\n" : "  %s=<arg>, %s <arg> %s\n"), "--" #l, "-" #s, d);
+        #define GLOW_OPTION(s, l, n, d)                                                            \
+        {                                                                                          \
+            int len = !n ? strlen("  --" #l ", -" #s) : strlen("  --" #l "=<arg>, -" #s " <arg>"); \
+            printf((!n ? "  %s, %s" : "  %s=<arg>, %s <arg>"), "--" #l, "-" #s);                   \
+            printf(" %*s%s\n", align_len - len, "", d);                                            \
+        }
         #include "options.inc"
 
         exit(EXIT_SUCCESS);
     }
+
     // clang-format on
 
     Options options = { 0 };
