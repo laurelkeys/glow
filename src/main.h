@@ -11,6 +11,7 @@
 #include "mesh.h"
 #include "model.h"
 #include "opengl.h"
+#include "options.h"
 #include "shader.h"
 #include "texture.h"
 #include "vertices.h"

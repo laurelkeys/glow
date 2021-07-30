@@ -22,6 +22,7 @@ set(FILE_SOURCES
     src/mesh.c
     src/model.c
     src/opengl.c
+    src/options.c
     src/shader.c
     src/texture.c
     src/main.c)
@@ -36,6 +37,7 @@ set(FILE_HEADERS
     src/mesh.h
     src/model.h
     src/opengl.h
+    src/options.h
     src/shader.h
     src/texture.h
     src/vertices.h

@@ -5,9 +5,9 @@
 #define SHADOW_MAP_RESOLUTION 2048
 
 static bool show_debug_quad = false;
-static bool is_lmb_pressed = false;
-static bool is_rmb_pressed = false;
-static bool is_tab_pressed = false;
+static bool was_rmb_pressed = false;
+static bool was_lmb_pressed = false;
+static bool was_tab_pressed = false;
 static bool mouse_is_first = true;
 static vec2 mouse_last = { 0 };
 static Clock clock = { 0 };
@@ -65,15 +65,16 @@ static inline void draw_frame(Resources const *r, int width, int height);
 int main(int argc, char *argv[]) {
     Err err = Err_None;
 
+    Options const options = parse_args(argc, argv);
     WindowSettings const window_settings = {
-        800, 600, set_window_callbacks, .msaa = 4, .vsync = true
+        800, 600, set_window_callbacks, options.msaa, options.vsync, options.fullscreen,
     };
 
     GLFWwindow *window = init_opengl(window_settings, &err);
     if (err) { goto main_exit_opengl; }
 
     int w = 0, h = 0;
-    glfwGetWindowSize(window, &w, &h); // glfwGetFramebufferSize
+    glfwGetFramebufferSize(window, &w, &h);
     assert(w > 0 && h > 0);
 
     mouse_last.x = 0.5f * w;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     while (!glfwWindowShouldClose(window)) {
-        glfwGetWindowSize(window, &w, &h); // glfwGetFramebufferSize
+        glfwGetFramebufferSize(window, &w, &h);
         begin_frame(window, w, h);
         draw_frame(&r, w, h);
         end_frame(window, w, h);
@@ -760,10 +761,6 @@ static inline void setup_shaders(void) {
 /* #define REPEATED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_REPEAT) */
 // clang-format on
 
-#define ON_PRESS(key, is_key_pressed)                                               \
-    ((glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS || (is_key_pressed = false)) \
-     && (!is_key_pressed && (is_key_pressed = true)))
-
 static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (IS_PRESSED(ESCAPE)) { glfwSetWindowShouldClose(window, true); }
 
@@ -774,7 +771,8 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (IS_PRESSED(E)) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
     if (IS_PRESSED(Q)) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
 
-    if (ON_PRESS(TAB, is_tab_pressed)) {
+    // Reload shader sources.
+    if (IS_PRESSED(TAB) && !was_tab_pressed) {
         GLOW_LOG("Hot swapping shaders");
 
         // @Volatile: use the same shaders as in `create_resources`.
@@ -791,7 +789,7 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
         setup_shaders();
     }
 
-    show_debug_quad = IS_PRESSED(LEFT_SHIFT) || IS_PRESSED(RIGHT_SHIFT);
+    show_debug_quad = IS_PRESSED(LEFT_SHIFT) || IS_PRESSED(RIGHT_SHIFT); // @Temporary
 
 #if USE_HDR_TEST_SCENE
     tonemap = !IS_PRESSED(SPACE);
@@ -799,6 +797,11 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (IS_PRESSED(DOWN)) { exposure -= 0.01f; }
     if (exposure < 0.0f) { exposure = 0.0f; }
 #endif
+
+    // Update state flags.
+    was_rmb_pressed = IS_PRESSED_MOUSE(RIGHT);
+    was_lmb_pressed = IS_PRESSED_MOUSE(LEFT);
+    was_tab_pressed = IS_PRESSED(TAB);
 }
 
 //
@@ -806,6 +809,7 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
 //
 
 static void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+    assert(width > 0 && height > 0); // @Fixme: minimizing window
     glViewport(0, 0, width, height);
     camera.aspect = (f32) width / (f32) height;
 }
