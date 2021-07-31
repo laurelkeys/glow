@@ -74,7 +74,7 @@ static int gl_format(int channels) {
 }
 
 static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_float) {
-    assert(format == GL_RED | format == GL_RG | format == GL_RGB | format == GL_RGBA);
+    assert((format == GL_RED) | (format == GL_RG) | (format == GL_RGB) | (format == GL_RGBA));
 
     // @Note: index = is_highp ? (is_float ? 3 : 2) : (is_float ? 1 : 0)
     // Reference: https://www.khronos.org/opengl/wiki/Image_Format#Required_formats
@@ -97,43 +97,34 @@ static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_f
                                  : format;
 }
 
-// Default value for TextureSettings.
-TextureSettings const Default_TextureSettings = {
-    .format = TextureFormat_Default,
-    .apply_srgb_eotf = false,
-    .highp_bitdepth = false,
-    .floating_point = false,
-    .generate_mipmap = true,
-    .mag_filter = TextureFilter_Linear,
-    .min_filter = TextureFilter_Nearest,
-    .mipmap_filter = TextureFilter_Linear,
-    .wrap_s = TextureWrap_Repeat,
-    .wrap_t = TextureWrap_Repeat,
-};
+Texture new_texture_from_image(TextureImage const texture_image, TextureSettings const settings) {
+    // Default initialize zeroed values.
+#define DEFAULT(value) ((value) == 0)
+#define VALUE_OR(value, default) (DEFAULT(value) ? (default) : (value))
 
-Texture new_texture_from_image(TextureImage const texture_image) {
-    return new_texture_from_image_with_settings(Default_TextureSettings, texture_image);
-}
-Texture new_texture_from_image_with_settings(
-    TextureSettings const settings, TextureImage const texture_image) {
+    int const expected_format = gl_format(texture_image.channels);
+    int const format = DEFAULT(settings.format) ? expected_format : FORMAT[settings.format];
+    int const internal_format = gl_internal_format(
+        format, settings.apply_srgb_eotf, settings.highp_bitdepth, settings.floating_point);
+
+    assert(DEFAULT(settings.format) || FORMAT[settings.format] == expected_format);
+    assert(internal_format != format); // we want the internal format to be sized
+
+    int const mag_filter = FILTER[VALUE_OR(settings.mag_filter, TextureFilter_Linear)];
+    int const min_filter =
+        settings.generate_mipmap
+            ? MIN_MIPMAP_FILTER[VALUE_OR(settings.min_filter, TextureFilter_Nearest)]
+                               [VALUE_OR(settings.mipmap_filter, TextureFilter_Linear)]
+            : FILTER[VALUE_OR(settings.min_filter, TextureFilter_Linear)];
+
+#undef VALUE_OR
+#undef DEFAULT
+
+    // Create the 2D texture target handle.
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-        int format = gl_format(texture_image.channels);
-        if (settings.format != TextureFormat_Default) {
-            assert(format == FORMAT[settings.format]);
-            format = FORMAT[settings.format];
-        }
-
-        int const internal_format = gl_internal_format(
-            format,
-            /*is_srgb*/ settings.apply_srgb_eotf,
-            /*is_highp*/ settings.highp_bitdepth,
-            /*is_float*/ settings.floating_point);
-
-        assert(format != internal_format);
-
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
@@ -145,43 +136,34 @@ Texture new_texture_from_image_with_settings(
             /*type*/ settings.floating_point ? GL_FLOAT : GL_UNSIGNED_BYTE,
             /*data*/ texture_image.data);
 
-        int min_filter;
-        if (settings.generate_mipmap) {
-            glGenerateMipmap(GL_TEXTURE_2D);
-            min_filter = MIN_MIPMAP_FILTER[settings.min_filter][settings.mipmap_filter];
-        } else {
-            min_filter = FILTER[settings.min_filter];
-        }
+        if (settings.generate_mipmap) { glGenerateMipmap(GL_TEXTURE_2D); }
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap_s]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap_t]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, FILTER[settings.mag_filter]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap]);
     }
 
     return (Texture) { texture_id, TextureTargetType_2D, TextureMaterialType_None };
 }
 
-Texture new_texture_from_filepath(char const *image_path, Err *err) {
-    return new_texture_from_filepath_with_settings(Default_TextureSettings, image_path, err);
-}
-Texture new_texture_from_filepath_with_settings(
-    TextureSettings const settings, char const *image_path, Err *err) {
+Texture new_texture_from_filepath(char const *path, TextureSettings const settings, Err *err) {
     if (*err) { return (Texture) { 0 }; }
 
     int width, height, channels;
-    u8 *data = stbi_load(image_path, &width, &height, &channels, 0);
+    u8 *data = stbi_load(path, &width, &height, &channels, 0);
     if (!data) {
-        GLOW_WARNING("failed to load image from path: `%s`", image_path);
+        GLOW_WARNING("failed to load image from path: `%s`", path);
         GLOW_WARNING("stbi_failure_reason() returned: `%s`", stbi_failure_reason());
         *err = Err_Stbi_Load;
         return (Texture) { 0 };
     }
     assert(1 <= channels && channels <= 4);
-    assert(!stbi_is_hdr(image_path)); // @Todo: handle HDR images.
+    assert(!stbi_is_hdr(path)); // @Todo: handle HDR images.
 
-    Texture const texture = new_texture_from_image_with_settings(
-        settings, (TextureImage) { data, width, height, channels });
+    Texture const texture =
+        new_texture_from_image((TextureImage) { data, width, height, channels }, settings);
 
     stbi_image_free(data);
 
@@ -218,21 +200,21 @@ Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]) {
     return (Texture) { texture_id, TextureTargetType_Cube, TextureMaterialType_None };
 }
 
-Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err) {
+Texture new_cubemap_texture_from_filepaths(char const *paths[6], Err *err) {
     if (*err) { return (Texture) { 0 }; }
 
     TextureImage texture_images[6] = { 0 };
     for (usize i = 0; i < 6; ++i) {
         int width, height, channels;
-        u8 *data = stbi_load(image_paths[i], &width, &height, &channels, 0);
+        u8 *data = stbi_load(paths[i], &width, &height, &channels, 0);
         if (!data) {
-            GLOW_WARNING("failed to load image from path: `%s`", i, image_paths[i]);
+            GLOW_WARNING("failed to load image from path: `%s`", i, paths[i]);
             GLOW_WARNING("stbi_failure_reason() returned: `%s`", stbi_failure_reason());
             *err = Err_Stbi_Load;
             return (Texture) { 0 };
         }
         assert(1 <= channels && channels <= 4);
-        assert(!stbi_is_hdr(image_paths[i])); // @Todo: handle HDR images.
+        assert(!stbi_is_hdr(paths[i])); // @Todo: handle HDR images.
         texture_images[i] = (TextureImage) { data, width, height, channels };
     }
 

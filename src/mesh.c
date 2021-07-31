@@ -9,7 +9,7 @@
 
 #include <glad/glad.h>
 
-uint make_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize indices_len) {
+uint make_mesh_vao(Vertex const *vertices, usize vertices_len, uint *indices, usize indices_len) {
     uint vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -46,9 +46,15 @@ uint make_mesh_vao(Vertex *vertices, usize vertices_len, uint *indices, usize in
 void dealloc_mesh(Mesh *mesh) {
     // @Note: we are not calling glDeleteTextures.
     glDeleteVertexArrays(1, &mesh->vao);
+
     free(mesh->textures);
+    mesh->textures = NULL;
+
     free(mesh->indices);
+    mesh->indices = NULL;
+
     free(mesh->vertices);
+    mesh->vertices = NULL;
 }
 
 // @Volatile: :SyncWithTextureMaterialType:

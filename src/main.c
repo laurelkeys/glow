@@ -146,10 +146,10 @@ static inline Resources create_resources(Err *err, int width, int height) {
     hdr_to_ldr.shader = new_shader_from_filepath(hdr_to_ldr.paths, err);
 
     stbi_set_flip_vertically_on_load(true);
-    TextureSettings settings = Default_TextureSettings;
-    settings.apply_srgb_eotf = true;
-    wood_texture =
-        new_texture_from_filepath_with_settings(settings, GLOW_TEXTURES_ "wood.png", err);
+    wood_texture = new_texture_from_filepath(
+        GLOW_TEXTURES_ "wood.png",
+        (TextureSettings) { .generate_mipmap = true, .apply_srgb_eotf = true },
+        err);
 #else
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
     skybox.paths.fragment = GLOW_SHADERS_ "simple_skybox.fs";
@@ -182,7 +182,8 @@ static inline Resources create_resources(Err *err, int width, int height) {
         err);
 
     stbi_set_flip_vertically_on_load(true);
-    wood_texture = new_texture_from_filepath(GLOW_TEXTURES_ "wood.png", err);
+    wood_texture = new_texture_from_filepath(
+        GLOW_TEXTURES_ "wood.png", (TextureSettings) { .generate_mipmap = true }, err);
 #endif
 
     // Exit early if there were any errors during setup.
@@ -808,6 +809,7 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // Update fullscreen color and depth attachments.
     Resources *r = glfwGetWindowUserPointer(window);
 
+#if USE_HDR_TEST_SCENE
     glBindTexture(GL_TEXTURE_2D, r->tex_hdr);
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -817,6 +819,7 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
     }
+#endif
 }
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     // Do nothing.

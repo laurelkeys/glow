@@ -59,7 +59,7 @@ static void error_callback(int error, char const *description) {
     GLOW_WARNING("glfw error %d: `%s`", error, description);
 }
 
-GLFWwindow *init_opengl(WindowSettings settings, Err *err) {
+GLFWwindow *init_opengl(WindowSettings const settings, Err *err) {
     if (*err) { return NULL; }
 
     glfwSetErrorCallback(error_callback);

@@ -3,6 +3,8 @@
 #include "console.h"
 #include "file.h"
 
+#include <string.h>
+
 // Reference: https://www.duskborn.com/posts/simple-c-command-line-parser/
 Options parse_args(int argc, char *argv[]) {
     // clang-format off

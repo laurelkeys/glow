@@ -69,7 +69,8 @@ static void store_textures_with_assimp_type(
             usize const len = texture_store->len;
             texture_store->len += 1;
             texture_store->paths[len] = alloc_str_copy(&path.data[0]);
-            texture_store->textures[len] = new_texture_from_filepath(full_path, err);
+            texture_store->textures[len] = new_texture_from_filepath(
+                full_path, (TextureSettings) { .generate_mipmap = true }, err);
             texture_store->textures[len].material = material_type_from_assimp_type(ai_type);
 
             if (*err) {
@@ -152,8 +153,12 @@ static void dealloc_texture_store(TextureStore *texture_store) {
     for (usize i = texture_store->len - 1; i < texture_store->len; --i) {
         free(texture_store->paths[i]);
     }
+
     free(texture_store->textures);
+    texture_store->textures = NULL;
+
     free(texture_store->paths);
+    texture_store->paths = NULL;
 }
 
 static Mesh alloc_mesh_from_assimp_mesh(
@@ -353,7 +358,9 @@ void dealloc_model(Model *model) {
     for (usize i = model->meshes_len - 1; i < model->meshes_len; --i) {
         dealloc_mesh(&model->meshes[i]);
     }
+
     free(model->meshes);
+    model->meshes = NULL;
 }
 
 void draw_model_with_shader(Model const *model, Shader const *shader) {

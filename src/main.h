@@ -19,6 +19,7 @@
 
 // Standard headers.
 #include <stdio.h>
+#include <string.h>
 
 // External headers.
 #include <GLFW/glfw3.h>

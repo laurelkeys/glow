@@ -16,7 +16,7 @@ typedef struct WindowSettings {
     bool fullscreen; // (windowed mode)
 } WindowSettings;
 
-GLFWwindow *init_opengl(WindowSettings settings, Err *err);
+GLFWwindow *init_opengl(WindowSettings const settings, Err *err);
 void deinit_opengl(GLFWwindow *window);
 
 bool check_bound_framebuffer_is_complete();

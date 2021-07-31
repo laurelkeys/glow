@@ -27,8 +27,6 @@ typedef struct Camera {
     f32 far;
 } Camera;
 
-extern Camera const Default_Camera;
-
 typedef enum CameraMovement {
     CameraMovement_Forward,
     CameraMovement_Backward,

@@ -3,7 +3,8 @@
 #include "prelude.h"
 
 typedef enum TextureFilter {
-    TextureFilter_Linear = 0,
+    TextureFilter_Default = 0,
+    TextureFilter_Linear,
     TextureFilter_Nearest,
 } TextureFilter;
 
@@ -31,11 +32,8 @@ typedef struct TextureSettings {
     TextureFilter mag_filter;
     TextureFilter min_filter;
     TextureFilter mipmap_filter;
-    TextureWrap wrap_s;
-    TextureWrap wrap_t;
+    TextureWrap wrap;
 } TextureSettings;
-
-extern TextureSettings const Default_TextureSettings;
 
 typedef struct TextureImage {
     u8 *data;
@@ -55,27 +53,22 @@ typedef enum TextureMaterialType {
 } TextureMaterialType;
 
 typedef enum TextureTargetType {
-    TextureTargetType_2D = 0, // GL_TEXTURE_2D
-    TextureTargetType_Cube, // GL_TEXTURE_CUBE_MAP
+    TextureTargetType_2D = 0,
+    TextureTargetType_Cube,
 } TextureTargetType;
 
 typedef struct Texture {
     uint id;
-    TextureTargetType target; // defaults to TextureTargetType_2D
-    TextureMaterialType material; // defaults to TextureMaterialType_None
+    TextureTargetType target;
+    TextureMaterialType material;
 } Texture;
 
-Texture new_texture_from_image(TextureImage const texture_image);
-Texture new_texture_from_image_with_settings(
-    TextureSettings const settings, TextureImage const texture_image);
-
-Texture new_texture_from_filepath(char const *image_path, Err *err);
-Texture new_texture_from_filepath_with_settings(
-    TextureSettings const settings, char const *image_path, Err *err);
+Texture new_texture_from_image(TextureImage const texture_image, TextureSettings const settings);
+Texture new_texture_from_filepath(char const *path, TextureSettings const settings, Err *err);
 
 // @Note: the expected order for the 6 faces is: Right, Left, Top, Bottom, Front, Back.
 // Which follows the GL_TEXTURE_CUBE_MAP_*_* constants for: +X, -X, +Y, -Y, +Z, and -Z.
 Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]);
-Texture new_cubemap_texture_from_filepaths(char const *image_paths[6], Err *err);
+Texture new_cubemap_texture_from_filepaths(char const *paths[6], Err *err);
 
 void bind_texture_to_unit(Texture const texture, uint texture_unit);
