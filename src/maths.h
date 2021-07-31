@@ -47,6 +47,8 @@
 #define IS_EQ(a, b) APPROX_EQ((a), (b), FLT_EPSILON)
 #define IS_ZERO(a) IS_EQ((a), 0.0, FLT_EPSILON)
 
+#define STEP(edge, x) (((x) < (edge)) ? 0 : 1)
+
 #define CLAMP(x, a, b) (((x) < (a)) ? (a) : ((x) > (b)) ? (b) : (x))
 #define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))
 #define CLAMP_MIN(x, a) (((x) < (a)) ? (a) : (x))

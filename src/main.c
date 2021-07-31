@@ -2,7 +2,7 @@
 
 #define USE_HDR_TEST_SCENE 1
 
-#define SHADOW_MAP_RESOLUTION 2048
+#define SHADOW_MAP_RESOLUTION 512
 
 static bool show_debug_quad = false;
 static bool was_rmb_pressed = false;
@@ -89,6 +89,7 @@ int main(int argc, char *argv[]) {
     setup_shaders();
     glEnable(GL_DEPTH_TEST);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetWindowUserPointer(window, (void *) &r);
 
     while (!glfwWindowShouldClose(window)) {
         glfwGetFramebufferSize(window, &w, &h);
@@ -192,9 +193,10 @@ static inline Resources create_resources(Err *err, int width, int height) {
     // HDR framebuffer (fbo_hdr, tex_hdr, rbo_hdr).
     //
 
-    glGenTextures(1, &r.tex_hdr); // floating point color buffer
+    glGenTextures(1, &r.tex_hdr);
     glBindTexture(GL_TEXTURE_2D, r.tex_hdr);
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+        // @Volatile: update dimensions on framebuffer resize.
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
@@ -209,9 +211,10 @@ static inline Resources create_resources(Err *err, int width, int height) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    glGenRenderbuffers(1, &r.rbo_hdr); // depth buffer
+    glGenRenderbuffers(1, &r.rbo_hdr);
     glBindRenderbuffer(GL_RENDERBUFFER, r.rbo_hdr);
     DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+        // @Volatile: update dimensions on framebuffer resize.
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
     }
 
@@ -514,22 +517,9 @@ static inline void begin_frame(GLFWwindow *window, int width, int height) {
     process_input(window, clock.time_increment);
 
     if (fps.last_update_time == clock.time) {
-#if USE_HDR_TEST_SCENE
-        char title[128]; // 128 seems large enough..
-        int const rate = (int) round(1000.0 / fps.frame_interval);
-        snprintf(
-            title,
-            sizeof(title),
-            "glow | %d fps (%.3f ms) | exposure: %.2f | hdr: %s",
-            rate,
-            fps.frame_interval,
-            exposure,
-            tonemap ? "ON" : "OFF");
-#else
         char title[64]; // 64 seems large enough..
         int const rate = (int) round(1000.0 / fps.frame_interval);
         snprintf(title, sizeof(title), "glow | %d fps (%.3f ms)", rate, fps.frame_interval);
-#endif
         glfwSetWindowTitle(window, title);
     }
 }
@@ -811,7 +801,22 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
 static void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     assert(width > 0 && height > 0); // @Fixme: minimizing window
     glViewport(0, 0, width, height);
+
+    // Update the camera's aspect ratio.
     camera.aspect = (f32) width / (f32) height;
+
+    // Update fullscreen color and depth attachments.
+    Resources *r = glfwGetWindowUserPointer(window);
+
+    glBindTexture(GL_TEXTURE_2D, r->tex_hdr);
+    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    }
+
+    glBindRenderbuffer(GL_RENDERBUFFER, r->rbo_hdr);
+    DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+    }
 }
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     // Do nothing.
