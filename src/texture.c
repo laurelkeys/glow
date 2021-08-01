@@ -51,20 +51,9 @@ static int const TARGET_TYPE_CUBE_FACE[6] = {
 // clang-format on
 
 static int gl_format(int channels) {
-    static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
-    static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
-
-    // References:
-    //  https://www.khronos.org/opengl/wiki/Image_Format#Legacy_Image_Formats
-    //  https://www.khronos.org/opengl/wiki/Texture#Swizzle_mask
-
     switch (channels) {
-        case 1: // replicate legacy GL_LUMINANCE
-            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_R001_TO_RRR1);
-            return GL_RED;
-        case 2: // replicate legacy GL_LUMINANCE_ALPHA
-            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_RG01_TO_RRRG);
-            return GL_RG;
+        case 1: return GL_RED;
+        case 2: return GL_RG;
         default: // fallthrough to GL_RGB in release mode
             GLOW_WARNING("texture image with invalid number of channels: `%d`", channels);
             assert(false);
@@ -117,6 +106,12 @@ Texture new_texture_from_image(TextureImage const texture_image, TextureSettings
                                [VALUE_OR(settings.mipmap_filter, TextureFilter_Linear)]
             : FILTER[VALUE_OR(settings.min_filter, TextureFilter_Linear)];
 
+    int const type = GL_UNSIGNED_BYTE;
+    //  settings.floating_point
+    //      ? (settings.highp_bitdepth ? GL_FLOAT : GL_HALF_FLOAT)
+    //      : (settings.highp_bitdepth ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE);
+    assert(!settings.highp_bitdepth && !settings.floating_point); // @Temporary
+
 #undef VALUE_OR
 #undef DEFAULT
 
@@ -133,7 +128,7 @@ Texture new_texture_from_image(TextureImage const texture_image, TextureSettings
             /*height*/ texture_image.height,
             /*border*/ 0,
             /*format*/ format,
-            /*type*/ settings.floating_point ? GL_FLOAT : GL_UNSIGNED_BYTE,
+            /*type*/ type,
             /*data*/ texture_image.data);
 
         if (settings.generate_mipmap) { glGenerateMipmap(GL_TEXTURE_2D); }
@@ -143,6 +138,15 @@ Texture new_texture_from_image(TextureImage const texture_image, TextureSettings
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WRAP[settings.wrap]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WRAP[settings.wrap]);
+
+        // Reference: https://www.khronos.org/opengl/wiki/Image_Format#Legacy_Image_Formats
+        if (format == GL_RED) { // replicate legacy GL_LUMINANCE
+            static int const SWIZZLE_R001_TO_RRR1[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_R001_TO_RRR1);
+        } else if (format == GL_RG) { // replicate legacy GL_LUMINANCE_ALPHA
+            static int const SWIZZLE_RG01_TO_RRRG[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE_RG01_TO_RRRG);
+        }
     }
 
     return (Texture) { texture_id, TextureTargetType_2D, TextureMaterialType_None };

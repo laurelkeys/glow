@@ -145,10 +145,13 @@ static inline Resources create_resources(Err *err, int width, int height) {
     hdr_lighting.shader = new_shader_from_filepath(hdr_lighting.paths, err);
     hdr_to_ldr.shader = new_shader_from_filepath(hdr_to_ldr.paths, err);
 
-    stbi_set_flip_vertically_on_load(true);
     wood_texture = new_texture_from_filepath(
         GLOW_TEXTURES_ "wood.png",
-        (TextureSettings) { .generate_mipmap = true, .apply_srgb_eotf = true },
+        (TextureSettings) {
+            .flip_vertically = true,
+            .generate_mipmap = true,
+            .apply_srgb_eotf = true,
+        },
         err);
 #else
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
@@ -181,9 +184,10 @@ static inline Resources create_resources(Err *err, int width, int height) {
         },
         err);
 
-    stbi_set_flip_vertically_on_load(true);
     wood_texture = new_texture_from_filepath(
-        GLOW_TEXTURES_ "wood.png", (TextureSettings) { .generate_mipmap = true }, err);
+        GLOW_TEXTURES_ "wood.png",
+        (TextureSettings) { .flip_vertically = true, .generate_mipmap = true },
+        err);
 #endif
 
     // Exit early if there were any errors during setup.
