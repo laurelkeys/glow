@@ -69,7 +69,9 @@ Texture new_texture_from_filepath(char const *path, TextureSettings const settin
 
 // @Note: the expected order for the 6 faces is: Right, Left, Top, Bottom, Front, Back.
 // Which follows the GL_TEXTURE_CUBE_MAP_*_* constants for: +X, -X, +Y, -Y, +Z, and -Z.
-Texture new_cubemap_texture_from_images(TextureImage const texture_images[6]);
-Texture new_cubemap_texture_from_filepaths(char const *paths[6], Err *err);
+Texture new_cubemap_texture_from_images(
+    TextureImage const texture_images[6], TextureSettings const settings);
+Texture new_cubemap_texture_from_filepaths(
+    char const *paths[6], TextureSettings const settings, Err *err);
 
 void bind_texture_to_unit(Texture const texture, uint texture_unit);

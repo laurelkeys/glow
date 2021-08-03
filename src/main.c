@@ -172,7 +172,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
     debug_quad.shader = new_shader_from_filepath(debug_quad.paths, err);
     shadow_mapping.shader = new_shader_from_filepath(shadow_mapping.paths, err);
 
-    stbi_set_flip_vertically_on_load(false);
     skybox_texture = new_cubemap_texture_from_filepaths(
         (char const *[6]) {
             GLOW_TEXTURES_ "skybox/right.jpg", // +X
@@ -182,6 +181,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
             GLOW_TEXTURES_ "skybox/front.jpg", // +Z
             GLOW_TEXTURES_ "skybox/back.jpg", // -Z
         },
+        (TextureSettings) { .flip_vertically = false },
         err);
 
     wood_texture = new_texture_from_filepath(
