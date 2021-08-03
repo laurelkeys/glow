@@ -583,7 +583,7 @@ static inline void render_scene_with_shader(Shader const shader, Resources const
 #endif
 
 static inline void draw_frame(Resources const *r, int width, int height) {
-    imgui_show_demo_window(); // @Temporary
+    show_imgui_demo_window(); // @Temporary
 
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);

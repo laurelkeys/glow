@@ -13,7 +13,7 @@ void deinit_imgui(void);
 void begin_imgui_frame(void);
 void end_imgui_frame(void);
 
-void imgui_show_demo_window(void);
+void show_imgui_demo_window(void);
 
 #ifdef __cplusplus
 }
