@@ -1,1 +1,14 @@
-*/
+# Collada (.dae)
+dae/*
+
+# FBX (.fbx)
+fbx/*
+
+# glTF 2.0 (.glb/.gltf)
+gltf/*
+
+# Wavefront (.obj)
+obj/*
+
+# Other collections of files
+other/*

@@ -8,6 +8,8 @@ static bool show_debug_quad = false;
 static bool was_rmb_pressed = false;
 static bool was_lmb_pressed = false;
 static bool was_tab_pressed = false;
+static bool was_space_pressed = false;
+static bool mouse_is_in_ui = false;
 static bool mouse_is_first = true;
 static vec2 mouse_last = { 0 };
 static Clock clock = { 0 };
@@ -67,7 +69,7 @@ int main(int argc, char *argv[]) {
 
     Options const options = parse_args(argc, argv);
     WindowSettings const window_settings = {
-        800, 600, set_window_callbacks, options.msaa, options.vsync, options.fullscreen,
+        1280, 720, set_window_callbacks, options.msaa, options.vsync, options.fullscreen,
     };
 
     GLFWwindow *window = init_opengl(window_settings, &err);
@@ -90,7 +92,8 @@ int main(int argc, char *argv[]) {
 
     setup_shaders();
     glEnable(GL_DEPTH_TEST);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(
+        window, GLFW_CURSOR, mouse_is_in_ui ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     glfwSetWindowUserPointer(window, (void *) &r);
 
     while (!glfwWindowShouldClose(window)) {
@@ -754,11 +757,6 @@ static inline void setup_shaders(void) {
 #define IS_RELEASED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_RELEASE)
 /* #define REPEATED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_REPEAT) */
 
-// SHIFT, CONTROL, ALT, SUPER, CAPS_LOCK, NUM_LOCK
-#define IS_PRESSED_MOD(mod) (glfwGetKey(window, GLFW_MOD_##mod) == GLFW_PRESS)
-#define IS_RELEASED_MOD(mod) (glfwGetKey(window, GLFW_MOD_##mod) == GLFW_RELEASE)
-/* #define REPEATED_MOD(mod) (glfwGetKey(window, GLFW_MOD_##mod) == GLFW_REPEAT) */
-
 // LEFT, RIGHT, MIDDLE, 1, 2, 3, 4, 5, 6, 7, 8
 #define IS_PRESSED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_PRESS)
 #define IS_RELEASED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_RELEASE)
@@ -768,12 +766,17 @@ static inline void setup_shaders(void) {
 static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (IS_PRESSED(ESCAPE)) { glfwSetWindowShouldClose(window, true); }
 
-    if (IS_PRESSED(W)) { update_camera_position(&camera, CameraMovement_Forward, delta_time); }
-    if (IS_PRESSED(S)) { update_camera_position(&camera, CameraMovement_Backward, delta_time); }
-    if (IS_PRESSED(A)) { update_camera_position(&camera, CameraMovement_Left, delta_time); }
-    if (IS_PRESSED(D)) { update_camera_position(&camera, CameraMovement_Right, delta_time); }
-    if (IS_PRESSED(E)) { update_camera_position(&camera, CameraMovement_Up, delta_time); }
-    if (IS_PRESSED(Q)) { update_camera_position(&camera, CameraMovement_Down, delta_time); }
+    bool const is_pressed_shift = IS_PRESSED(LEFT_SHIFT) || IS_PRESSED(RIGHT_SHIFT);
+
+    if (!mouse_is_in_ui) {
+        f32 const dt = is_pressed_shift ? 10.0f * delta_time : delta_time;
+        if (IS_PRESSED(W)) { update_camera_position(&camera, CameraMovement_Forward, dt); }
+        if (IS_PRESSED(S)) { update_camera_position(&camera, CameraMovement_Backward, dt); }
+        if (IS_PRESSED(A)) { update_camera_position(&camera, CameraMovement_Left, dt); }
+        if (IS_PRESSED(D)) { update_camera_position(&camera, CameraMovement_Right, dt); }
+        if (IS_PRESSED(E)) { update_camera_position(&camera, CameraMovement_Up, dt); }
+        if (IS_PRESSED(Q)) { update_camera_position(&camera, CameraMovement_Down, dt); }
+    }
 
     // Reload shader sources.
     if (IS_PRESSED(TAB) && !was_tab_pressed) {
@@ -793,6 +796,19 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
         setup_shaders();
     }
 
+    // Get or release GUI control of the mouse.
+    if (IS_PRESSED(SPACE) && !was_space_pressed) {
+        if (mouse_is_in_ui) {
+            mouse_is_in_ui = false;
+            glfwSetCursorPos(window, mouse_last.x, mouse_last.y);
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        } else {
+            mouse_is_in_ui = true;
+            glfwSetCursorPos(window, 0, 0);
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    }
+
     show_debug_quad = IS_PRESSED(LEFT_SHIFT) || IS_PRESSED(RIGHT_SHIFT); // @Temporary
 
 #if USE_HDR_TEST_SCENE
@@ -802,10 +818,11 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (exposure < 0.0f) { exposure = 0.0f; }
 #endif
 
-    // Update state flags.
+    // Update key state flags.
     was_rmb_pressed = IS_PRESSED_MOUSE(RIGHT);
     was_lmb_pressed = IS_PRESSED_MOUSE(LEFT);
     was_tab_pressed = IS_PRESSED(TAB);
+    was_space_pressed = IS_PRESSED(SPACE);
 }
 
 //
@@ -844,13 +861,15 @@ static void cursor_pos_callback(GLFWwindow *window, f64 xpos, f64 ypos) {
         mouse_is_first = false;
     }
 
-    // Reverse y since 0, 0 is the top left.
-    f32 const xoffset = xpos - mouse_last.x;
-    f32 const yoffset = mouse_last.y - ypos;
-    update_camera_angles(&camera, (CameraMouseEvent) { xoffset, yoffset });
+    if (!mouse_is_in_ui) {
+        // Reverse y since 0, 0 is the top left.
+        f32 const xoffset = xpos - mouse_last.x;
+        f32 const yoffset = mouse_last.y - ypos;
+        update_camera_angles(&camera, (CameraMouseEvent) { xoffset, yoffset });
 
-    mouse_last.x = xpos;
-    mouse_last.y = ypos;
+        mouse_last.x = xpos;
+        mouse_last.y = ypos;
+    }
 }
 static void scroll_callback(GLFWwindow *window, f64 xoffset, f64 yoffset) {
     update_camera_fovy(&camera, (f32) yoffset);
