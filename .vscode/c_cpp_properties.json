@@ -8,6 +8,7 @@
                 "${workspaceFolder}/ext/glad/include",
                 "${workspaceFolder}/ext/glfw/include",
                 "${workspaceFolder}/ext/imgui",
+                "${workspaceFolder}/ext/imgui/backends",
                 "${workspaceFolder}/ext/stb"
             ],
             "defines": [

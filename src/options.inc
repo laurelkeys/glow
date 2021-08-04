@@ -6,6 +6,7 @@
 
 GLOW_OPTION(f, fullscreen, 0, "Fullscreen mode   (default: false)")
 GLOW_OPTION(v, vsync,      0, "Enable V-Sync     (default: false)")
+GLOW_OPTION(u, no_ui,      0, "Disable the GUI   (default: false)")
 GLOW_OPTION(m, msaa,       1, "Set MSAA samples  (default: 0)")
 GLOW_OPTION(h, help,       0, "Print all the options and exit")
 

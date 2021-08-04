@@ -89,6 +89,7 @@ Options parse_args(int argc, char *argv[]) {
 
     if (arg_f == arg_is_set_flag) { options.fullscreen = true; }
     if (arg_v == arg_is_set_flag) { options.vsync = true; }
+    if (arg_u == arg_is_set_flag) { options.no_ui = true; }
     if (arg_m) {
         assert(strlen(arg_m) <= 2);
         options.msaa = atoi(arg_m);

@@ -121,3 +121,12 @@ void end_imgui_frame(void) {
 void show_imgui_demo_window(void) {
     ImGui::ShowDemoWindow();
 }
+
+void imgui_config_mouse(bool should_capture) {
+    ImGuiIO& io = ImGui::GetIO();
+    if (should_capture) {
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    } else {
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
+}

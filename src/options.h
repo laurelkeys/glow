@@ -5,6 +5,7 @@
 typedef struct Options {
     bool fullscreen;
     bool vsync;
+    bool no_ui;
     int msaa;
 } Options;
 

@@ -71,9 +71,9 @@ typedef struct PathToModel {
 enum { BACKPACK = 0, NANOSUIT, CYBORG, PLANET, ROCK };
 
 static PathToModel const choose_model[] = {
-    [BACKPACK] = { GLOW_MODELS_ "backpack/backpack.obj", true },
-    [NANOSUIT] = { GLOW_MODELS_ "nanosuit/nanosuit.obj", false },
-    [CYBORG] = { GLOW_MODELS_ "cyborg/cyborg.obj", false },
-    [PLANET] = { GLOW_MODELS_ "planet/planet.obj", false },
-    [ROCK] = { GLOW_MODELS_ "rock/rock.obj", true },
+    [BACKPACK] = { GLOW_MODELS_ "obj/backpack/backpack.obj", true },
+    [NANOSUIT] = { GLOW_MODELS_ "obj/nanosuit/nanosuit.obj", false },
+    [CYBORG] = { GLOW_MODELS_ "obj/cyborg/cyborg.obj", false },
+    [PLANET] = { GLOW_MODELS_ "obj/planet/planet.obj", false },
+    [ROCK] = { GLOW_MODELS_ "obj/rock/rock.obj", true },
 };
