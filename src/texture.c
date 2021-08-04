@@ -68,10 +68,10 @@ static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_f
 
     // @Note: index = is_highp ? (is_float ? 3 : 2) : (is_float ? 1 : 0)
     // Reference: https://www.khronos.org/opengl/wiki/Image_Format#Required_formats
-    static int const INTERNAL_FORMAT_R[4] = { GL_R8, GL_R16F, GL_R16, GL_R32F };
-    static int const INTERNAL_FORMAT_RG[4] = { GL_RG8, GL_RG16F, GL_RG16, GL_RG32F };
-    static int const INTERNAL_FORMAT_RGB[4] = { GL_RGB8, GL_RGB16F, GL_RGB16, GL_RGB32F };
-    static int const INTERNAL_FORMAT_RGBA[4] = { GL_RGBA8, GL_RGBA16F, GL_RGBA16, GL_RGBA32F };
+    static int const INTERNAL_FORMAT_R[4] = { GL_R8, GL_R16F, GL_R16UI, GL_R32F };
+    static int const INTERNAL_FORMAT_RG[4] = { GL_RG8, GL_RG16F, GL_RG16UI, GL_RG32F };
+    static int const INTERNAL_FORMAT_RGB[4] = { GL_RGB8, GL_RGB16F, GL_RGB16UI, GL_RGB32F };
+    static int const INTERNAL_FORMAT_RGBA[4] = { GL_RGBA8, GL_RGBA16F, GL_RGBA16UI, GL_RGBA32F };
 
     if (is_srgb) {
         assert(is_highp == false);
@@ -116,9 +116,9 @@ gl_parameters(TextureImage const texture_image, TextureSettings settings) {
     assert(DEFAULT(settings.format) || FORMAT[settings.format] == expected_format);
     assert(internal_format != format); // we want the internal format to be sized
 
-    int const type = settings.floating_point
-                         ? (settings.highp_bitdepth ? GL_FLOAT : GL_HALF_FLOAT)
-                         : (settings.highp_bitdepth ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE);
+    int const type = settings.floating_point   ? GL_FLOAT
+                     : settings.highp_bitdepth ? GL_UNSIGNED_SHORT
+                                               : GL_UNSIGNED_BYTE;
 
     int const mag_filter = FILTER[VALUE_OR(settings.mag_filter, TextureFilter_Linear)];
     int const min_filter =

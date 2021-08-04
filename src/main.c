@@ -2,6 +2,8 @@
 
 #define SHADOW_MAP_RESOLUTION 512
 
+// @Cleanup: group all of this together into some Context
+// struct, with some Mouse and Keyboard groupings as well.
 static bool is_ui_enabled = true;
 static bool show_debug_quad = false;
 static bool was_rmb_pressed = false;
@@ -16,15 +18,29 @@ static Fps fps = { 0 };
 
 static Camera camera;
 
+static PathsToShader geometry_pass;
+static PathsToShader lighting_pass;
+static PathsToShader light_box;
 static PathsToShader skybox;
 static PathsToShader debug_quad;
 static PathsToShader test_scene;
 static PathsToShader shadow_mapping;
 
+static Model backpack_model;
+
 static Texture skybox_texture;
 static Texture wood_texture;
 
+#define OBJECT_COUNT 9
+#define LIGHT_COUNT 32
+
 typedef struct Resources {
+    uint gbuffer;
+
+    vec3 object_positions[OBJECT_COUNT];
+    vec3 light_positions[LIGHT_COUNT];
+    vec3 light_colors[LIGHT_COUNT];
+
     uint vao_skybox;
 
     vec3 light_position;
@@ -118,6 +134,15 @@ main_exit_opengl:
 static inline Resources create_resources(Err *err, int width, int height) {
     Resources r = { 0 };
 
+    geometry_pass.paths.vertex = GLOW_SHADERS_ "gbuffer.vs";
+    geometry_pass.paths.fragment = GLOW_SHADERS_ "gbuffer.fs";
+
+    lighting_pass.paths.vertex = GLOW_SHADERS_ "deferred_shading.vs";
+    lighting_pass.paths.fragment = GLOW_SHADERS_ "deferred_shading.fs";
+
+    light_box.paths.vertex = GLOW_SHADERS_ "deferred_light_box.vs";
+    light_box.paths.fragment = GLOW_SHADERS_ "deferred_light_box.fs";
+
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
     skybox.paths.fragment = GLOW_SHADERS_ "simple_skybox.fs";
 
@@ -131,10 +156,17 @@ static inline Resources create_resources(Err *err, int width, int height) {
     shadow_mapping.paths.fragment = GLOW_SHADERS_ "shadow_mapping_depth.fs";
 
     // @Volatile: use the same shaders as in `process_input`.
+    geometry_pass.shader = new_shader_from_filepath(geometry_pass.paths, err);
+    // lighting_pass.shader = new_shader_from_filepath(lighting_pass.paths, err);
+    // light_box.shader = new_shader_from_filepath(light_box.paths, err);
+
     skybox.shader = new_shader_from_filepath(skybox.paths, err);
     test_scene.shader = new_shader_from_filepath(test_scene.paths, err);
     debug_quad.shader = new_shader_from_filepath(debug_quad.paths, err);
     shadow_mapping.shader = new_shader_from_filepath(shadow_mapping.paths, err);
+
+    stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
+    backpack_model = alloc_new_model_from_filepath(choose_model[BACKPACK].path, err);
 
     skybox_texture = new_cubemap_texture_from_filepaths(
         (char const *[6]) {
@@ -155,6 +187,87 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
     // Exit early if there were any errors during setup.
     if (*err != Err_None) { return r; }
+
+    //
+    // Scene's objects and lights (object_positions, light_positions, light_colors).
+    //
+
+    STATIC_ASSERT(OBJECT_COUNT == 9);
+    r.object_positions[0] = (vec3) { -3, -0.5, -3 };
+    r.object_positions[1] = (vec3) { +0, -0.5, -3 };
+    r.object_positions[2] = (vec3) { +3, -0.5, -3 };
+    r.object_positions[3] = (vec3) { -3, -0.5, +0 };
+    r.object_positions[4] = (vec3) { +0, -0.5, +0 };
+    r.object_positions[5] = (vec3) { +3, -0.5, +0 };
+    r.object_positions[6] = (vec3) { -3, -0.5, +3 };
+    r.object_positions[7] = (vec3) { +0, -0.5, +3 };
+    r.object_positions[8] = (vec3) { +3, -0.5, +3 };
+
+    srand(13);
+    for (usize i = 0; i < LIGHT_COUNT; ++i) {
+        r.light_positions[i] = (vec3) {
+            ((rand() % 100) / 100.0) * 6.0 - 3.0,
+            ((rand() % 100) / 100.0) * 6.0 - 4.0,
+            ((rand() % 100) / 100.0) * 6.0 - 3.0,
+        };
+        r.light_colors[i] = (vec3) {
+            ((rand() % 100) / 200.0) + 0.5,
+            ((rand() % 100) / 200.0) + 0.5,
+            ((rand() % 100) / 200.0) + 0.5,
+        };
+    }
+
+    //
+    // G-Buffer framebuffer (gbuffer).
+    //
+
+    glGenFramebuffers(1, &r.gbuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, r.gbuffer);
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        // Position color buffer.
+        uint g_position;
+        glGenTextures(1, &g_position);
+        glBindTexture(GL_TEXTURE_2D, g_position);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_position, 0);
+
+        // Normal color buffer.
+        uint g_normal;
+        glGenTextures(1, &g_normal);
+        glBindTexture(GL_TEXTURE_2D, g_normal);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, g_normal, 0);
+
+        // Albedo color + specular intensity color buffer.
+        uint g_albedo_spec;
+        glGenTextures(1, &g_albedo_spec);
+        glBindTexture(GL_TEXTURE_2D, g_albedo_spec);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, g_albedo_spec, 0);
+
+        // Specify which color attachments will be used for rendering.
+        glDrawBuffers(
+            3, (uint[3]) { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 });
+
+        // Depth buffer renderbuffer.
+        uint rbo_depth;
+        glGenRenderbuffers(1, &rbo_depth);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
+
+        check_bound_framebuffer_is_complete();
+    }
 
     //
     // Skybox vertices (vao_skybox).
@@ -327,23 +440,26 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
 
-    glDeleteFramebuffers(1, &r->fbo_depth_map);
-    glDeleteTextures(1, &r->tex_depth_map);
-    glDeleteVertexArrays(1, &r->vao_debug_quad);
-
-    glDeleteVertexArrays(1, &r->vao_cube);
-    glDeleteVertexArrays(1, &r->vao_plane);
-
-    glDeleteVertexArrays(1, &r->vao_skybox);
+    glGenFramebuffers(1, &r->fbo_depth_map);
+    glGenTextures(1, &r->tex_depth_map);
+    glGenVertexArrays(1, &r->vao_debug_quad);
+    glGenVertexArrays(1, &r->vao_cube);
+    glGenVertexArrays(1, &r->vao_plane);
+    glGenVertexArrays(1, &r->vao_skybox);
+    glGenFramebuffers(1, &r->gbuffer);
 
     glDeleteTextures(1, &wood_texture.id);
-
     glDeleteTextures(1, &skybox_texture.id);
 
+    dealloc_model(&backpack_model);
+
     glDeleteProgram(shadow_mapping.shader.program_id);
-    glDeleteProgram(test_scene.shader.program_id);
     glDeleteProgram(debug_quad.shader.program_id);
+    glDeleteProgram(test_scene.shader.program_id);
     glDeleteProgram(skybox.shader.program_id);
+    glDeleteProgram(light_box.shader.program_id);
+    glDeleteProgram(lighting_pass.shader.program_id);
+    glDeleteProgram(geometry_pass.shader.program_id);
 }
 
 //
@@ -416,6 +532,31 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);
+
+#if 0
+    //
+    // Geometry Pass (render all geometric / color data to g-buffer).
+    //
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        glBindFramebuffer(GL_FRAMEBUFFER, gbuffer);
+        glClearColor(0, 0, 0, 1); // clear to black not to leak into the g-buffer
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        use_shader(geometry_pass.shader);
+        {
+            // @Todo: ...
+        }
+    }
+
+    //
+    // Lighting Pass (use the g-buffer to calculate the scene's lighting).
+    //
+    use_shader(lighting_pass.shader);
+    {
+            // @Todo: ...
+    }
+
+    return;
+#endif
 
     // Use an orthographic projection matrix to model a directional light source
     // (i.e. all its rays are parallel), so there is no perspective deform.
