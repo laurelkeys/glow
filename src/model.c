@@ -21,7 +21,8 @@ typedef struct TextureStore {
 
 // @Cleanup: this isn't great... maybe it could be specified as an arg when creating the model?
 static enum aiTextureType const STORED_ASSIMP_TYPES[] = {
-    aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_HEIGHT, aiTextureType_AMBIENT
+    aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_AMBIENT,
+    aiTextureType_NORMALS, aiTextureType_HEIGHT,
 };
 
 static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_type) {
@@ -102,7 +103,7 @@ static bool load_stored_textures_with_assimp_type_into_mesh_textures(
             return false;
         }
 
-        // Find (and copy) the pre-loaded texture by comparing its path.
+        // @Speed: find (and copy) the pre-loaded texture by comparing its path.
         bool found_it = false;
         for (usize j = 0; j < texture_store->len; ++j) {
             if (!strncmp(&path.data[0], texture_store->paths[j], path.length)) {

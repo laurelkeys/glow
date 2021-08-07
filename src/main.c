@@ -21,12 +21,14 @@ static Camera camera;
 static PathsToShader geometry_pass;
 static PathsToShader lighting_pass;
 static PathsToShader light_box;
+#if 0
 static PathsToShader skybox;
 static PathsToShader debug_quad;
 static PathsToShader test_scene;
 static PathsToShader shadow_mapping;
+#endif
 
-static Model backpack_model;
+static Model backpack;
 
 static Texture skybox_texture;
 static Texture wood_texture;
@@ -36,11 +38,16 @@ static Texture wood_texture;
 
 typedef struct Resources {
     uint gbuffer;
+    uint gtex_position;
+    uint gtex_normal;
+    uint gtex_albedo_spec;
+    uint grbo_depth;
 
     vec3 object_positions[OBJECT_COUNT];
     vec3 light_positions[LIGHT_COUNT];
     vec3 light_colors[LIGHT_COUNT];
 
+#if 0
     uint vao_skybox;
 
     vec3 light_position;
@@ -50,6 +57,7 @@ typedef struct Resources {
     uint vao_debug_quad;
     uint tex_depth_map;
     uint fbo_depth_map;
+#endif
 } Resources;
 
 static inline Resources create_resources(Err *err, int width, int height);
@@ -68,7 +76,7 @@ int main(int argc, char *argv[]) {
     if (err) { goto main_exit_opengl; }
 
     is_ui_enabled = !options.no_ui;
-    if (is_ui_enabled) { init_imgui(window); }
+    init_imgui(window);
 
     int w = 0, h = 0;
     glfwGetFramebufferSize(window, &w, &h);
@@ -77,7 +85,7 @@ int main(int argc, char *argv[]) {
     mouse_last.x = 0.5f * w;
     mouse_last.y = 0.5f * h;
 
-    camera = new_camera_at((vec3) { 0, 0, 3 });
+    camera = new_camera_at((vec3) { 0, 0, 5 });
     camera.aspect = (f32) w / (f32) h;
 
     Resources r = create_resources(&err, w, h);
@@ -101,7 +109,7 @@ int main(int argc, char *argv[]) {
 main_exit:
     destroy_resources(&r, w, h);
 
-    if (is_ui_enabled) { deinit_imgui(); }
+    deinit_imgui();
 
 main_exit_opengl:
     deinit_opengl(window);
@@ -143,6 +151,15 @@ static inline Resources create_resources(Err *err, int width, int height) {
     light_box.paths.vertex = GLOW_SHADERS_ "deferred_light_box.vs";
     light_box.paths.fragment = GLOW_SHADERS_ "deferred_light_box.fs";
 
+    // @Volatile: use the same shaders as in `process_input`.
+    geometry_pass.shader = new_shader_from_filepath(geometry_pass.paths, err);
+    lighting_pass.shader = new_shader_from_filepath(lighting_pass.paths, err);
+    light_box.shader = new_shader_from_filepath(light_box.paths, err);
+
+    stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
+    backpack = alloc_new_model_from_filepath(choose_model[BACKPACK].path, err);
+
+#if 0
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
     skybox.paths.fragment = GLOW_SHADERS_ "simple_skybox.fs";
 
@@ -155,18 +172,10 @@ static inline Resources create_resources(Err *err, int width, int height) {
     shadow_mapping.paths.vertex = GLOW_SHADERS_ "shadow_mapping_depth.vs";
     shadow_mapping.paths.fragment = GLOW_SHADERS_ "shadow_mapping_depth.fs";
 
-    // @Volatile: use the same shaders as in `process_input`.
-    geometry_pass.shader = new_shader_from_filepath(geometry_pass.paths, err);
-    // lighting_pass.shader = new_shader_from_filepath(lighting_pass.paths, err);
-    // light_box.shader = new_shader_from_filepath(light_box.paths, err);
-
     skybox.shader = new_shader_from_filepath(skybox.paths, err);
     test_scene.shader = new_shader_from_filepath(test_scene.paths, err);
     debug_quad.shader = new_shader_from_filepath(debug_quad.paths, err);
     shadow_mapping.shader = new_shader_from_filepath(shadow_mapping.paths, err);
-
-    stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
-    backpack_model = alloc_new_model_from_filepath(choose_model[BACKPACK].path, err);
 
     skybox_texture = new_cubemap_texture_from_filepaths(
         (char const *[6]) {
@@ -184,6 +193,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
         GLOW_TEXTURES_ "wood.png",
         (TextureSettings) { .flip_vertically = true, .generate_mipmap = true },
         err);
+#endif
 
     // Exit early if there were any errors during setup.
     if (*err != Err_None) { return r; }
@@ -218,57 +228,48 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // G-Buffer framebuffer (gbuffer).
+    // Configure the g-buffer (gbuffer, gtex_position, gtex_normal, gtex_albedo_spec, grbo_depth).
     //
 
     glGenFramebuffers(1, &r.gbuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, r.gbuffer);
     DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        // clang-format off
+
+        #define COLOR_BUFFER(gl_handle, gl_internal_format, gl_format, gl_type, gl_color_attachment)        \
+            glGenTextures(1, &gl_handle);                                                                   \
+            glBindTexture(GL_TEXTURE_2D, gl_handle);                                                        \
+            glTexImage2D(GL_TEXTURE_2D, 0, gl_internal_format, width, height, 0, gl_format, gl_type, NULL); \
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);                              \
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);                              \
+            glFramebufferTexture2D(GL_FRAMEBUFFER, gl_color_attachment, GL_TEXTURE_2D, gl_handle, 0);
+
         // Position color buffer.
-        uint g_position;
-        glGenTextures(1, &g_position);
-        glBindTexture(GL_TEXTURE_2D, g_position);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(
-            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_position, 0);
+        COLOR_BUFFER(r.gtex_position, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_COLOR_ATTACHMENT0);
 
         // Normal color buffer.
-        uint g_normal;
-        glGenTextures(1, &g_normal);
-        glBindTexture(GL_TEXTURE_2D, g_normal);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, g_normal, 0);
+        COLOR_BUFFER(r.gtex_normal, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_COLOR_ATTACHMENT1);
 
         // Albedo color + specular intensity color buffer.
-        uint g_albedo_spec;
-        glGenTextures(1, &g_albedo_spec);
-        glBindTexture(GL_TEXTURE_2D, g_albedo_spec);
-        glTexImage2D(
-            GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(
-            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, g_albedo_spec, 0);
+        COLOR_BUFFER(r.gtex_albedo_spec, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_COLOR_ATTACHMENT2);
 
         // Specify which color attachments will be used for rendering.
-        glDrawBuffers(
-            3, (uint[3]) { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 });
+        glDrawBuffers(3, (uint[3]) { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 });
 
         // Depth buffer renderbuffer.
-        uint rbo_depth;
-        glGenRenderbuffers(1, &rbo_depth);
-        glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+        glGenRenderbuffers(1, &r.grbo_depth);
+        glBindRenderbuffer(GL_RENDERBUFFER, r.grbo_depth);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-        glFramebufferRenderbuffer(
-            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, r.grbo_depth);
 
         check_bound_framebuffer_is_complete();
+
+        #undef GBUFFER_COLOR_BUFFER
+
+        // clang-format on
     }
 
+#if 0
     //
     // Skybox vertices (vao_skybox).
     //
@@ -431,6 +432,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
         check_bound_framebuffer_is_complete();
     }
+#endif
 
     assert(*err == Err_None);
     return r;
@@ -440,18 +442,21 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
 
-    glGenFramebuffers(1, &r->fbo_depth_map);
-    glGenTextures(1, &r->tex_depth_map);
-    glGenVertexArrays(1, &r->vao_debug_quad);
-    glGenVertexArrays(1, &r->vao_cube);
-    glGenVertexArrays(1, &r->vao_plane);
-    glGenVertexArrays(1, &r->vao_skybox);
-    glGenFramebuffers(1, &r->gbuffer);
+    // @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak
+
+#if 0
+    glDeleteFramebuffers(1, &r->fbo_depth_map);
+    glDeleteTextures(1, &r->tex_depth_map);
+    glDeleteVertexArrays(1, &r->vao_debug_quad);
+    glDeleteVertexArrays(1, &r->vao_cube);
+    glDeleteVertexArrays(1, &r->vao_plane);
+    glDeleteVertexArrays(1, &r->vao_skybox);
+    glDeleteFramebuffers(1, &r->gbuffer);
 
     glDeleteTextures(1, &wood_texture.id);
     glDeleteTextures(1, &skybox_texture.id);
 
-    dealloc_model(&backpack_model);
+    dealloc_model(&backpack);
 
     glDeleteProgram(shadow_mapping.shader.program_id);
     glDeleteProgram(debug_quad.shader.program_id);
@@ -460,6 +465,7 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     glDeleteProgram(light_box.shader.program_id);
     glDeleteProgram(lighting_pass.shader.program_id);
     glDeleteProgram(geometry_pass.shader.program_id);
+#endif
 }
 
 //
@@ -501,6 +507,7 @@ static inline void end_frame(GLFWwindow *window, int width, int height) {
 #define NEAR_PLANE 1.0f
 #define FAR_PLANE 7.5f
 
+#if 0
 static inline void render_scene_with_shader(Shader const shader, Resources const *r) {
     DEFER(glBindVertexArray(0)) {
         mat4 model = mat4_id();
@@ -526,38 +533,181 @@ static inline void render_scene_with_shader(Shader const shader, Resources const
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 }
+#endif
+
+static inline void render_quad() {
+    static uint vao_quad = 0;
+
+    // clang-format off
+    if (vao_quad == 0) {
+        glGenVertexArrays(1, &vao_quad); // @Leak
+
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        DEFER(glDeleteBuffers(1, &vbo)) {
+            glBindVertexArray(vao_quad);
+            DEFER(glBindVertexArray(0)) {
+                f32 const quad_vertices_ndc[] = { -1, 1, 0, 0, 1, -1, -1, 0, 0, 0, 1, 1, 0, 1, 1, 1, -1, 0, 1, 0 };
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices_ndc), quad_vertices_ndc, GL_STATIC_DRAW);
+
+                glEnableVertexAttribArray(0); // position
+                glEnableVertexAttribArray(1); // texcoord
+
+                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *) (sizeof(f32) * 0));
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *) (sizeof(f32) * 3));
+            }
+        }
+    }
+    // clang-format on
+
+    DEFER(glBindVertexArray(0)) {
+        glBindVertexArray(vao_quad);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
+}
+
+static inline void render_cube() {
+    static uint vao_cube = 0;
+
+    // clang-format off
+    if (vao_cube == 0) {
+        glGenVertexArrays(1, &vao_cube); // @Leak
+
+        uint vbo;
+        glGenBuffers(1, &vbo);
+        DEFER(glDeleteBuffers(1, &vbo)) {
+            glBindVertexArray(vao_cube);
+            DEFER(glBindVertexArray(0)) {
+                static f32 const cube_vertices_ndc[] = { -1, -1, -1, 0, 0, -1, 0, 0, 1, 1, -1, 0, 0, -1, 1, 1, 1, -1, -1, 0, 0, -1, 1, 0, 1, 1, -1, 0, 0, -1, 1, 1, -1, -1, -1, 0, 0, -1, 0, 0, -1, 1, -1, 0, 0, -1, 0, 1, -1, -1, 1, 0, 0, 1, 0, 0, 1, -1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, -1, 1, 1, 0, 0, 1, 0, 1, -1, -1, 1, 0, 0, 1, 0, 0, -1, 1, 1, -1, 0, 0, 1, 0, -1, 1, -1, -1, 0, 0, 1, 1, -1, -1, -1, -1, 0, 0, 0, 1, -1, -1, -1, -1, 0, 0, 0, 1, -1, -1, 1, -1, 0, 0, 0, 0, -1, 1, 1, -1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, -1, -1, 1, 0, 0, 0, 1, 1, 1, -1, 1, 0, 0, 1, 1, 1, -1, -1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, -1, 1, 1, 0, 0, 0, 0, -1, -1, -1, 0, -1, 0, 0, 1, 1, -1, -1, 0, -1, 0, 1, 1, 1, -1, 1, 0, -1, 0, 1, 0, 1, -1, 1, 0, -1, 0, 1, 0, -1, -1, 1, 0, -1, 0, 0, 0, -1, -1, -1, 0, -1, 0, 0, 1, -1, 1, -1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, -1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, -1, 1, -1, 0, 1, 0, 0, 1, -1, 1, 1, 0, 1, 0, 0, 0 };
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices_ndc), cube_vertices_ndc, GL_STATIC_DRAW);
+
+                glEnableVertexAttribArray(0); // position
+                glEnableVertexAttribArray(1); // normal
+                glEnableVertexAttribArray(2); // texcoord
+
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 0));
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 3));
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 8, (void *) (sizeof(f32) * 6));
+            }
+        }
+    }
+    // clang-format on
+
+    DEFER(glBindVertexArray(0)) {
+        glBindVertexArray(vao_cube);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+}
 
 static inline void draw_frame(Resources const *r, int width, int height) {
-    if (is_ui_enabled) { show_imgui_demo_window(); } // @Temporary
-
     mat4 const projection = get_camera_projection_matrix(&camera);
     mat4 const view = get_camera_view_matrix(&camera);
 
-#if 0
+    // @Note: clear to black to avoid leaking into the g-buffer.
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     //
-    // Geometry Pass (render all geometric / color data to g-buffer).
+    // Geometry pass (render all geometric and color data to the g-buffer).
     //
+
     DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        glBindFramebuffer(GL_FRAMEBUFFER, gbuffer);
-        glClearColor(0, 0, 0, 1); // clear to black not to leak into the g-buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, r->gbuffer);
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         use_shader(geometry_pass.shader);
         {
-            // @Todo: ...
+            set_shader_mat4(geometry_pass.shader, "world_to_view", view);
+            set_shader_mat4(geometry_pass.shader, "view_to_clip", projection);
+
+            for (usize i = 0; i < OBJECT_COUNT; ++i) {
+                set_shader_mat4(
+                    geometry_pass.shader,
+                    "local_to_world",
+                    mat4_mul(mat4_translate(r->object_positions[i]), mat4_scale(vec3_of(0.5f))));
+
+                draw_model_with_shader(&backpack, &geometry_pass.shader);
+            }
         }
     }
 
     //
-    // Lighting Pass (use the g-buffer to calculate the scene's lighting).
+    // Deferred lighting pass (use g-buffer to calculate scene's lighting).
     //
+
+    static int draw_mode = DRAW_LIGHTING;
+    imgui_slider_int("draw_mode", &draw_mode, 0, 5);
+
+    static float linear = 0.7f;
+    static float quadratic = 1.8f;
+    imgui_slider_float("linear", &linear, 0.0f, 5.0f);
+    imgui_slider_float("quadratic", &quadratic, 0.0f, 5.0f);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     use_shader(lighting_pass.shader);
     {
-            // @Todo: ...
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, r->gtex_position);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, r->gtex_normal);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, r->gtex_albedo_spec);
+
+        char uniform_string[32]; // 32 seems large enough..
+        for (usize i = 0; i < LIGHT_COUNT; ++i) {
+            snprintf(uniform_string, 32, "lights[%zu].position", i);
+            set_shader_vec3(lighting_pass.shader, uniform_string, r->light_positions[i]);
+
+            snprintf(uniform_string, 32, "lights[%zu].color", i);
+            set_shader_vec3(lighting_pass.shader, uniform_string, r->light_colors[i]);
+
+            snprintf(uniform_string, 32, "lights[%zu].linear", i);
+            set_shader_float(lighting_pass.shader, uniform_string, linear);
+
+            snprintf(uniform_string, 32, "lights[%zu].quadratic", i);
+            set_shader_float(lighting_pass.shader, uniform_string, quadratic);
+        }
+
+        set_shader_vec3(lighting_pass.shader, "view_pos", camera.position);
+
+        set_shader_int(lighting_pass.shader, "draw_mode", draw_mode); // @@
+
+        render_quad();
     }
 
-    return;
-#endif
+    //
+    // Forward rendering pass (to render all light cubes).
+    //
 
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        // @Note: copy the depth values from the g-buffer into the default framebuffer,
+        // this way the lights don't end up getting rendered on top of everything else.
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, r->gbuffer);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(
+            0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    }
+
+    use_shader(light_box.shader);
+    {
+        set_shader_mat4(light_box.shader, "world_to_view", view);
+        set_shader_mat4(light_box.shader, "view_to_clip", projection);
+
+        for (usize i = 0; i < LIGHT_COUNT; ++i) {
+            set_shader_mat4(
+                light_box.shader,
+                "local_to_world",
+                mat4_mul(mat4_translate(r->light_positions[i]), mat4_scale(vec3_of(0.125f))));
+
+            set_shader_vec3(light_box.shader, "light_color", r->light_colors[i]);
+
+            render_cube();
+        }
+    }
+
+#if !1
     // Use an orthographic projection matrix to model a directional light source
     // (i.e. all its rays are parallel), so there is no perspective deform.
     mat4 const light_projection = mat4_ortho(-10, 10, -10, 10, NEAR_PLANE, FAR_PLANE);
@@ -642,6 +792,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         }
     }
     glDepthFunc(GL_LESS);
+#endif
 }
 
 //
@@ -649,6 +800,12 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 //
 
 static inline void setup_shaders(void) {
+    use_shader(lighting_pass.shader);
+    set_shader_sampler2D(lighting_pass.shader, "gPosition", GL_TEXTURE0);
+    set_shader_sampler2D(lighting_pass.shader, "gNormal", GL_TEXTURE1);
+    set_shader_sampler2D(lighting_pass.shader, "gAlbedoSpec", GL_TEXTURE2);
+
+#if 0
     use_shader(test_scene.shader);
     set_shader_sampler2D(test_scene.shader, "texture_diffuse", GL_TEXTURE0);
     set_shader_sampler2D(test_scene.shader, "shadow_map", GL_TEXTURE1);
@@ -658,6 +815,7 @@ static inline void setup_shaders(void) {
 
     use_shader(skybox.shader);
     set_shader_sampler2D(skybox.shader, "skybox", GL_TEXTURE0);
+#endif
 }
 
 //
@@ -695,10 +853,15 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
         GLOW_LOG("Hot swapping shaders");
 
         // @Volatile: use the same shaders as in `create_resources`.
+        reload_shader_from_filepath(&geometry_pass.shader, geometry_pass.paths);
+        reload_shader_from_filepath(&lighting_pass.shader, lighting_pass.paths);
+        reload_shader_from_filepath(&light_box.shader, light_box.paths);
+#if 0
         reload_shader_from_filepath(&skybox.shader, skybox.paths);
         reload_shader_from_filepath(&test_scene.shader, test_scene.paths);
         reload_shader_from_filepath(&debug_quad.shader, debug_quad.paths);
         reload_shader_from_filepath(&shadow_mapping.shader, shadow_mapping.paths);
+#endif
 
         setup_shaders();
     }
@@ -707,12 +870,12 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (IS_PRESSED(SPACE) && !was_space_pressed) {
         if (mouse_is_in_ui) {
             mouse_is_in_ui = false;
-            imgui_config_mouse(false);
+            if (is_ui_enabled) { imgui_config_mouse(false); }
             glfwSetCursorPos(window, mouse_last.x, mouse_last.y);
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         } else {
             mouse_is_in_ui = true;
-            imgui_config_mouse(true);
+            if (is_ui_enabled) { imgui_config_mouse(true); }
             glfwSetCursorPos(window, 0, 0);
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }

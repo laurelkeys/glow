@@ -83,7 +83,10 @@ static bool reload_shader(
     ShaderStrings const new_shader_arg) {
     Err err = Err_None;
     Shader const new_shader = new_shader_fn(new_shader_arg, &err);
-    if (err) { return false; }
+    if (err) {
+        assert(false);
+        return false;
+    }
 
     glDeleteProgram(shader->program_id);
     shader->program_id = new_shader.program_id;

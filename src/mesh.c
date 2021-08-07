@@ -72,7 +72,7 @@ STATIC_ASSERT(ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE) == 6);
 static void set_sampler_name_from_texture_material(
     char *name, usize max_len, TextureMaterialType const material, uint count) {
     int n = snprintf(name, max_len, SAMPLER_NAME_FROM_MATERIAL_TYPE[material]);
-    if (count) { snprintf(name + n, max_len, "%d", count); }
+    if (count > 0) { snprintf(name + n, max_len, "%d", count); }
 }
 
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {

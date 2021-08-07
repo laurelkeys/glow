@@ -77,3 +77,5 @@ static PathToModel const choose_model[] = {
     [PLANET] = { GLOW_MODELS_ "obj/planet/planet.obj", false },
     [ROCK] = { GLOW_MODELS_ "obj/rock/rock.obj", true },
 };
+
+enum { DRAW_LIGHTING = 0, DRAW_POSITION, DRAW_NORMAL, DRAW_ALBEDO, DRAW_SPECULAR };

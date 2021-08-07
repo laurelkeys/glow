@@ -130,3 +130,11 @@ void imgui_config_mouse(bool should_capture) {
         io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
     }
 }
+
+void imgui_slider_int(char const* label, int* v, int v_min, int v_max) {
+    ImGui::SliderInt(label, v, v_min, v_max);
+}
+
+void imgui_slider_float(char const* label, float* v, float v_min, float v_max) {
+    ImGui::SliderFloat(label, v, v_min, v_max);
+}
