@@ -78,4 +78,11 @@ static PathToModel const choose_model[] = {
     [ROCK] = { GLOW_MODELS_ "obj/rock/rock.obj", true },
 };
 
-enum { DRAW_LIGHTING = 0, DRAW_POSITION, DRAW_NORMAL, DRAW_ALBEDO, DRAW_SPECULAR };
+enum {
+    DRAW_LIGHTING = 0,
+    DRAW_POSITION,
+    DRAW_NORMAL,
+    DRAW_ALBEDO,
+    DRAW_SPECULAR,
+    DRAW_LIGHT_VOLUMES
+};

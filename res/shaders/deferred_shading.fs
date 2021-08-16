@@ -7,8 +7,12 @@ struct Light {
     vec3 color;
 
     // Light attenuation factors.
+    float constant;
     float linear;
     float quadratic;
+
+    // Light volume effect radius.
+    float radius;
 };
 
 in vec2 texcoord;
@@ -48,17 +52,21 @@ void main() {
     vec3 view_dir = normalize(view_pos - frag_pos);
 
     for (int i = 0; i < LIGHT_COUNT; ++i) {
-        vec3 light_dir = normalize(lights[i].position - frag_pos);
-        vec3 diffuse = max(dot(normal, light_dir), 0.0) * diffuse * lights[i].color;
-
-        vec3 halfway_dir = normalize(light_dir + view_dir);
-        float spec = pow(max(dot(normal, halfway_dir), 0.0), 16.0);
-        vec3 specular = lights[i].color * spec * specular;
-
         float dist = length(lights[i].position - frag_pos);
-        float attenuation = 1.0 / (1.0 + lights[i].linear * dist + lights[i].quadratic * dist * dist);
+        if (dist < lights[i].radius) {
+            vec3 light_dir = normalize(lights[i].position - frag_pos);
+            vec3 diffuse = max(dot(normal, light_dir), 0.0) * diffuse * lights[i].color;
 
-        lighting += attenuation * (diffuse + specular);
+            vec3 halfway_dir = normalize(light_dir + view_dir);
+            float spec = pow(max(dot(normal, halfway_dir), 0.0), 16.0);
+            vec3 specular = lights[i].color * spec * specular;
+
+            float attenuation = 1.0 / (lights[i].constant + lights[i].linear * dist + lights[i].quadratic * dist * dist);
+
+            lighting += attenuation * (diffuse + specular);
+        } else {
+            // Do nothing, as the fragment is outside of the light's volume.
+        }
     }
 
     fragColor = vec4(lighting, 1.0);

@@ -5,12 +5,12 @@ inline f64 clock_tick(Clock *clock, f64 time) {
     return clock->time_increment;
 }
 
-inline void update_frame_counter(Fps *fps, f64 time) {
-    fps->counter += 1;
-    f64 const time_interval = time - fps->last_update_time;
+inline void update_frame_counter(FrameCounter *frame_counter, f64 time) {
+    frame_counter->counter += 1;
+    f64 const time_interval = time - frame_counter->last_update_time;
     if (time_interval >= 1.0) {
-        fps->last_update_time = time;
-        fps->frame_interval = (time_interval * 1000.0) / (f64) fps->counter;
-        fps->counter = 0;
+        frame_counter->last_update_time = time;
+        frame_counter->frame_interval = (time_interval * 1000.0) / (f64) frame_counter->counter;
+        frame_counter->counter = 0;
     }
 }

@@ -14,7 +14,7 @@ static bool mouse_is_in_ui = false;
 static bool mouse_is_first = true;
 static vec2 mouse_last = { 0 };
 static Clock clock = { 0 };
-static Fps fps = { 0 };
+static FrameCounter frame_counter = { 0 };
 
 static Camera camera;
 
@@ -442,7 +442,11 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
 
-    // @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak @Leak
+    glDeleteRenderbuffers(1, &r->grbo_depth);
+    glDeleteTextures(1, &r->gtex_albedo_spec);
+    glDeleteTextures(1, &r->gtex_normal);
+    glDeleteTextures(1, &r->gtex_position);
+    glDeleteFramebuffers(1, &r->gbuffer);
 
 #if 0
     glDeleteFramebuffers(1, &r->fbo_depth_map);
@@ -455,17 +459,20 @@ static inline void destroy_resources(Resources *r, int width, int height) {
 
     glDeleteTextures(1, &wood_texture.id);
     glDeleteTextures(1, &skybox_texture.id);
+#endif
 
     dealloc_model(&backpack);
 
+#if 0
     glDeleteProgram(shadow_mapping.shader.program_id);
     glDeleteProgram(debug_quad.shader.program_id);
     glDeleteProgram(test_scene.shader.program_id);
     glDeleteProgram(skybox.shader.program_id);
+#endif
+
     glDeleteProgram(light_box.shader.program_id);
     glDeleteProgram(lighting_pass.shader.program_id);
     glDeleteProgram(geometry_pass.shader.program_id);
-#endif
 }
 
 //
@@ -477,13 +484,17 @@ static inline void begin_frame(GLFWwindow *window, int width, int height) {
     UNUSED(height);
 
     clock_tick(&clock, glfwGetTime());
-    update_frame_counter(&fps, clock.time);
+    update_frame_counter(&frame_counter, clock.time);
     process_input(window, clock.time_increment);
 
-    if (fps.last_update_time == clock.time) {
+    if (frame_counter.last_update_time == clock.time) {
         char title[64]; // 64 seems large enough..
-        int const rate = (int) round(1000.0 / fps.frame_interval);
-        snprintf(title, sizeof(title), "glow | %d fps (%.3f ms)", rate, fps.frame_interval);
+        snprintf(
+            title,
+            sizeof(title),
+            "glow | %.2f mspf | %d fps",
+            frame_counter.frame_interval,
+            (int) round(1000.0 / frame_counter.frame_interval));
         glfwSetWindowTitle(window, title);
     }
 
@@ -640,10 +651,15 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     static int draw_mode = DRAW_LIGHTING;
     imgui_slider_int("draw_mode", &draw_mode, 0, 5);
 
+    static int dark_threshold = 5;
+    imgui_slider_int("dark_threshold", &dark_threshold, 1, 255);
+
+    static float constant = 1.0f;
     static float linear = 0.7f;
     static float quadratic = 1.8f;
-    imgui_slider_float("linear", &linear, 0.0f, 5.0f);
-    imgui_slider_float("quadratic", &quadratic, 0.0f, 5.0f);
+    imgui_slider_float("constant", &constant, 0.0f, 10.0f);
+    imgui_slider_float("linear", &linear, 0.0f, 10.0f);
+    imgui_slider_float("quadratic", &quadratic, 0.0f, 10.0f);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     use_shader(lighting_pass.shader);
@@ -657,11 +673,28 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 
         char uniform_string[32]; // 32 seems large enough..
         for (usize i = 0; i < LIGHT_COUNT; ++i) {
+            vec3 const color = r->light_colors[i];
+
             snprintf(uniform_string, 32, "lights[%zu].position", i);
             set_shader_vec3(lighting_pass.shader, uniform_string, r->light_positions[i]);
 
             snprintf(uniform_string, 32, "lights[%zu].color", i);
-            set_shader_vec3(lighting_pass.shader, uniform_string, r->light_colors[i]);
+            set_shader_vec3(lighting_pass.shader, uniform_string, color);
+
+            // Threshold = I_max / (Kc + Kl * d + Kq * d*d)
+            // Kq * d*d + Kl * d + Kc - (I_max / Threshold) = 0
+            f32 const max_intensity = MAX3(color.x, color.y, color.z);
+            f32 const a = quadratic;
+            f32 const b = linear;
+            f32 const c = constant - (max_intensity * (256.0f / dark_threshold));
+            f32 const effect_radius =
+                (a == 0.0f) ? -c / b : (-b + sqrtf(b * b - 4 * a * c)) / (2 * a);
+
+            snprintf(uniform_string, 32, "lights[%zu].radius", i);
+            set_shader_float(lighting_pass.shader, uniform_string, effect_radius);
+
+            snprintf(uniform_string, 32, "lights[%zu].constant", i);
+            set_shader_float(lighting_pass.shader, uniform_string, constant);
 
             snprintf(uniform_string, 32, "lights[%zu].linear", i);
             set_shader_float(lighting_pass.shader, uniform_string, linear);
@@ -902,7 +935,26 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // Update the camera's aspect ratio.
     camera.aspect = (f32) width / (f32) height;
 
-    /* Resources *r = glfwGetWindowUserPointer(window); */
+    Resources *r = glfwGetWindowUserPointer(window);
+
+    // Resize buffers.
+    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+        // clang-format off
+        glBindTexture(GL_TEXTURE_2D, r->gtex_position);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
+        glBindTexture(GL_TEXTURE_2D, r->gtex_normal);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
+        glBindTexture(GL_TEXTURE_2D, r->gtex_albedo_spec);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        // clang-format on
+    }
+
+    glBindRenderbuffer(GL_RENDERBUFFER, r->grbo_depth);
+    DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+    }
 }
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     // Do nothing.
