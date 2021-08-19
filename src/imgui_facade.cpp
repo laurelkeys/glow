@@ -4,14 +4,69 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-namespace {
+#define USE_CUSTOM_STYLE_COLORS true
+static void setup_style_colors(void);
 
-void setup_style_colors(void) {
+void init_imgui(GLFWwindow* window) {
+    assert(window != nullptr);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    setup_style_colors();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, /*install_callbacks*/ true);
+    ImGui_ImplOpenGL3_Init();
+}
+
+void deinit_imgui(void) {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void begin_imgui_frame(void) {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+void end_imgui_frame(void) {
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void show_imgui_demo_window(void) {
+    ImGui::ShowDemoWindow();
+}
+
+void imgui_config_mouse(bool should_capture) {
+    ImGuiIO& io = ImGui::GetIO();
+    if (should_capture) {
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    } else {
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
+}
+
+void imgui_slider_int(char const* label, int* v, int v_min, int v_max) {
+    ImGui::SliderInt(label, v, v_min, v_max);
+}
+
+void imgui_slider_float(char const* label, float* v, float v_min, float v_max) {
+    ImGui::SliderFloat(label, v, v_min, v_max);
+}
+
+static void setup_style_colors(void) {
     ImGui::StyleColorsDark();
 
-#if 1
-    // Reference: https://github.com/ocornut/imgui/issues/707
+#if USE_CUSTOM_STYLE_COLORS
     // clang-format off
+    // Reference: https://github.com/ocornut/imgui/issues/707
 
     ImVec4* colors = ImGui::GetStyle().Colors;
 
@@ -76,65 +131,4 @@ void setup_style_colors(void) {
 
     // clang-format on
 #endif
-}
-
-} // anonymous namespace
-
-void init_imgui(GLFWwindow* window) {
-    assert(window != nullptr);
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    setup_style_colors();
-
-    ImGui_ImplGlfw_InitForOpenGL(window, /*install_callbacks*/ true);
-    ImGui_ImplOpenGL3_Init();
-}
-
-void deinit_imgui(void) {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
-
-void begin_imgui_frame(void) {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-}
-
-void end_imgui_frame(void) {
-    ImGui::Render();
-    // int width, height;
-    // glfwGetFramebufferSize(window, &width, &height);
-    // glViewport(0, 0, width, height);
-    // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void show_imgui_demo_window(void) {
-    ImGui::ShowDemoWindow();
-}
-
-void imgui_config_mouse(bool should_capture) {
-    ImGuiIO& io = ImGui::GetIO();
-    if (should_capture) {
-        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-    } else {
-        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
-    }
-}
-
-void imgui_slider_int(char const* label, int* v, int v_min, int v_max) {
-    ImGui::SliderInt(label, v, v_min, v_max);
-}
-
-void imgui_slider_float(char const* label, float* v, float v_min, float v_max) {
-    ImGui::SliderFloat(label, v, v_min, v_max);
 }

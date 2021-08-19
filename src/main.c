@@ -15,12 +15,15 @@ static bool mouse_is_first = true;
 static vec2 mouse_last = { 0 };
 static Clock clock = { 0 };
 static FrameCounter frame_counter = { 0 };
+static vec3 ssao_sample_kernel[8 * 8];
+static vec3 ssao_noise[4 * 4];
 
 static Camera camera;
 
 static PathsToShader geometry_pass;
 static PathsToShader lighting_pass;
 static PathsToShader light_box;
+static PathsToShader ssao;
 #if 0
 static PathsToShader skybox;
 static PathsToShader debug_quad;
@@ -42,6 +45,10 @@ typedef struct Resources {
     uint gtex_normal;
     uint gtex_albedo_spec;
     uint grbo_depth;
+
+    uint fbo_ssao;
+    uint tex_ssao;
+    uint tex_noise;
 
     vec3 object_positions[OBJECT_COUNT];
     vec3 light_positions[LIGHT_COUNT];
@@ -151,10 +158,14 @@ static inline Resources create_resources(Err *err, int width, int height) {
     light_box.paths.vertex = GLOW_SHADERS_ "deferred_light_box.vs";
     light_box.paths.fragment = GLOW_SHADERS_ "deferred_light_box.fs";
 
+    ssao.paths.vertex = GLOW_SHADERS_ "gbuffer.vs";
+    ssao.paths.fragment = GLOW_SHADERS_ "gbuffer_ssao.fs";
+
     // @Volatile: use the same shaders as in `process_input`.
     geometry_pass.shader = new_shader_from_filepath(geometry_pass.paths, err);
     lighting_pass.shader = new_shader_from_filepath(lighting_pass.paths, err);
     light_box.shader = new_shader_from_filepath(light_box.paths, err);
+    ssao.shader = new_shader_from_filepath(ssao.paths, err);
 
     stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
     backpack = alloc_new_model_from_filepath(choose_model[BACKPACK].path, err);
@@ -213,7 +224,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
     r.object_positions[7] = (vec3) { +0, -0.5, +3 };
     r.object_positions[8] = (vec3) { +3, -0.5, +3 };
 
-    srand(13);
     for (usize i = 0; i < LIGHT_COUNT; ++i) {
         r.light_positions[i] = (vec3) {
             ((rand() % 100) / 100.0) * 6.0 - 3.0,
@@ -228,7 +238,48 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // Configure the g-buffer (gbuffer, gtex_position, gtex_normal, gtex_albedo_spec, grbo_depth).
+    // SSAO (ssao_sample_kernel, ssao_noise, fbo_ssao, tex_ssao, tex_noise).
+    //
+
+    for (usize i = 0; i < ARRAY_LEN(ssao_sample_kernel); ++i) {
+        // @Note: vary z only in [0.0, 1.0] in tangent space so that we sample from a hemisphere.
+        ssao_sample_kernel[i] = vec3_scl(
+            vec3_normalize((vec3) { RANDOM(-1, 1), RANDOM(-1, 1), RANDOM(0, 1) }), RANDOM(0, 1));
+        // @Note: by normalizing the vector we push it to the hemisphere's surface. So, to sample
+        // within it, we multiply by a random value and then `scale` biases it towards the center.
+        f32 const scale = (f32) i / (f32) ARRAY_LEN(ssao_sample_kernel);
+        ssao_sample_kernel[i] = vec3_scl(ssao_sample_kernel[i], lerp(0.1f, 1.0f, scale * scale));
+    }
+
+    glGenFramebuffers(1, &r.fbo_ssao);
+    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_ssao);
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        glGenTextures(1, &r.tex_ssao);
+        glBindTexture(GL_TEXTURE_2D, r.tex_ssao);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r.tex_ssao, 0);
+        // check_bound_framebuffer_is_complete();
+    }
+
+    for (usize i = 0; i < ARRAY_LEN(ssao_noise); ++i) {
+        ssao_noise[i] = (vec3) { .x = RANDOM(-1, 1), .y = RANDOM(-1, 1), .z = 0 };
+    }
+
+    glGenTextures(1, &r.tex_noise);
+    glBindTexture(GL_TEXTURE_2D, r.tex_noise);
+    STATIC_ASSERT(ARRAY_LEN(ssao_noise) == 4 * 4);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssao_noise[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    //
+    // Configure the g-buffer (gbuffer, gtex_position, gtex_normal, gtex_albedo_spec,
+    // grbo_depth).
     //
 
     glGenFramebuffers(1, &r.gbuffer);
@@ -236,22 +287,25 @@ static inline Resources create_resources(Err *err, int width, int height) {
     DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
         // clang-format off
 
-        #define COLOR_BUFFER(gl_handle, gl_internal_format, gl_format, gl_type, gl_color_attachment)        \
+        #define COLOR_BUFFER(                                                                               \
+                gl_handle, gl_internal_format, gl_format, gl_type, gl_color_attachment, gl_texture_wrap)    \
             glGenTextures(1, &gl_handle);                                                                   \
             glBindTexture(GL_TEXTURE_2D, gl_handle);                                                        \
             glTexImage2D(GL_TEXTURE_2D, 0, gl_internal_format, width, height, 0, gl_format, gl_type, NULL); \
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);                              \
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);                              \
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_texture_wrap);                             \
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl_texture_wrap);                             \
             glFramebufferTexture2D(GL_FRAMEBUFFER, gl_color_attachment, GL_TEXTURE_2D, gl_handle, 0);
 
         // Position color buffer.
-        COLOR_BUFFER(r.gtex_position, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_COLOR_ATTACHMENT0);
+        COLOR_BUFFER(r.gtex_position, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_COLOR_ATTACHMENT0, GL_CLAMP_TO_EDGE);
 
         // Normal color buffer.
-        COLOR_BUFFER(r.gtex_normal, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_COLOR_ATTACHMENT1);
+        COLOR_BUFFER(r.gtex_normal, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_COLOR_ATTACHMENT1, GL_REPEAT);
 
         // Albedo color + specular intensity color buffer.
-        COLOR_BUFFER(r.gtex_albedo_spec, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_COLOR_ATTACHMENT2);
+        COLOR_BUFFER(r.gtex_albedo_spec, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_COLOR_ATTACHMENT2, GL_REPEAT);
 
         // Specify which color attachments will be used for rendering.
         glDrawBuffers(3, (uint[3]) { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 });
@@ -442,6 +496,10 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
 
+    glDeleteTextures(1, &r->tex_noise);
+    glDeleteTextures(1, &r->tex_ssao);
+    glDeleteFramebuffers(1, &r->fbo_ssao);
+
     glDeleteRenderbuffers(1, &r->grbo_depth);
     glDeleteTextures(1, &r->gtex_albedo_spec);
     glDeleteTextures(1, &r->gtex_normal);
@@ -470,6 +528,7 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     glDeleteProgram(skybox.shader.program_id);
 #endif
 
+    glDeleteProgram(ssao.shader.program_id);
     glDeleteProgram(light_box.shader.program_id);
     glDeleteProgram(lighting_pass.shader.program_id);
     glDeleteProgram(geometry_pass.shader.program_id);
@@ -645,6 +704,31 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     }
 
     //
+    // Use the g-buffer to render SSAO texture.
+    //
+
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        glBindFramebuffer(GL_FRAMEBUFFER, r->fbo_ssao);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        use_shader(ssao.shader);
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, r->gtex_position);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, r->gtex_normal);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, r->tex_noise);
+
+            // @Todo: send kernel samples to shader.
+
+            set_shader_mat4(ssao.shader, "view_to_clip", projection);
+
+            render_quad();
+        }
+    }
+
+    //
     // Deferred lighting pass (use g-buffer to calculate scene's lighting).
     //
 
@@ -670,6 +754,8 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         glBindTexture(GL_TEXTURE_2D, r->gtex_normal);
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, r->gtex_albedo_spec);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, r->tex_ssao);
 
         char uniform_string[32]; // 32 seems large enough..
         for (usize i = 0; i < LIGHT_COUNT; ++i) {
