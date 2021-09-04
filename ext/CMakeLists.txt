@@ -16,11 +16,18 @@ target_link_libraries(glad PUBLIC ${CMAKE_DL_LIBS})
 
 # ----------------------------------------------------------------------------------------
 
-# add_library(stb INTERFACE)
-# target_include_directories(stb INTERFACE stb/)
+add_library(stb STATIC stb/stb_impl.c)      # (stb INTERFACE)
+target_include_directories(stb PUBLIC stb/) # (stb INTERFACE stb/)
 
-add_library(stb STATIC stb/stb_impl.c)
-target_include_directories(stb PUBLIC stb/)
+# ----------------------------------------------------------------------------------------
+
+add_library(cgltf STATIC cgltf/cgltf_impl.c)    # (cgltf INTERFACE)
+target_include_directories(cgltf PUBLIC cgltf/) # (cgltf INTERFACE cgltf/)
+
+# ----------------------------------------------------------------------------------------
+
+add_library(fast_obj STATIC fast_obj/fast_obj_impl.c) # (fast_obj INTERFACE)
+target_include_directories(fast_obj PUBLIC fast_obj/) # (fast_obj INTERFACE fast_obj/)
 
 # ----------------------------------------------------------------------------------------
 

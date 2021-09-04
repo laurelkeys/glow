@@ -70,7 +70,7 @@ target_compile_definitions(${PROJECT_NAME}
 
     PUBLIC  _CRT_SECURE_NO_WARNINGS)
 
-target_link_libraries(${PROJECT_NAME} glfw glad stb assimp imgui)
+target_link_libraries(${PROJECT_NAME} glfw glad stb cgltf fast_obj assimp imgui)
 
 # ----------------------------------------------------------------------------------------
 
