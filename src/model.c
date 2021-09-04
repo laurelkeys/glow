@@ -266,16 +266,45 @@ static void alloc_into_model_meshes_from_assimp_node(
 
 // clang-format off
 static uint const POST_PROCESS_FLAGS = 0
-    | aiProcess_ValidateDataStructure
     | aiProcess_Triangulate // @Volatile: `alloc_mesh_from_assimp_mesh` relies on this
-    | aiProcess_FlipUVs
-    | aiProcess_JoinIdenticalVertices
-    | aiProcess_CalcTangentSpace
-    | aiProcess_GenSmoothNormals
+    | aiProcess_SortByPType
     | aiProcess_GenUVCoords
     | aiProcess_OptimizeMeshes
-    | aiProcess_SortByPType;
+    | aiProcess_GenSmoothNormals
+    | aiProcess_CalcTangentSpace
+    | aiProcess_JoinIdenticalVertices
+    | aiProcess_ValidateDataStructure;
 // clang-format on
+
+#ifndef NDEBUG
+// @Temporary: sanity check.
+
+typedef struct SceneCount {
+    uint nodes;
+    uint indices;
+    uint vertices;
+} SceneCount;
+
+static SceneCount
+count_assimp_scene(struct aiScene const *ai_scene, struct aiNode const *ai_node) {
+    SceneCount count = { .nodes = 1 };
+
+    for (uint i = 0; i < ai_node->mNumMeshes; ++i) {
+        struct aiMesh *ai_mesh = ai_scene->mMeshes[ai_node->mMeshes[i]];
+        count.indices += ai_mesh->mNumFaces * ai_mesh->mFaces[0].mNumIndices;
+        count.vertices += ai_mesh->mNumVertices;
+    }
+
+    for (uint i = 0; i < ai_node->mNumChildren; ++i) {
+        SceneCount const child_count = count_assimp_scene(ai_scene, ai_node->mChildren[i]);
+        count.nodes += child_count.nodes;
+        count.indices += child_count.indices;
+        count.vertices += child_count.vertices;
+    }
+
+    return count;
+}
+#endif
 
 static usize count_assimp_nodes(struct aiNode const *ai_node) {
     usize count = 1;
@@ -299,6 +328,11 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     GLOW_LOG("Loading model: `%s`", model_path);
     assert(ai_scene->mNumMeshes > 0 && ai_scene->mNumMaterials > 0);
     assert(ai_scene->mNumMeshes == count_assimp_nodes(ai_scene->mRootNode) - 1);
+
+#ifndef NDEBUG
+    SceneCount const scene_count = count_assimp_scene(ai_scene, ai_scene->mRootNode);
+    assert(scene_count.nodes == count_assimp_nodes(ai_scene->mRootNode));
+#endif
 
     Model model = {
         .path = model_path,
@@ -339,6 +373,19 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
             &model, &texture_store, ai_scene->mRootNode, ai_scene, err);
         assert(model.meshes_len == model.meshes_capacity);
     }
+
+#ifndef NDEBUG
+    usize total_indices = 0;
+    usize total_vertices = 0;
+    usize total_textures = 0;
+    for (Mesh *mesh = &model.meshes[0]; mesh != &model.meshes[model.meshes_len]; ++mesh) {
+        total_indices += mesh->indices_len;
+        total_vertices += mesh->vertices_len;
+        total_textures += mesh->textures_len;
+    }
+    assert(scene_count.indices == total_indices);
+    assert(scene_count.vertices == total_vertices);
+#endif
 
     // Clean up the temporary mesh texture data allocated to create model.meshes.
     dealloc_texture_store(&texture_store);
