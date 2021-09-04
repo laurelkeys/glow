@@ -46,9 +46,11 @@ typedef struct Resources {
     uint gtex_albedo_spec;
     uint grbo_depth;
 
+    uint tex_noise;
     uint fbo_ssao;
     uint tex_ssao;
-    uint tex_noise;
+    uint fbo_ssao_blur;
+    uint tex_ssao_blur;
 
     vec3 object_positions[OBJECT_COUNT];
     vec3 light_positions[LIGHT_COUNT];
@@ -238,7 +240,8 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // SSAO (ssao_sample_kernel, ssao_noise, fbo_ssao, tex_ssao, tex_noise).
+    // SSAO - Screen-space ambient occlusion (ssao_sample_kernel, ssao_noise,
+    // tex_noise, fbo_ssao, tex_ssao, fbo_ssao_blur, tex_ssao_blur).
     //
 
     for (usize i = 0; i < ARRAY_LEN(ssao_sample_kernel); ++i) {
@@ -249,19 +252,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
         // within it, we multiply by a random value and then `scale` biases it towards the center.
         f32 const scale = (f32) i / (f32) ARRAY_LEN(ssao_sample_kernel);
         ssao_sample_kernel[i] = vec3_scl(ssao_sample_kernel[i], lerp(0.1f, 1.0f, scale * scale));
-    }
-
-    glGenFramebuffers(1, &r.fbo_ssao);
-    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_ssao);
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        glGenTextures(1, &r.tex_ssao);
-        glBindTexture(GL_TEXTURE_2D, r.tex_ssao);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(
-            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r.tex_ssao, 0);
-        // check_bound_framebuffer_is_complete();
     }
 
     for (usize i = 0; i < ARRAY_LEN(ssao_noise); ++i) {
@@ -276,6 +266,34 @@ static inline Resources create_resources(Err *err, int width, int height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // clang-format off
+
+    #define SSAO_COLOR_BUFFER(gl_handle)                                                  \
+        glGenTextures(1, &gl_handle);                                                     \
+        glBindTexture(GL_TEXTURE_2D, gl_handle);                                          \
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, NULL); \
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);                \
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);                \
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gl_handle, 0);
+
+    glGenFramebuffers(1, &r.fbo_ssao);
+    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_ssao);
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        SSAO_COLOR_BUFFER(r.tex_ssao);
+        // check_bound_framebuffer_is_complete();
+    }
+
+    glGenFramebuffers(1, &r.fbo_ssao_blur);
+    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_ssao_blur);
+    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        SSAO_COLOR_BUFFER(r.tex_ssao_blur);
+        // check_bound_framebuffer_is_complete();
+    }
+
+    #undef SSAO_COLOR_BUFFER
+
+    // clang-format on
 
     //
     // Configure the g-buffer (gbuffer, gtex_position, gtex_normal, gtex_albedo_spec,
