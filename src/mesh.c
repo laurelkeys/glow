@@ -57,17 +57,15 @@ void dealloc_mesh(Mesh *mesh) {
     mesh->vertices = NULL;
 }
 
-// @Volatile: :SyncWithTextureMaterialType:
 static char const *SAMPLER_NAME_FROM_MATERIAL_TYPE[] = {
+    /* [TextureMaterialType_None] = NULL, */
     [TextureMaterialType_Diffuse] = "texture_diffuse",
     [TextureMaterialType_Specular] = "texture_specular",
     [TextureMaterialType_Ambient] = "texture_ambient",
     [TextureMaterialType_Normal] = "texture_normal",
     [TextureMaterialType_Height] = "texture_height",
 };
-
-// @Volatile: :SyncWithTextureMaterialType:
-STATIC_ASSERT(ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE) == 6);
+STATIC_ASSERT(ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE) == TextureMaterialType_Count);
 
 static void set_sampler_name_from_texture_material(
     char *name, usize max_len, TextureMaterialType const material, uint count) {

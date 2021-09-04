@@ -26,8 +26,9 @@ static enum aiTextureType const STORED_ASSIMP_TYPES[] = {
 };
 
 static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_type) {
+    STATIC_ASSERT(6 == TextureMaterialType_Count);
     switch (ai_type) {
-        // @Volatile: :SyncWithTextureMaterialType:
+        /* case aiTextureType_NONE: return TextureMaterialType_None; */
         case aiTextureType_DIFFUSE: return TextureMaterialType_Diffuse;
         case aiTextureType_SPECULAR: return TextureMaterialType_Specular;
         case aiTextureType_AMBIENT: return TextureMaterialType_Ambient;

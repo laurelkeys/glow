@@ -27,14 +27,18 @@ typedef struct Camera {
     f32 far;
 } Camera;
 
-typedef enum CameraMovement {
-    CameraMovement_Forward,
-    CameraMovement_Backward,
-    CameraMovement_Left,
-    CameraMovement_Right,
-    CameraMovement_Up,
-    CameraMovement_Down,
-} CameraMovement;
+// clang-format off
+#define ENUM_CameraMovement(VariantX) \
+    VariantX(CameraMovement_Forward)  \
+    VariantX(CameraMovement_Backward) \
+    VariantX(CameraMovement_Left)     \
+    VariantX(CameraMovement_Right)    \
+    VariantX(CameraMovement_Up)       \
+    VariantX(CameraMovement_Down)
+typedef enum CameraMovement { ENUM_CameraMovement(ENUM_X_NAME) } CameraMovement;
+enum { CameraMovement_Count = (0 ENUM_CameraMovement(ENUM_X_PLUS_ONE)) };
+#undef ENUM_CameraMovement
+// clang-format on
 
 typedef struct CameraMouseEvent {
     f32 xoffset;

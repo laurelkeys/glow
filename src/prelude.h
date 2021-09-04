@@ -80,6 +80,9 @@ typedef struct Str {
     for (int CONCATIFY(i__, __LINE__) = 0; !CONCATIFY(i__, __LINE__); \
          (CONCATIFY(i__, __LINE__) += 1), f)
 
+#define ENUM_X_NAME(NAME) NAME,
+#define ENUM_X_PLUS_ONE(...) +1
+
 //
 // Miscellaneous.
 //

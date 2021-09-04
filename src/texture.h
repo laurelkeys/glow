@@ -2,26 +2,38 @@
 
 #include "prelude.h"
 
-typedef enum TextureFilter {
-    TextureFilter_Default = 0,
-    TextureFilter_Linear,
-    TextureFilter_Nearest,
-} TextureFilter;
+// clang-format off
+#define ENUM_TextureFilter(VariantX) \
+    VariantX(TextureFilter_Default)  \
+    VariantX(TextureFilter_Linear)   \
+    VariantX(TextureFilter_Nearest)
+typedef enum TextureFilter { ENUM_TextureFilter(ENUM_X_NAME) } TextureFilter;
+enum { TextureFilter_Count = (0 ENUM_TextureFilter(ENUM_X_PLUS_ONE)) };
+#undef ENUM_TextureFilter
+// clang-format on
 
-typedef enum TextureWrap {
-    TextureWrap_Repeat = 0,
-    TextureWrap_ClampToEdge,
-    TextureWrap_ClampToBorder,
-    TextureWrap_MirroredRepeat,
-} TextureWrap;
+// clang-format off
+#define ENUM_TextureWrap(VariantX)       \
+    VariantX(TextureWrap_Repeat)         \
+    VariantX(TextureWrap_ClampToEdge)    \
+    VariantX(TextureWrap_ClampToBorder)  \
+    VariantX(TextureWrap_MirroredRepeat)
+typedef enum TextureWrap { ENUM_TextureWrap(ENUM_X_NAME) } TextureWrap;
+enum { TextureWrap_Count = (0 ENUM_TextureWrap(ENUM_X_PLUS_ONE)) };
+#undef ENUM_TextureWrap
+// clang-format on
 
-typedef enum TextureFormat {
-    TextureFormat_Default = 0,
-    TextureFormat_R,
-    TextureFormat_Rg,
-    TextureFormat_Rgb,
-    TextureFormat_Rgba,
-} TextureFormat;
+// clang-format off
+#define ENUM_TextureFormat(VariantX) \
+    VariantX(TextureFormat_Default)  \
+    VariantX(TextureFormat_R)        \
+    VariantX(TextureFormat_Rg)       \
+    VariantX(TextureFormat_Rgb)      \
+    VariantX(TextureFormat_Rgba)
+typedef enum TextureFormat { ENUM_TextureFormat(ENUM_X_NAME) } TextureFormat;
+enum { TextureFormat_Count = (0 ENUM_TextureFormat(ENUM_X_PLUS_ONE)) };
+#undef ENUM_TextureFormat
+// clang-format on
 
 typedef struct TextureSettings {
     TextureFormat format;
@@ -43,20 +55,27 @@ typedef struct TextureImage {
     int channels;
 } TextureImage;
 
-typedef enum TextureMaterialType {
-    TextureMaterialType_None = 0,
-    TextureMaterialType_Diffuse,
-    TextureMaterialType_Specular,
-    TextureMaterialType_Ambient,
-    TextureMaterialType_Normal,
-    TextureMaterialType_Height,
-    // @Volatile: update new values where labeled :SyncWithTextureMaterialType:
-} TextureMaterialType;
+// clang-format off
+#define ENUM_TextureMaterialType(VariantX) \
+    VariantX(TextureMaterialType_None)     \
+    VariantX(TextureMaterialType_Diffuse)  \
+    VariantX(TextureMaterialType_Specular) \
+    VariantX(TextureMaterialType_Ambient)  \
+    VariantX(TextureMaterialType_Normal)   \
+    VariantX(TextureMaterialType_Height)
+typedef enum TextureMaterialType { ENUM_TextureMaterialType(ENUM_X_NAME) } TextureMaterialType;
+enum { TextureMaterialType_Count = (0 ENUM_TextureMaterialType(ENUM_X_PLUS_ONE)) };
+#undef ENUM_TextureMaterialType
+// clang-format on
 
-typedef enum TextureTargetType {
-    TextureTargetType_2D = 0,
-    TextureTargetType_Cube,
-} TextureTargetType;
+// clang-format off
+#define ENUM_TextureTargetType(VariantX) \
+    VariantX(TextureTargetType_2D)       \
+    VariantX(TextureTargetType_Cube)
+typedef enum TextureTargetType { ENUM_TextureTargetType(ENUM_X_NAME) } TextureTargetType;
+enum { TextureTargetType_Count = (0 ENUM_TextureTargetType(ENUM_X_PLUS_ONE)) };
+#undef ENUM_TextureTargetType
+// clang-format on
 
 typedef struct Texture {
     uint id;
