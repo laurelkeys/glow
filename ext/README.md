@@ -5,7 +5,7 @@
 ### `stb/`
 - URL: https://github.com/nothings/stb/
 - License: [MIT, Unlicense](https://github.com/nothings/stb/blob/master/LICENSE)
-- Upstream version: 1ee679c
+- Upstream version: 5ba0baa
   - `stb_image.h`: v2.27
 - Local modifications:
   - Added a `std_impl.c` file:

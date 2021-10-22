@@ -12,7 +12,7 @@ static int const FILTER[] = {
     [TextureFilter_Linear ] = GL_LINEAR
 };
 
-static int const MIN_MIPMAP_FILTER[][2] = {
+static int const MIN_MIPMAP_FILTER[][3] = {
     [TextureFilter_Nearest][TextureFilter_Nearest] = GL_NEAREST_MIPMAP_NEAREST,
     [TextureFilter_Nearest][TextureFilter_Linear ] = GL_NEAREST_MIPMAP_LINEAR,
     [TextureFilter_Linear ][TextureFilter_Nearest] = GL_LINEAR_MIPMAP_NEAREST,

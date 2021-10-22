@@ -1,0 +1,124 @@
+---
+Language: Cpp
+Standard: Latest
+IndentWidth: 4
+ColumnLimit: 98
+AccessModifierOffset: -4
+PointerAlignment: Right # Left
+## ReferenceAlignment: Right # Left
+
+AlignAfterOpenBracket: AlwaysBreak # Align
+## AlignArrayOfStructures: Right # None
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: None # Consecutive
+AlignEscapedNewlines: Left
+AlignOperands: Align
+AlignTrailingComments: false # true
+ReflowComments: false
+
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Always # Empty
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline # All # Empty
+AllowShortIfStatementsOnASingleLine: WithoutElse # Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true # false
+
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes # No
+
+BinPackArguments: false # true
+BinPackParameters: false
+
+BitFieldColonSpacing: Both
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false # true
+  AfterControlStatement: Never # MultiLine
+  AfterEnum: false # true
+  AfterFunction: false # true
+  AfterNamespace: false
+  AfterStruct: false # true
+  AfterUnion: false # true
+  AfterExternBlock: true # false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+BreakBeforeBinaryOperators: NonAssignment # None
+BreakBeforeConceptDeclarations: true
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeComma
+BreakInheritanceList: BeforeComma
+BreakStringLiterals: false
+
+CompactNamespaces: false
+FixNamespaceComments: false
+NamespaceIndentation: Inner # All
+
+## PackConstructorInitializers: Never # CurrentLine # NextLine
+# AllowAllConstructorInitializersOnNextLine: true # false
+# ConstructorInitializerAllOnOneLineOrOnePerLine: false # true
+ConstructorInitializerIndentWidth: 2
+ContinuationIndentWidth: 4
+
+Cpp11BracedListStyle: false
+SpaceBeforeCpp11BracedList: true
+
+## EmptyLineAfterAccessModifier: Leave
+EmptyLineBeforeAccessModifier: Leave
+
+IncludeBlocks: Preserve
+
+## IndentAccessModifiers: false
+IndentCaseBlocks: false
+IndentCaseLabels: true
+IndentExternBlock: false # true
+IndentGotoLabels: false
+IndentPPDirectives: None # AfterHash
+IndentRequires: true
+IndentWrappedFunctionNames: false
+## LambdaBodyIndentation: Signature
+## PPIndentWidth: 2
+
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 2
+
+SortIncludes: true # false ## CaseSensitive # Never
+SortUsingDeclarations: true # false
+
+SpaceAfterCStyleCast: true # false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+
+SpaceBeforeAssignmentOperators: true # false
+SpaceBeforeCaseColon: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+
+SpaceInEmptyBlock: false # true
+SpaceInEmptyParentheses: false
+## SpacesInAngles: Never
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+TabWidth: 4
+UseTab: Never
