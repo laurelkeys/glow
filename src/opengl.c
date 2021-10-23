@@ -154,7 +154,7 @@ bool check_bound_framebuffer_is_complete() {
     return false;
 }
 
-bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *err) {
+bool is_shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *err) {
     if (*err) { return false; }
 
     int success;
@@ -171,7 +171,7 @@ bool shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *er
     return true;
 }
 
-bool program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err) {
+bool is_program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err) {
     if (*err) { return false; }
 
     int success;

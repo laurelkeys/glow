@@ -38,4 +38,5 @@ uint make_mesh_vao(Vertex const *vertices, usize vertices_len, uint *indices, us
 
 void dealloc_mesh(Mesh *mesh);
 
+void draw_mesh_direct(Mesh const *mesh);
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader);

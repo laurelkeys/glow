@@ -151,10 +151,7 @@ static TextureStore alloc_texture_store_for_assimp_types(
 }
 
 static void dealloc_texture_store(TextureStore *texture_store) {
-    for (usize i = texture_store->len - 1; i < texture_store->len; --i) {
-        free(texture_store->paths[i]);
-    }
-
+    for (usize i = 0; i < texture_store->len; ++i) { free(texture_store->paths[i]); }
     free(texture_store->textures);
     texture_store->textures = NULL;
 
@@ -403,12 +400,13 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
 }
 
 void dealloc_model(Model *model) {
-    for (usize i = model->meshes_len - 1; i < model->meshes_len; --i) {
-        dealloc_mesh(&model->meshes[i]);
-    }
-
+    for (usize i = 0; i < model->meshes_len; ++i) { dealloc_mesh(&model->meshes[i]); }
     free(model->meshes);
     model->meshes = NULL;
+}
+
+void draw_model_direct(Model const *model) {
+    for (usize i = 0; i < model->meshes_len; ++i) { draw_mesh_direct(&model->meshes[i]); }
 }
 
 void draw_model_with_shader(Model const *model, Shader const *shader) {
@@ -417,7 +415,7 @@ void draw_model_with_shader(Model const *model, Shader const *shader) {
     }
 }
 
-void draw_textureless_model_with_shader(Model const *model, Shader const *shader) {
+void draw_model_textureless_with_shader(Model const *model, Shader const *shader) {
     for (usize i = 0; i < model->meshes_len; ++i) {
         // @Hack: ignore textures while drawing the mesh.
         usize const textures_len = model->meshes[i].textures_len;

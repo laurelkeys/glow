@@ -19,7 +19,7 @@ static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LE
     uint const id = glCreateShader(type);
     glShaderSource(id, 1, &source, NULL);
     glCompileShader(id);
-    if (!shader_compile_success(id, info_log, err)) {
+    if (!is_shader_compile_success(id, info_log, err)) {
         GLOW_WARNING("%s shader compilation failed with: `\n%s`", SHADER_TYPE(type), info_log);
     }
 
@@ -46,7 +46,7 @@ Shader new_shader_from_source(ShaderStrings const source, Err *err) {
     if (has_geometry_shader) { glAttachShader(program_id, geometry_id); }
 
     glLinkProgram(program_id);
-    if (!program_link_success(program_id, info_log, err)) {
+    if (!is_program_link_success(program_id, info_log, err)) {
         GLOW_WARNING("shader program linking failed with: `\n%s`", info_log);
     }
 
@@ -77,13 +77,15 @@ Shader new_shader_from_filepath(ShaderStrings const path, Err *err) {
     return shader;
 }
 
-static bool reload_shader(
+static bool try_reload_shader(
     Shader *shader,
     Shader (*new_shader_fn)(ShaderStrings const, Err *),
-    ShaderStrings const new_shader_arg) {
-    Err err = Err_None;
-    Shader const new_shader = new_shader_fn(new_shader_arg, &err);
-    if (err) {
+    ShaderStrings const new_shader_arg,
+    Err *err) {
+    if (*err) { return false; }
+
+    Shader const new_shader = new_shader_fn(new_shader_arg, err);
+    if (*err) {
         assert(false);
         return false;
     }
@@ -93,11 +95,11 @@ static bool reload_shader(
 
     return true;
 }
-bool reload_shader_from_source(Shader *shader, ShaderStrings const source) {
-    return reload_shader(shader, new_shader_from_source, source);
+bool try_reload_shader_from_source(Shader *shader, ShaderStrings const source) {
+    return try_reload_shader(shader, new_shader_from_source, source, &(Err) { Err_None });
 }
-bool reload_shader_from_filepath(Shader *shader, ShaderStrings const path) {
-    return reload_shader(shader, new_shader_from_filepath, path);
+bool try_reload_shader_from_filepath(Shader *shader, ShaderStrings const path) {
+    return try_reload_shader(shader, new_shader_from_filepath, path, &(Err) { Err_None });
 }
 
 void use_shader(Shader const shader) {

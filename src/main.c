@@ -990,14 +990,14 @@ static inline void process_input(GLFWwindow *window, f32 delta_time) {
         GLOW_LOG("Hot swapping shaders");
 
         // @Volatile: use the same shaders as in `create_resources`.
-        reload_shader_from_filepath(&geometry_pass.shader, geometry_pass.paths);
-        reload_shader_from_filepath(&lighting_pass.shader, lighting_pass.paths);
-        reload_shader_from_filepath(&light_box.shader, light_box.paths);
+        try_reload_shader_from_filepath(&geometry_pass.shader, geometry_pass.paths);
+        try_reload_shader_from_filepath(&lighting_pass.shader, lighting_pass.paths);
+        try_reload_shader_from_filepath(&light_box.shader, light_box.paths);
 #if 0
-        reload_shader_from_filepath(&skybox.shader, skybox.paths);
-        reload_shader_from_filepath(&test_scene.shader, test_scene.paths);
-        reload_shader_from_filepath(&debug_quad.shader, debug_quad.paths);
-        reload_shader_from_filepath(&shadow_mapping.shader, shadow_mapping.paths);
+        try_reload_shader_from_filepath(&skybox.shader, skybox.paths);
+        try_reload_shader_from_filepath(&test_scene.shader, test_scene.paths);
+        try_reload_shader_from_filepath(&debug_quad.shader, debug_quad.paths);
+        try_reload_shader_from_filepath(&shadow_mapping.shader, shadow_mapping.paths);
 #endif
 
         setup_shaders();

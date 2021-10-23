@@ -55,7 +55,7 @@ BraceWrapping:
   IndentBraces: false
   SplitEmptyFunction: false
   SplitEmptyRecord: false
-  SplitEmptyNamespace: false
+  SplitEmptyNamespace: true
 
 BreakBeforeBinaryOperators: NonAssignment # None
 BreakBeforeConceptDeclarations: true
@@ -68,14 +68,13 @@ CompactNamespaces: false
 FixNamespaceComments: false
 NamespaceIndentation: Inner # All
 
-## PackConstructorInitializers: Never # CurrentLine # NextLine
-# AllowAllConstructorInitializersOnNextLine: true # false
-# ConstructorInitializerAllOnOneLineOrOnePerLine: false # true
+## PackConstructorInitializers: Never # NextLine # CurrentLine
+AllowAllConstructorInitializersOnNextLine: false # true
+ConstructorInitializerAllOnOneLineOrOnePerLine: false # true
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 4
 
 Cpp11BracedListStyle: false
-SpaceBeforeCpp11BracedList: true
 
 ## EmptyLineAfterAccessModifier: Leave
 EmptyLineBeforeAccessModifier: Leave
@@ -94,7 +93,7 @@ IndentWrappedFunctionNames: false
 ## PPIndentWidth: 2
 
 KeepEmptyLinesAtTheStartOfBlocks: false
-MaxEmptyLinesToKeep: 2
+MaxEmptyLinesToKeep: 1
 
 SortIncludes: true # false ## CaseSensitive # Never
 SortUsingDeclarations: true # false
@@ -103,8 +102,9 @@ SpaceAfterCStyleCast: true # false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: true
 
-SpaceBeforeAssignmentOperators: true # false
+SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: true
 SpaceBeforeCtorInitializerColon: true
 SpaceBeforeInheritanceColon: true
 SpaceBeforeParens: ControlStatements

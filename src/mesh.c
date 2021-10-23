@@ -75,6 +75,13 @@ static void set_sampler_name_from_texture_material(
     if (count > 0) { snprintf(name + n, max_len, "%d", count); }
 }
 
+void draw_mesh_direct(Mesh const *mesh) {
+    glBindVertexArray(mesh->vao);
+    DEFER(glBindVertexArray(0)) {
+        glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
+    }
+}
+
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
     uint count[ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE)] = { 0 };
     char name[24 + 1] = { 0 }; // @Note: large enough for SAMPLER_NAME_FROM_MATERIAL_TYPE
@@ -96,10 +103,7 @@ void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
         bind_texture_to_unit(mesh->textures[i], texture_unit);
     }
 
-    glBindVertexArray(mesh->vao);
-    DEFER(glBindVertexArray(0)) {
-        glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
-    }
+    draw_mesh_direct(mesh);
 
     bind_texture_to_unit((Texture) { 0 }, GL_TEXTURE0);
 }

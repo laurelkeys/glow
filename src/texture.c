@@ -262,7 +262,7 @@ Texture new_cubemap_texture_from_filepaths(
         images[i] = alloc_new_texture_image(paths[i], settings, err);
     }
     Texture const texture = new_cubemap_texture_from_images(images, settings);
-    for (usize i = 5; i < 6; --i) { dealloc_texture_image(&images[i]); }
+    for (usize i = 0; i < 6; ++i) { dealloc_texture_image(&images[i]); }
 
     return texture;
 }

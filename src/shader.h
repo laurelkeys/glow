@@ -18,8 +18,8 @@ typedef struct ShaderStrings {
 Shader new_shader_from_source(ShaderStrings const source, Err *err);
 Shader new_shader_from_filepath(ShaderStrings const path, Err *err);
 
-bool reload_shader_from_source(Shader *shader, ShaderStrings const source);
-bool reload_shader_from_filepath(Shader *shader, ShaderStrings const path);
+bool try_reload_shader_from_source(Shader *shader, ShaderStrings const source);
+bool try_reload_shader_from_filepath(Shader *shader, ShaderStrings const path);
 
 void use_shader(Shader const shader);
 
