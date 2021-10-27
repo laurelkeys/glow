@@ -19,7 +19,7 @@ typedef struct WindowSettings {
 GLFWwindow *init_opengl(WindowSettings const settings, Err *err);
 void deinit_opengl(GLFWwindow *window);
 
-bool check_bound_framebuffer_is_complete();
+bool check_bound_framebuffer_is_complete(void);
 
 bool is_shader_compile_success(uint shader, char info_log[INFO_LOG_LENGTH], Err *err);
 bool is_program_link_success(uint program, char info_log[INFO_LOG_LENGTH], Err *err);

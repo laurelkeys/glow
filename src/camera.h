@@ -43,8 +43,8 @@ typedef struct CameraMouseEvent {
 
 Camera new_camera_at(vec3 const position);
 
-mat4 get_camera_view_matrix(Camera const *camera);
-mat4 get_camera_projection_matrix(Camera const *camera);
+mat4 compute_camera_view_matrix(Camera const *camera);
+mat4 compute_camera_projection_matrix(Camera const *camera);
 
 void update_camera_fovy(Camera *camera, f32 yoffset);
 void update_camera_angles(Camera *camera, CameraMouseEvent const mouse_event);

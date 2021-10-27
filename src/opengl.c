@@ -130,11 +130,11 @@ void deinit_opengl(GLFWwindow *window) {
     glfwTerminate();
 }
 
-bool check_bound_framebuffer_is_complete() {
+bool check_bound_framebuffer_is_complete(void) {
     int const status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status == GL_FRAMEBUFFER_COMPLETE) { return true; }
 
-    // clang-format off
+    /* clang-format off */
     GLOW_WARNING(
         "framebuffer is incomplete, status: `0x%x` (%s)",
         status,
@@ -148,7 +148,7 @@ bool check_bound_framebuffer_is_complete() {
         : (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE)        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
         : (status == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)      ? "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"
                                                                     : ""));
-    // clang-format on
+    /* clang-format on */
 
     assert(false);
     return false;

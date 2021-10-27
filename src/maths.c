@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-// clang-format off
+/* clang-format off */
 
 //
 // Scalar math.
@@ -447,7 +447,7 @@ mat4 mat4_rotate_z(f32 angle_in_radians) {
 //  http://www.songho.ca/opengl/gl_anglestoaxes.html
 //  http://www.songho.ca/opengl/gl_projectionmatrix.html
 
-// clang-format on
+/* clang-format on */
 
 mat4 mat4_lookat(vec3 const eye, vec3 const target, vec3 const up) {
     vec3 const z_axis = vec3_normalize(vec3_sub(eye, target));
@@ -527,7 +527,7 @@ mat4 mat4_perspective(f32 fovy, f32 aspect, f32 near, f32 far) {
     } };
 }
 
-// clang-format off
+/* clang-format off */
 
 //
 // Quaternion math.

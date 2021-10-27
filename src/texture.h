@@ -50,7 +50,7 @@ typedef enum TextureMaterialType {
     TextureMaterialType_Ambient,
     TextureMaterialType_Normal,
     TextureMaterialType_Height,
-    // @Volatile: update new values where labeled :SyncWithTextureMaterialType:
+    // @Volatile: sync mesh.c and models.c accordingly.
 } TextureMaterialType;
 
 typedef enum TextureTargetType {

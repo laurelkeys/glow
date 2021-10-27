@@ -8,11 +8,6 @@
 
 #include <glad/glad.h>
 
-#define SHADER_TYPE(shader_type)                        \
-    ((shader_type) == GL_VERTEX_SHADER     ? "vertex"   \
-     : (shader_type) == GL_FRAGMENT_SHADER ? "fragment" \
-                                           : "????")
-
 static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
     if (*err) { return 0; }
 
@@ -20,13 +15,16 @@ static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LE
     glShaderSource(id, 1, &source, NULL);
     glCompileShader(id);
     if (!is_shader_compile_success(id, info_log, err)) {
-        GLOW_WARNING("%s shader compilation failed with: `\n%s`", SHADER_TYPE(type), info_log);
+        char const *type_string =
+            ((type) == GL_VERTEX_SHADER     ? "vertex"
+             : (type) == GL_FRAGMENT_SHADER ? "fragment"
+             : (type) == GL_GEOMETRY_SHADER ? "geometry"
+                                            : "");
+        GLOW_WARNING("%s shader compilation failed with: `\n%s`", type_string, info_log);
     }
 
     return id;
 }
-
-#undef SHADER_TYPE
 
 Shader new_shader_from_source(ShaderStrings const source, Err *err) {
     if (*err) { return (Shader) { 0 }; }
@@ -106,7 +104,7 @@ void use_shader(Shader const shader) {
     glUseProgram(shader.program_id);
 }
 
-// clang-format off
+/* clang-format off */
 void set_shader_int(Shader const shader, char const *name, int value) { glUniform1i(get_uniform_location(shader.program_id, name), value); }
 void set_shader_bool(Shader const shader, char const *name, bool value) { glUniform1i(get_uniform_location(shader.program_id, name), (int) value); }
 void set_shader_float(Shader const shader, char const *name, f32 value) { glUniform1f(get_uniform_location(shader.program_id, name), value); }
@@ -122,4 +120,4 @@ void set_shader_vec4(Shader const shader, char const *name, vec4 const vec) { gl
 
 void set_shader_mat3(Shader const shader, char const *name, mat3 const mat) { glUniformMatrix3fv(get_uniform_location(shader.program_id, name), 1, GL_FALSE, &mat.m[0][0]); }
 void set_shader_mat4(Shader const shader, char const *name, mat4 const mat) { glUniformMatrix4fv(get_uniform_location(shader.program_id, name), 1, GL_FALSE, &mat.m[0][0]); }
-// clang-format on
+/* clang-format on */

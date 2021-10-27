@@ -6,7 +6,7 @@
 
 #include <glad/glad.h>
 
-// clang-format off
+/* clang-format off */
 static int const FILTER[] = {
     [TextureFilter_Nearest] = GL_NEAREST,
     [TextureFilter_Linear ] = GL_LINEAR
@@ -48,7 +48,7 @@ static int const TARGET_TYPE_CUBE_FACE[6] = {
     [2] = GL_TEXTURE_CUBE_MAP_POSITIVE_Y, [3] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
     [4] = GL_TEXTURE_CUBE_MAP_POSITIVE_Z, [5] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
 };
-// clang-format on
+/* clang-format on */
 
 static int gl_format(int channels) {
     switch (channels) {

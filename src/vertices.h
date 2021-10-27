@@ -4,7 +4,7 @@
 
 #include "maths_types.h"
 
-// clang-format off
+/* clang-format off */
 static f32 const QUAD_VERTICES[] = {
     // positions     // texture coords
     -1.0f,  1.0f,    0.0f, 1.0f,
@@ -138,7 +138,7 @@ static f32 const PLANE_VERTICES[] = {
     -25.0f, -0.5f, -25.0f,    0.0f, 1.0f, 0.0f,      0.0f, 25.0f,
      25.0f, -0.5f, -25.0f,    0.0f, 1.0f, 0.0f,     25.0f, 10.0f,
 };
-// clang-format on
+/* clang-format on */
 
 #if 0
 typedef struct VertexLocations {

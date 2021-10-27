@@ -65,7 +65,7 @@ static void setup_style_colors(void) {
     ImGui::StyleColorsDark();
 
 #if USE_CUSTOM_STYLE_COLORS
-    // clang-format off
+    /* clang-format off */
     // Reference: https://github.com/ocornut/imgui/issues/707
 
     ImVec4* colors = ImGui::GetStyle().Colors;
@@ -129,6 +129,6 @@ static void setup_style_colors(void) {
     #undef XHI
     #undef HI
 
-    // clang-format on
+    /* clang-format on */
 #endif
 }

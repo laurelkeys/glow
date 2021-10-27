@@ -3,7 +3,7 @@
 #include "console.h"
 #include "maths.h"
 
-// clang-format off
+/* clang-format off */
 vec3 convert_color(vec3 const c, ColorSpace const from, ColorSpace const to) {
     if (from == to) { return c; }
     vec3 linear_rgb;
@@ -26,7 +26,7 @@ vec3 convert_color(vec3 const c, ColorSpace const from, ColorSpace const to) {
         case ColorSpace_CIEXYZ:    return linear_rgb_to_ciexyz(linear_rgb);
     }
 }
-// clang-format on
+/* clang-format on */
 
 //
 // Pure gamma power function compression / expansion.

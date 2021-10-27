@@ -2,7 +2,7 @@
 
 // NOTE: this is simply a stripped-down version of http://nothings.org/stb_ds (v0.67)
 
-// clang-format off
+/* clang-format off */
 
 #include <string.h> // size_t, memmove
 

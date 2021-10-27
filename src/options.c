@@ -7,7 +7,7 @@
 
 // Reference: https://www.duskborn.com/posts/simple-c-command-line-parser/
 Options parse_args(int argc, char *argv[]) {
-    // clang-format off
+    /* clang-format off */
 
     #define GLOW_OPTION(s, l, n, d) assert(n <= 1);
     #include "options.inc"
@@ -83,7 +83,7 @@ Options parse_args(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-    // clang-format on
+    /* clang-format on */
 
     Options options = { 0 };
 

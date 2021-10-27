@@ -47,7 +47,7 @@
 
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
 
 #define MIN3(a, b, c) (MIN(MIN((a), (b)), (c)))
 #define MAX3(a, b, c) (MAX(MAX((a), (b)), (c)))
@@ -62,8 +62,8 @@
 #define STEP(edge, x) (((x) < (edge)) ? 0 : 1)
 
 #define CLAMP(x, a, b) (((x) < (a)) ? (a) : ((x) > (b)) ? (b) : (x))
-#define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))
 #define CLAMP_MIN(x, a) (((x) < (a)) ? (a) : (x))
+#define CLAMP_MAX(x, b) (((x) > (b)) ? (b) : (x))
 
 #define RANDOM(a, b) ((a) + ((b) - (a)) * ((f32) rand() / (f32) RAND_MAX))
 

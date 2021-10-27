@@ -24,10 +24,10 @@ Camera new_camera_at(vec3 const position) {
     };
 }
 
-mat4 get_camera_view_matrix(Camera const *camera) {
+mat4 compute_camera_view_matrix(Camera const *camera) {
     return mat4_lookat(camera->position, vec3_add(camera->position, camera->forward), camera->up);
 }
-mat4 get_camera_projection_matrix(Camera const *camera) {
+mat4 compute_camera_projection_matrix(Camera const *camera) {
     return mat4_perspective(RADIANS(camera->fovy), camera->aspect, camera->near, camera->far);
 }
 
@@ -58,7 +58,7 @@ void update_camera_position(Camera *camera, CameraMovement const movement, f32 d
     vec3 const forward_backward = vec3_scl(camera->forward, speed);
     vec3 const right_left = vec3_scl(camera->right, speed);
     vec3 const up_down = vec3_scl(camera->up, speed);
-    // clang-format off
+    /* clang-format off */
     switch (movement) {
         case CameraMovement_Forward:  camera->position = vec3_add(camera->position, forward_backward); break;
         case CameraMovement_Backward: camera->position = vec3_sub(camera->position, forward_backward); break;
@@ -67,5 +67,5 @@ void update_camera_position(Camera *camera, CameraMovement const movement, f32 d
         case CameraMovement_Up:       camera->position = vec3_add(camera->position, up_down); break;
         case CameraMovement_Down:     camera->position = vec3_sub(camera->position, up_down); break;
     }
-    // clang-format on
+    /* clang-format on */
 }

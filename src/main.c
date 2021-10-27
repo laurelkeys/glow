@@ -1,77 +1,14 @@
-#include "main.h"
+#include "main.inl"
 
-#define SHADOW_MAP_RESOLUTION 512
-
-// @Cleanup: group all of this together into some Context
-// struct, with some Mouse and Keyboard groupings as well.
-static bool is_ui_enabled = true;
-static bool show_debug_quad = false;
-static bool was_rmb_pressed = false;
-static bool was_lmb_pressed = false;
-static bool was_tab_pressed = false;
-static bool was_space_pressed = false;
-static bool mouse_is_in_ui = false;
-static bool mouse_is_first = true;
-static vec2 mouse_last = { 0 };
-static Clock clock = { 0 };
-static FrameCounter frame_counter = { 0 };
-static vec3 ssao_sample_kernel[8 * 8];
-static vec3 ssao_noise[4 * 4];
-
-static Camera camera;
-
-static PathsToShader geometry_pass;
-static PathsToShader lighting_pass;
-static PathsToShader light_box;
-static PathsToShader ssao;
-#if 0
-static PathsToShader skybox;
-static PathsToShader debug_quad;
-static PathsToShader test_scene;
-static PathsToShader shadow_mapping;
-#endif
-
-static Model backpack;
-
-static Texture skybox_texture;
-static Texture wood_texture;
-
-#define OBJECT_COUNT 9
-#define LIGHT_COUNT 32
-
-typedef struct Resources {
-    uint gbuffer;
-    uint gtex_position;
-    uint gtex_normal;
-    uint gtex_albedo_spec;
-    uint grbo_depth;
-
-    uint tex_noise;
-    uint fbo_ssao;
-    uint tex_ssao;
-    uint fbo_ssao_blur;
-    uint tex_ssao_blur;
-
-    vec3 object_positions[OBJECT_COUNT];
-    vec3 light_positions[LIGHT_COUNT];
-    vec3 light_colors[LIGHT_COUNT];
-
-#if 0
-    uint vao_skybox;
-
-    vec3 light_position;
-    uint vao_plane;
-    uint vao_cube;
-
-    uint vao_debug_quad;
-    uint tex_depth_map;
-    uint fbo_depth_map;
-#endif
-} Resources;
+static inline void setup_shaders(void);
+static inline void process_input(GLFWwindow *window, f32 delta_time);
+static void set_window_callbacks(GLFWwindow *window);
 
 static inline Resources create_resources(Err *err, int width, int height);
 static inline void destroy_resources(Resources *r, int width, int height);
+static inline void begin_frame(GLFWwindow *window, int width, int height);
 static inline void draw_frame(Resources const *r, int width, int height);
+static inline void end_frame(GLFWwindow *window, int width, int height);
 
 int main(int argc, char *argv[]) {
     Err err = Err_None;
@@ -267,7 +204,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    // clang-format off
+    /* clang-format off */
 
     #define SSAO_COLOR_BUFFER(gl_handle)                                                  \
         glGenTextures(1, &gl_handle);                                                     \
@@ -293,7 +230,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
     #undef SSAO_COLOR_BUFFER
 
-    // clang-format on
+    /* clang-format on */
 
     //
     // Configure the g-buffer (gbuffer, gtex_position, gtex_normal, gtex_albedo_spec,
@@ -303,7 +240,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
     glGenFramebuffers(1, &r.gbuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, r.gbuffer);
     DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        // clang-format off
+        /* clang-format off */
 
         #define COLOR_BUFFER(                                                                               \
                 gl_handle, gl_internal_format, gl_format, gl_type, gl_color_attachment, gl_texture_wrap)    \
@@ -338,7 +275,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
 
         #undef GBUFFER_COLOR_BUFFER
 
-        // clang-format on
+        /* clang-format on */
     }
 
 #if 0
@@ -623,10 +560,10 @@ static inline void render_scene_with_shader(Shader const shader, Resources const
 }
 #endif
 
-static inline void render_quad() {
+static inline void render_quad(void) {
     static uint vao_quad = 0;
 
-    // clang-format off
+    /* clang-format off */
     if (vao_quad == 0) {
         glGenVertexArrays(1, &vao_quad); // @Leak
 
@@ -647,7 +584,7 @@ static inline void render_quad() {
             }
         }
     }
-    // clang-format on
+    /* clang-format on */
 
     DEFER(glBindVertexArray(0)) {
         glBindVertexArray(vao_quad);
@@ -655,10 +592,10 @@ static inline void render_quad() {
     }
 }
 
-static inline void render_cube() {
+static inline void render_cube(void) {
     static uint vao_cube = 0;
 
-    // clang-format off
+    /* clang-format off */
     if (vao_cube == 0) {
         glGenVertexArrays(1, &vao_cube); // @Leak
 
@@ -681,7 +618,7 @@ static inline void render_cube() {
             }
         }
     }
-    // clang-format on
+    /* clang-format on */
 
     DEFER(glBindVertexArray(0)) {
         glBindVertexArray(vao_cube);
@@ -690,8 +627,8 @@ static inline void render_cube() {
 }
 
 static inline void draw_frame(Resources const *r, int width, int height) {
-    mat4 const projection = get_camera_projection_matrix(&camera);
-    mat4 const view = get_camera_view_matrix(&camera);
+    mat4 const projection = compute_camera_projection_matrix(&camera);
+    mat4 const view = compute_camera_view_matrix(&camera);
 
     // @Note: clear to black to avoid leaking into the g-buffer.
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -959,16 +896,14 @@ static inline void setup_shaders(void) {
 // Input processing.
 //
 
-// clang-format off
+/* clang-format off */
 #define IS_PRESSED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_PRESS)
 #define IS_RELEASED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_RELEASE)
-/* #define REPEATED(key) (glfwGetKey(window, GLFW_KEY_##key) == GLFW_REPEAT) */
 
 // LEFT, RIGHT, MIDDLE, 1, 2, 3, 4, 5, 6, 7, 8
 #define IS_PRESSED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_PRESS)
 #define IS_RELEASED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_RELEASE)
-/* #define REPEATED_MOUSE(btn) (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_##btn) == GLFW_REPEAT) */
-// clang-format on
+/* clang-format on */
 
 static inline void process_input(GLFWwindow *window, f32 delta_time) {
     if (IS_PRESSED(ESCAPE)) { glfwSetWindowShouldClose(window, true); }
@@ -1043,7 +978,7 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
     // Resize buffers.
     DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
-        // clang-format off
+        /* clang-format off */
         glBindTexture(GL_TEXTURE_2D, r->gtex_position);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 
@@ -1052,7 +987,7 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
         glBindTexture(GL_TEXTURE_2D, r->gtex_albedo_spec);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        // clang-format on
+        /* clang-format on */
     }
 
     glBindRenderbuffer(GL_RENDERBUFFER, r->grbo_depth);

@@ -2,7 +2,7 @@
 
 #include "prelude.h"
 
-// clang-format off
+/* clang-format off */
 
 typedef struct { f32 x, y; } vec2;
 typedef struct { f32 x, y, z; } vec3;

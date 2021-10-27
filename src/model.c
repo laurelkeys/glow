@@ -3,7 +3,6 @@
 #include "console.h"
 #include "file.h"
 #include "mesh.h"
-#include "shader.h"
 #include "texture.h"
 
 #include <assimp/cimport.h>
@@ -27,7 +26,7 @@ static enum aiTextureType const STORED_ASSIMP_TYPES[] = {
 
 static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_type) {
     switch (ai_type) {
-        // @Volatile: :SyncWithTextureMaterialType:
+        // @Volatile: keep in sync with TextureMaterialType.
         case aiTextureType_DIFFUSE: return TextureMaterialType_Diffuse;
         case aiTextureType_SPECULAR: return TextureMaterialType_Specular;
         case aiTextureType_AMBIENT: return TextureMaterialType_Ambient;
@@ -261,7 +260,7 @@ static void alloc_into_model_meshes_from_assimp_node(
     }
 }
 
-// clang-format off
+/* clang-format off */
 static uint const POST_PROCESS_FLAGS = 0
     | aiProcess_Triangulate // @Volatile: `alloc_mesh_from_assimp_mesh` relies on this
     | aiProcess_SortByPType
@@ -271,7 +270,7 @@ static uint const POST_PROCESS_FLAGS = 0
     | aiProcess_CalcTangentSpace
     | aiProcess_JoinIdenticalVertices
     | aiProcess_ValidateDataStructure;
-// clang-format on
+/* clang-format on */
 
 #ifndef NDEBUG
 // @Temporary: sanity check.

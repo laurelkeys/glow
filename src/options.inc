@@ -1,4 +1,4 @@
-// clang-format off
+/* clang-format off */
 
 #ifndef GLOW_OPTION
 #error GLOW_OPTION(short-name, long-name, number-of-trailing-args, description) was not defined!
