@@ -16,10 +16,10 @@ static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LE
     glCompileShader(id);
     if (!is_shader_compile_success(id, info_log, err)) {
         char const *type_string =
-            ((type) == GL_VERTEX_SHADER     ? "vertex"
-             : (type) == GL_FRAGMENT_SHADER ? "fragment"
-             : (type) == GL_GEOMETRY_SHADER ? "geometry"
-                                            : "");
+            (type == GL_VERTEX_SHADER     ? "vertex"
+             : type == GL_FRAGMENT_SHADER ? "fragment"
+             : type == GL_GEOMETRY_SHADER ? "geometry"
+                                          : "");
         GLOW_WARNING("%s shader compilation failed with: `\n%s`", type_string, info_log);
     }
 

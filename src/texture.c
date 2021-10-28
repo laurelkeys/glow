@@ -38,12 +38,12 @@ STATIC_ASSERT(TextureFormat_Rg == 2 /* components */);
 STATIC_ASSERT(TextureFormat_Rgb == 3 /* components */);
 STATIC_ASSERT(TextureFormat_Rgba == 4 /* components */);
 
-static int const TARGET_TYPE[] = {
-    [TextureTargetType_2D  ] = GL_TEXTURE_2D,
-    [TextureTargetType_Cube] = GL_TEXTURE_CUBE_MAP,
+static int const TARGET[] = {
+    [TextureTarget_2D  ] = GL_TEXTURE_2D,
+    [TextureTarget_Cube] = GL_TEXTURE_CUBE_MAP,
 };
 
-static int const TARGET_TYPE_CUBE_FACE[6] = {
+static int const TARGET_CUBE_FACE[6] = {
     [0] = GL_TEXTURE_CUBE_MAP_POSITIVE_X, [1] = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
     [2] = GL_TEXTURE_CUBE_MAP_POSITIVE_Y, [3] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
     [4] = GL_TEXTURE_CUBE_MAP_POSITIVE_Z, [5] = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
@@ -66,6 +66,12 @@ static int gl_format(int channels) {
 static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_float) {
     assert((format == GL_RED) || (format == GL_RG) || (format == GL_RGB) || (format == GL_RGBA));
 
+    if (is_srgb) {
+        assert(is_highp == false);
+        assert(is_float == false);
+        return (format == GL_RGB) ? GL_SRGB8 : ((format == GL_RGBA) ? GL_SRGB8_ALPHA8 : format);
+    }
+
     // @Note: index = is_highp ? (is_float ? 3 : 2) : (is_float ? 1 : 0)
     // Reference: https://www.khronos.org/opengl/wiki/Image_Format#Required_formats
     static int const INTERNAL_FORMAT_R[4] = { GL_R8, GL_R16F, GL_R16UI, GL_R32F };
@@ -73,13 +79,8 @@ static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_f
     static int const INTERNAL_FORMAT_RGB[4] = { GL_RGB8, GL_RGB16F, GL_RGB16UI, GL_RGB32F };
     static int const INTERNAL_FORMAT_RGBA[4] = { GL_RGBA8, GL_RGBA16F, GL_RGBA16UI, GL_RGBA32F };
 
-    if (is_srgb) {
-        assert(is_highp == false);
-        assert(is_float == false);
-        return (format == GL_RGB) ? GL_SRGB8 : ((format == GL_RGBA) ? GL_SRGB8_ALPHA8 : format);
-    }
-
     int const index = ((!!is_highp) << 1) | (!!is_float);
+
     return (format == GL_RED)    ? INTERNAL_FORMAT_R[index]
            : (format == GL_RG)   ? INTERNAL_FORMAT_RG[index]
            : (format == GL_RGB)  ? INTERNAL_FORMAT_RGB[index]
@@ -96,8 +97,7 @@ typedef struct TextureParameters {
     int gl_wrap;
 } TextureParameters;
 
-static TextureParameters
-gl_parameters(TextureImage const texture_image, TextureSettings settings) {
+static TextureParameters gl_parameters(TextureImage const image, TextureSettings settings) {
     // @Temporary: we can directly use settings after we handle HDR images and
     // both half float and 16-bits-per-channel images (that are sometimes used
     // for storing color / albedo data).
@@ -108,7 +108,7 @@ gl_parameters(TextureImage const texture_image, TextureSettings settings) {
 #define DEFAULT(value) ((value) == 0)
 #define VALUE_OR(value, default) (DEFAULT(value) ? (default) : (value))
 
-    int const expected_format = gl_format(texture_image.channels);
+    int const expected_format = gl_format(image.channels);
     int const format = DEFAULT(settings.format) ? expected_format : FORMAT[settings.format];
     int const internal_format = gl_internal_format(
         format, settings.apply_srgb_eotf, settings.highp_bitdepth, settings.floating_point);
@@ -166,8 +166,8 @@ static void dealloc_texture_image(TextureImage *image) {
     image->data = NULL;
 }
 
-Texture new_texture_from_image(TextureImage const texture_image, TextureSettings const settings) {
-    TextureParameters const parameters = gl_parameters(texture_image, settings);
+Texture new_texture_from_image(TextureImage const image, TextureSettings const settings) {
+    TextureParameters const parameters = gl_parameters(image, settings);
 
     uint texture_id;
     glGenTextures(1, &texture_id);
@@ -177,12 +177,12 @@ Texture new_texture_from_image(TextureImage const texture_image, TextureSettings
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
             /*internalFormat*/ parameters.gl_internal_format,
-            /*width*/ texture_image.width,
-            /*height*/ texture_image.height,
+            /*width*/ image.width,
+            /*height*/ image.height,
             /*border*/ 0,
             /*format*/ parameters.gl_format,
             /*type*/ parameters.gl_type,
-            /*data*/ texture_image.data);
+            /*data*/ image.data);
 
         if (settings.generate_mipmap) { glGenerateMipmap(GL_TEXTURE_2D); }
 
@@ -202,26 +202,26 @@ Texture new_texture_from_image(TextureImage const texture_image, TextureSettings
         }
     }
 
-    return (Texture) { texture_id, TextureTargetType_2D, TextureMaterialType_None };
+    return (Texture) { texture_id, TextureTarget_2D, TextureMaterialType_None };
 }
 
 Texture new_texture_from_filepath(char const *path, TextureSettings const settings, Err *err) {
-    if (*err) { return (Texture) { 0 }; }
+    Texture texture = { 0 };
 
-    TextureImage texture_image = alloc_new_texture_image(path, settings, err);
-    if (*err) { return (Texture) { 0 }; }
-    Texture const texture = new_texture_from_image(texture_image, settings);
-    dealloc_texture_image(&texture_image);
+    if (*err == Err_None) {
+        TextureImage image = alloc_new_texture_image(path, settings, err);
+        if (*err == Err_None) { texture = new_texture_from_image(image, settings); }
+        dealloc_texture_image(&image);
+    }
 
     return texture;
 }
 
-Texture new_cubemap_texture_from_images(
-    TextureImage const texture_images[6], TextureSettings const settings) {
-    int const channels = texture_images[0].channels;
-    for (usize i = 1; i < 6; ++i) { assert(channels == texture_images[i].channels); }
+Texture
+new_cubemap_texture_from_images(TextureImage const images[6], TextureSettings const settings) {
+    for (usize i = 1; i < 6; ++i) { assert(images[0].channels == images[i].channels); }
 
-    TextureParameters const parameters = gl_parameters(texture_images[0], settings);
+    TextureParameters const parameters = gl_parameters(images[0], settings);
 
     uint texture_id;
     glGenTextures(1, &texture_id);
@@ -229,15 +229,15 @@ Texture new_cubemap_texture_from_images(
     DEFER(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)) {
         for (usize i = 0; i < 6; ++i) {
             glTexImage2D(
-                /*target*/ TARGET_TYPE_CUBE_FACE[i],
+                /*target*/ TARGET_CUBE_FACE[i],
                 /*level*/ 0,
                 /*internalFormat*/ parameters.gl_internal_format,
-                /*width*/ texture_images[i].width,
-                /*height*/ texture_images[i].height,
+                /*width*/ images[i].width,
+                /*height*/ images[i].height,
                 /*border*/ 0,
                 /*format*/ parameters.gl_format,
                 /*type*/ parameters.gl_type,
-                /*data*/ texture_images[i].data);
+                /*data*/ images[i].data);
         }
 
         if (settings.generate_mipmap) { glGenerateMipmap(GL_TEXTURE_CUBE_MAP); }
@@ -250,19 +250,21 @@ Texture new_cubemap_texture_from_images(
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, parameters.gl_wrap);
     }
 
-    return (Texture) { texture_id, TextureTargetType_Cube, TextureMaterialType_None };
+    return (Texture) { texture_id, TextureTarget_Cube, TextureMaterialType_None };
 }
 
 Texture new_cubemap_texture_from_filepaths(
     char const *paths[6], TextureSettings const settings, Err *err) {
-    if (*err) { return (Texture) { 0 }; }
+    Texture texture = { 0 };
 
-    TextureImage images[6] = { 0 };
-    for (usize i = 0; i < 6; ++i) {
-        images[i] = alloc_new_texture_image(paths[i], settings, err);
+    if (*err == Err_None) {
+        TextureImage images[6] = { 0 };
+        for (usize i = 0; i < 6; ++i) {
+            images[i] = alloc_new_texture_image(paths[i], settings, err);
+        }
+        if (*err == Err_None) { texture = new_cubemap_texture_from_images(images, settings); }
+        for (usize i = 0; i < 6; ++i) { dealloc_texture_image(&images[i]); }
     }
-    Texture const texture = new_cubemap_texture_from_images(images, settings);
-    for (usize i = 0; i < 6; ++i) { dealloc_texture_image(&images[i]); }
 
     return texture;
 }
@@ -270,5 +272,5 @@ Texture new_cubemap_texture_from_filepaths(
 void bind_texture_to_unit(Texture const texture, uint texture_unit) {
     assert(texture_unit >= GL_TEXTURE0);
     glActiveTexture(texture_unit);
-    glBindTexture(TARGET_TYPE[texture.target], texture.id);
+    glBindTexture(TARGET[texture.target], texture.id);
 }

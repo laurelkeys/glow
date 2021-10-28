@@ -57,24 +57,6 @@ void dealloc_mesh(Mesh *mesh) {
     mesh->vertices = NULL;
 }
 
-// @Volatile: keep in sync with TextureMaterialType.
-static char const *SAMPLER_NAME_FROM_MATERIAL_TYPE[] = {
-    [TextureMaterialType_Diffuse] = "texture_diffuse",
-    [TextureMaterialType_Specular] = "texture_specular",
-    [TextureMaterialType_Ambient] = "texture_ambient",
-    [TextureMaterialType_Normal] = "texture_normal",
-    [TextureMaterialType_Height] = "texture_height",
-};
-
-// @Volatile: keep in sync with TextureMaterialType.
-STATIC_ASSERT(ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE) == 6);
-
-static void set_sampler_name_from_texture_material(
-    char *name, usize max_len, TextureMaterialType const material, uint count) {
-    int n = snprintf(name, max_len, "%s", SAMPLER_NAME_FROM_MATERIAL_TYPE[material]);
-    if (count > 0) { snprintf(name + n, max_len, "%d", count); }
-}
-
 void draw_mesh_direct(Mesh const *mesh) {
     glBindVertexArray(mesh->vao);
     DEFER(glBindVertexArray(0)) {
@@ -82,21 +64,38 @@ void draw_mesh_direct(Mesh const *mesh) {
     }
 }
 
+static void set_sampler_name_from_texture_material_type(
+    char *name, usize max_len, TextureMaterialType const material_type, uint count) {
+    assert(material_type != TextureMaterialType_None);
+
+    int const n = snprintf(
+        name,
+        max_len,
+        // @Volatile: keep in sync with TextureMaterialType.
+        (material_type == TextureMaterialType_Diffuse    ? "texture_diffuse"
+         : material_type == TextureMaterialType_Specular ? "texture_specular"
+         : material_type == TextureMaterialType_Ambient  ? "texture_ambient"
+         : material_type == TextureMaterialType_Normal   ? "texture_normal"
+         : material_type == TextureMaterialType_Height   ? "texture_height"
+                                                         : "texture"));
+
+    if (count > 0) { snprintf(name + n, max_len, "%d", count); }
+}
+
 void draw_mesh_with_shader(Mesh const *mesh, Shader const *shader) {
-    uint count[ARRAY_LEN(SAMPLER_NAME_FROM_MATERIAL_TYPE)] = { 0 };
-    char name[24 + 1] = { 0 }; // @Note: large enough for SAMPLER_NAME_FROM_MATERIAL_TYPE
+    uint count[6] = { 0 }; // @Volatile: keep in sync with TextureMaterialType.
+    char name[24 + 1] = { 0 }; // @Note: large enough for all of sampler names.
 
     for (usize i = 0; i < mesh->textures_len; ++i) {
-        TextureMaterialType const material = mesh->textures[i].material;
-        assert((int) material <= (int) ARRAY_LEN(count));
-        assert((int) material > 0); // 0 = TextureMaterialType_None
+        TextureMaterialType const material_type = mesh->textures[i].material_type;
+        assert((int) material_type <= (int) ARRAY_LEN(count));
 
         // @Todo: store a char const *material_name in the Texture struct, and use string
         // interning for efficiency, since they will be immutable (and not always unique).
-        set_sampler_name_from_texture_material(
-            &name[0], ARRAY_LEN(name), mesh->textures[i].material, count[material]);
+        set_sampler_name_from_texture_material_type(
+            &name[0], ARRAY_LEN(name), material_type, count[material_type]);
 
-        count[material] += 1;
+        count[material_type] += 1;
 
         uint const texture_unit = GL_TEXTURE0 + (uint) i;
         set_shader_sampler2D(*shader, name, texture_unit);

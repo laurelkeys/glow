@@ -43,6 +43,8 @@ typedef struct TextureImage {
     int channels;
 } TextureImage;
 
+// @Volatile: sync with mesh.c and models.c.
+// @Refactor: move this to mesh.h instead, simply as MaterialType.
 typedef enum TextureMaterialType {
     TextureMaterialType_None = 0,
     TextureMaterialType_Diffuse,
@@ -50,27 +52,30 @@ typedef enum TextureMaterialType {
     TextureMaterialType_Ambient,
     TextureMaterialType_Normal,
     TextureMaterialType_Height,
-    // @Volatile: sync mesh.c and models.c accordingly.
+    /* TextureMaterialType_Emissive,
+    TextureMaterialType_Shininess,
+    TextureMaterialType_Light,
+    TextureMaterialType_Displacement, */
 } TextureMaterialType;
 
-typedef enum TextureTargetType {
-    TextureTargetType_2D = 0,
-    TextureTargetType_Cube,
-} TextureTargetType;
+typedef enum TextureTarget {
+    TextureTarget_2D = 0,
+    TextureTarget_Cube,
+} TextureTarget;
 
 typedef struct Texture {
     uint id;
-    TextureTargetType target;
-    TextureMaterialType material;
+    TextureTarget target;
+    TextureMaterialType material_type;
 } Texture;
 
-Texture new_texture_from_image(TextureImage const texture_image, TextureSettings const settings);
+Texture new_texture_from_image(TextureImage const image, TextureSettings const settings);
 Texture new_texture_from_filepath(char const *path, TextureSettings const settings, Err *err);
 
 // @Note: the expected order for the 6 faces is: Right, Left, Top, Bottom, Front, Back.
 // Which follows the GL_TEXTURE_CUBE_MAP_*_* constants for: +X, -X, +Y, -Y, +Z, and -Z.
-Texture new_cubemap_texture_from_images(
-    TextureImage const texture_images[6], TextureSettings const settings);
+Texture
+new_cubemap_texture_from_images(TextureImage const images[6], TextureSettings const settings);
 Texture new_cubemap_texture_from_filepaths(
     char const *paths[6], TextureSettings const settings, Err *err);
 

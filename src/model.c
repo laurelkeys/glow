@@ -71,7 +71,7 @@ static void store_textures_with_assimp_type(
             texture_store->paths[len] = alloc_str_copy(&path.data[0]);
             texture_store->textures[len] = new_texture_from_filepath(
                 full_path, (TextureSettings) { .generate_mipmap = true }, err);
-            texture_store->textures[len].material = material_type_from_assimp_type(ai_type);
+            texture_store->textures[len].material_type = material_type_from_assimp_type(ai_type);
 
             if (*err) {
                 GLOW_WARNING("failed to load texture from path: `%s`", full_path);
