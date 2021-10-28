@@ -15,11 +15,14 @@ typedef struct ShaderStrings {
     char const *geometry;
 } ShaderStrings;
 
-Shader new_shader_from_source(ShaderStrings const source, Err *err);
-Shader new_shader_from_filepath(ShaderStrings const path, Err *err);
+typedef ShaderStrings ShaderSources;
+typedef ShaderStrings ShaderFilepaths;
 
-bool try_reload_shader_from_source(Shader *shader, ShaderStrings const source);
-bool try_reload_shader_from_filepath(Shader *shader, ShaderStrings const path);
+Shader new_shader_from_source(ShaderSources const source, Err *err);
+Shader new_shader_from_filepath(ShaderFilepaths const path, Err *err);
+
+bool try_reload_shader_from_source(Shader *shader, ShaderSources const source);
+bool try_reload_shader_from_filepath(Shader *shader, ShaderFilepaths const path);
 
 void use_shader(Shader const shader);
 

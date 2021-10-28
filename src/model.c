@@ -19,13 +19,14 @@ typedef struct TextureStore {
 } TextureStore;
 
 // @Cleanup: this isn't great... maybe it could be specified as an arg when creating the model?
-static enum aiTextureType const STORED_ASSIMP_TYPES[] = {
+static enum aiTextureType const STORED_ASSIMP_TEXTURE_TYPES[] = {
     aiTextureType_DIFFUSE, aiTextureType_SPECULAR, aiTextureType_AMBIENT,
     aiTextureType_NORMALS, aiTextureType_HEIGHT,
 };
 
-static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_type) {
-    switch (ai_type) {
+static TextureMaterialType
+texture_material_type_from_assimp_texture_type(enum aiTextureType ai_texture_type) {
+    switch (ai_texture_type) {
         // @Volatile: keep in sync with TextureMaterialType.
         case aiTextureType_DIFFUSE: return TextureMaterialType_Diffuse;
         case aiTextureType_SPECULAR: return TextureMaterialType_Specular;
@@ -33,25 +34,25 @@ static TextureMaterialType material_type_from_assimp_type(enum aiTextureType ai_
         case aiTextureType_NORMALS: return TextureMaterialType_Normal;
         case aiTextureType_HEIGHT: return TextureMaterialType_Height;
         default:
-            GLOW_WARNING("unhandled assimp aiTextureType: `%d`", ai_type);
+            GLOW_WARNING("unhandled assimp aiTextureType: `%d`", ai_texture_type);
             assert(false);
             return TextureMaterialType_None;
     }
 }
 
-static void store_textures_with_assimp_type(
+static void store_textures_with_assimp_texture_type(
     TextureStore *texture_store,
     Str dir_path,
     struct aiMaterial const *ai_material,
-    enum aiTextureType ai_type,
+    enum aiTextureType ai_texture_type,
     Err *err) {
     if (*err) { return; }
 
-    uint const count = aiGetMaterialTextureCount(ai_material, ai_type);
+    uint const count = aiGetMaterialTextureCount(ai_material, ai_texture_type);
     for (uint i = 0; i < count; ++i) {
         struct aiString path = { 0 };
         if (aiGetMaterialTexture(
-                ai_material, ai_type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
+                ai_material, ai_texture_type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
             != aiReturn_SUCCESS) {
             *err = Err_Assimp_Get_Texture;
             return;
@@ -71,7 +72,8 @@ static void store_textures_with_assimp_type(
             texture_store->paths[len] = alloc_str_copy(&path.data[0]);
             texture_store->textures[len] = new_texture_from_filepath(
                 full_path, (TextureSettings) { .generate_mipmap = true }, err);
-            texture_store->textures[len].material_type = material_type_from_assimp_type(ai_type);
+            texture_store->textures[len].material_type =
+                texture_material_type_from_assimp_texture_type(ai_texture_type);
 
             if (*err) {
                 GLOW_WARNING("failed to load texture from path: `%s`", full_path);
@@ -82,21 +84,21 @@ static void store_textures_with_assimp_type(
     }
 }
 
-static bool load_stored_textures_with_assimp_type_into_mesh_textures(
+static bool load_stored_textures_with_assimp_texture_type_into_mesh_textures(
     Mesh *mesh,
     TextureStore const *texture_store,
     struct aiMaterial const *ai_material,
-    enum aiTextureType ai_type,
+    enum aiTextureType ai_texture_type,
     Err *err) {
     if (*err) { return false; }
 
     bool found_all_textures = true;
 
-    uint const count = aiGetMaterialTextureCount(ai_material, ai_type);
+    uint const count = aiGetMaterialTextureCount(ai_material, ai_texture_type);
     for (uint i = 0; i < count; ++i) {
         struct aiString path = { 0 };
         if (aiGetMaterialTexture(
-                ai_material, ai_type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
+                ai_material, ai_texture_type, i, &path, NULL, NULL, NULL, NULL, NULL, NULL)
             != aiReturn_SUCCESS) {
             *err = Err_Assimp_Get_Texture;
             return false;
@@ -120,25 +122,27 @@ static bool load_stored_textures_with_assimp_type_into_mesh_textures(
     return found_all_textures;
 }
 
-static usize count_assimp_material_textures_with_assimp_types(
+static usize count_assimp_material_textures_with_assimp_texture_types(
     struct aiMaterial const *ai_material,
-    enum aiTextureType const ai_types[],
-    usize ai_types_len) {
+    enum aiTextureType const ai_texture_types[],
+    usize ai_texture_types_len) {
     usize count = 0;
-    for (usize j = 0; j < ai_types_len; ++j) {
+    for (usize j = 0; j < ai_texture_types_len; ++j) {
         // @Note: a aiMaterial can have multiple textures.
-        count += aiGetMaterialTextureCount(ai_material, ai_types[j]);
+        count += aiGetMaterialTextureCount(ai_material, ai_texture_types[j]);
     }
     return count;
 }
 
-static TextureStore alloc_texture_store_for_assimp_types(
-    struct aiScene const *ai_scene, enum aiTextureType const ai_types[], usize ai_types_len) {
+static TextureStore alloc_texture_store_for_assimp_texture_types(
+    struct aiScene const *ai_scene,
+    enum aiTextureType const ai_texture_types[],
+    usize ai_texture_types_len) {
     usize texture_store_capacity = 0;
     for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
         struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
-        texture_store_capacity +=
-            count_assimp_material_textures_with_assimp_types(ai_material, ai_types, ai_types_len);
+        texture_store_capacity += count_assimp_material_textures_with_assimp_texture_types(
+            ai_material, ai_texture_types, ai_texture_types_len);
     }
 
     return (TextureStore) {
@@ -167,8 +171,8 @@ static Mesh alloc_mesh_from_assimp_mesh(
 
     struct aiMaterial *ai_material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
 
-    usize const textures_capacity = count_assimp_material_textures_with_assimp_types(
-        ai_material, STORED_ASSIMP_TYPES, ARRAY_LEN(STORED_ASSIMP_TYPES));
+    usize const textures_capacity = count_assimp_material_textures_with_assimp_texture_types(
+        ai_material, STORED_ASSIMP_TEXTURE_TYPES, ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES));
 
     assert(textures_capacity <= texture_store->capacity);
 
@@ -222,12 +226,12 @@ static Mesh alloc_mesh_from_assimp_mesh(
     // Mesh textures.
     //
 
-    for (usize i = 0; i < ARRAY_LEN(STORED_ASSIMP_TYPES); ++i) {
-        load_stored_textures_with_assimp_type_into_mesh_textures(
+    for (usize i = 0; i < ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES); ++i) {
+        load_stored_textures_with_assimp_texture_type_into_mesh_textures(
             &mesh,
             texture_store,
             ai_material,
-            STORED_ASSIMP_TYPES[i],
+            STORED_ASSIMP_TEXTURE_TYPES[i],
             err); // assert(!*err);
     }
     assert(mesh.textures_len == textures_capacity);
@@ -265,9 +269,11 @@ static uint const POST_PROCESS_FLAGS = 0
     | aiProcess_Triangulate // @Volatile: `alloc_mesh_from_assimp_mesh` relies on this
     | aiProcess_SortByPType
     | aiProcess_GenUVCoords
+    | aiProcess_FindInstances
     | aiProcess_OptimizeMeshes
     | aiProcess_GenSmoothNormals
     | aiProcess_CalcTangentSpace
+    | aiProcess_PreTransformVertices
     | aiProcess_JoinIdenticalVertices
     | aiProcess_ValidateDataStructure;
 /* clang-format on */
@@ -337,8 +343,8 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         .meshes_capacity = ai_scene->mNumMeshes,
     };
 
-    TextureStore texture_store = alloc_texture_store_for_assimp_types(
-        ai_scene, STORED_ASSIMP_TYPES, ARRAY_LEN(STORED_ASSIMP_TYPES));
+    TextureStore texture_store = alloc_texture_store_for_assimp_texture_types(
+        ai_scene, STORED_ASSIMP_TEXTURE_TYPES, ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES));
 
     if (!model.meshes || !texture_store.paths || !texture_store.textures) {
         *err = Err_Calloc;
@@ -351,12 +357,12 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
             // Pre-load aiMaterial textures.
             for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
                 struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
-                for (usize j = 0; j < ARRAY_LEN(STORED_ASSIMP_TYPES); ++j) {
-                    store_textures_with_assimp_type(
+                for (usize j = 0; j < ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES); ++j) {
+                    store_textures_with_assimp_texture_type(
                         &texture_store,
                         dir_path_str,
                         ai_material,
-                        STORED_ASSIMP_TYPES[j],
+                        STORED_ASSIMP_TEXTURE_TYPES[j],
                         err); // assert(!*err);
                     assert(texture_store.len <= texture_store.capacity);
                 }
@@ -418,9 +424,9 @@ void draw_model_textureless_with_shader(Model const *model, Shader const *shader
     for (usize i = 0; i < model->meshes_len; ++i) {
         // @Hack: ignore textures while drawing the mesh.
         usize const textures_len = model->meshes[i].textures_len;
-        DEFER(model->meshes[i].textures_len = textures_len) {
-            model->meshes[i].textures_len = 0;
-            draw_mesh_with_shader(&model->meshes[i], shader);
-        }
+
+        model->meshes[i].textures_len = 0;
+        draw_mesh_with_shader(&model->meshes[i], shader);
+        model->meshes[i].textures_len = textures_len;
     }
 }

@@ -48,7 +48,7 @@
 //
 
 typedef struct PathsToShader {
-    ShaderStrings paths;
+    ShaderFilepaths paths;
     Shader shader;
 } PathsToShader;
 

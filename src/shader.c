@@ -26,7 +26,7 @@ static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LE
     return id;
 }
 
-Shader new_shader_from_source(ShaderStrings const source, Err *err) {
+Shader new_shader_from_source(ShaderSources const source, Err *err) {
     if (*err) { return (Shader) { 0 }; }
 
     char info_log[INFO_LOG_LENGTH] = { 0 };
@@ -55,7 +55,7 @@ Shader new_shader_from_source(ShaderStrings const source, Err *err) {
     return (Shader) { program_id };
 }
 
-Shader new_shader_from_filepath(ShaderStrings const path, Err *err) {
+Shader new_shader_from_filepath(ShaderFilepaths const path, Err *err) {
     if (*err) { return (Shader) { 0 }; }
 
     bool const has_geometry_shader = path.geometry != NULL;
@@ -66,7 +66,7 @@ Shader new_shader_from_filepath(ShaderStrings const path, Err *err) {
         has_geometry_shader ? alloc_data_from_filepath(path.geometry, err) : NULL;
 
     Shader const shader = new_shader_from_source(
-        (ShaderStrings) { vertex_source, fragment_source, geometry_source }, err);
+        (ShaderSources) { vertex_source, fragment_source, geometry_source }, err);
 
     free(geometry_source);
     free(fragment_source);
@@ -75,29 +75,27 @@ Shader new_shader_from_filepath(ShaderStrings const path, Err *err) {
     return shader;
 }
 
-static bool try_reload_shader(
+static Err try_reload_shader(
     Shader *shader,
     Shader (*new_shader_fn)(ShaderStrings const, Err *),
-    ShaderStrings const new_shader_arg,
-    Err *err) {
-    if (*err) { return false; }
+    ShaderStrings const new_shader_arg) {
+    Err err = Err_None;
 
-    Shader const new_shader = new_shader_fn(new_shader_arg, err);
-    if (*err) {
-        assert(false);
-        return false;
+    Shader const new_shader = new_shader_fn(new_shader_arg, &err);
+    if (err == Err_None) {
+        glDeleteProgram(shader->program_id);
+        shader->program_id = new_shader.program_id;
     }
 
-    glDeleteProgram(shader->program_id);
-    shader->program_id = new_shader.program_id;
-
-    return true;
+    return err;
 }
-bool try_reload_shader_from_source(Shader *shader, ShaderStrings const source) {
-    return try_reload_shader(shader, new_shader_from_source, source, &(Err) { Err_None });
+bool try_reload_shader_from_source(Shader *shader, ShaderSources const source) {
+    Err const err = try_reload_shader(shader, new_shader_from_source, source);
+    return err == Err_None;
 }
-bool try_reload_shader_from_filepath(Shader *shader, ShaderStrings const path) {
-    return try_reload_shader(shader, new_shader_from_filepath, path, &(Err) { Err_None });
+bool try_reload_shader_from_filepath(Shader *shader, ShaderFilepaths const path) {
+    Err const err = try_reload_shader(shader, new_shader_from_filepath, path);
+    return err == Err_None;
 }
 
 void use_shader(Shader const shader) {
