@@ -579,7 +579,7 @@ static inline void render_quad(void) {
                 glEnableVertexAttribArray(0); // position
                 glEnableVertexAttribArray(1); // texcoord
 
-                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *) (sizeof(f32) * 0));
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *) (sizeof(f32) * 0));
                 glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *) (sizeof(f32) * 3));
             }
         }

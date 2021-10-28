@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(
-    glow
-    VERSION 0.1
-    LANGUAGES C CXX)
+project(glow LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -22,6 +19,7 @@ set(FILE_SOURCES
     src/color.c
     src/dynarray.c
     src/file.c
+    src/fullscreen_quad.c
     src/imgui_facade.cpp
     src/maths.c
     src/mesh.c
@@ -38,6 +36,7 @@ set(FILE_HEADERS
     src/console.h
     src/dynarray.h
     src/file.h
+    src/fullscreen_quad.h
     src/imgui_facade.h
     src/maths.h
     src/mesh.h
