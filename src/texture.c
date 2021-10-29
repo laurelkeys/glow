@@ -83,11 +83,11 @@ static int gl_internal_format(int format, bool is_srgb, bool is_highp, bool is_f
 
     int const index = ((!!is_highp) << 1) | (!!is_float);
 
-    return (format == GL_RED)    ? INTERNAL_FORMAT_R[index]
-           : (format == GL_RG)   ? INTERNAL_FORMAT_RG[index]
-           : (format == GL_RGB)  ? INTERNAL_FORMAT_RGB[index]
-           : (format == GL_RGBA) ? INTERNAL_FORMAT_RGBA[index]
-                                 : format;
+    return format == GL_RED    ? INTERNAL_FORMAT_R[index]
+           : format == GL_RG   ? INTERNAL_FORMAT_RG[index]
+           : format == GL_RGB  ? INTERNAL_FORMAT_RGB[index]
+           : format == GL_RGBA ? INTERNAL_FORMAT_RGBA[index]
+                               : format;
 }
 
 typedef struct TextureParameters {
@@ -138,7 +138,7 @@ static TextureParameters gl_parameters(TextureImage const image, TextureSettings
 }
 
 static TextureImage
-alloc_new_texture_image(char const *path, TextureSettings const settings, Err *err) {
+alloc_texture_image(char const *path, TextureSettings const settings, Err *err) {
     if (*err) { return (TextureImage) { 0 }; }
 
     assert(!stbi_is_hdr(path)); // @Fixme: handle HDR images.
@@ -211,7 +211,7 @@ Texture new_texture_from_filepath(char const *path, TextureSettings const settin
     Texture texture = { 0 };
 
     if (*err == Err_None) {
-        TextureImage image = alloc_new_texture_image(path, settings, err);
+        TextureImage image = alloc_texture_image(path, settings, err);
         if (*err == Err_None) { texture = new_texture_from_image(image, settings); }
         dealloc_texture_image(&image);
     }
@@ -262,7 +262,7 @@ Texture new_cubemap_texture_from_filepaths(
     if (*err == Err_None) {
         TextureImage images[6] = { 0 };
         for (usize i = 0; i < 6; ++i) {
-            images[i] = alloc_new_texture_image(paths[i], settings, err);
+            images[i] = alloc_texture_image(paths[i], settings, err);
         }
         if (*err == Err_None) { texture = new_cubemap_texture_from_images(images, settings); }
         for (usize i = 0; i < 6; ++i) { dealloc_texture_image(&images[i]); }

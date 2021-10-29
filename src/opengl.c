@@ -14,6 +14,9 @@ static void GLAPIENTRY debug_message_callback(
     GLsizei length,
     const GLchar *message,
     const void *userParam) {
+    UNUSED(length);
+    UNUSED(userParam);
+
     if (id == 131169 || id == 131185 || id == 131204 || id == 131218) {
         // 131169: Framebuffer detailed info
         // 131185: Buffer detailed info
@@ -21,31 +24,32 @@ static void GLAPIENTRY debug_message_callback(
         // 131218: Program/shader state performance warning
         return; // ignore non-significant error / warning codes
     }
+
     char const *source_string =
-        ((source == GL_DEBUG_SOURCE_API)               ? "API"
-         : (source == GL_DEBUG_SOURCE_WINDOW_SYSTEM)   ? "Window System"
-         : (source == GL_DEBUG_SOURCE_SHADER_COMPILER) ? "Shader Compiler"
-         : (source == GL_DEBUG_SOURCE_THIRD_PARTY)     ? "Third Party"
-         : (source == GL_DEBUG_SOURCE_APPLICATION)     ? "Application"
-         : (source == GL_DEBUG_SOURCE_OTHER)           ? "Other"
-                                                       : "");
+        (source == GL_DEBUG_SOURCE_API               ? "API"
+         : source == GL_DEBUG_SOURCE_WINDOW_SYSTEM   ? "Window System"
+         : source == GL_DEBUG_SOURCE_SHADER_COMPILER ? "Shader Compiler"
+         : source == GL_DEBUG_SOURCE_THIRD_PARTY     ? "Third Party"
+         : source == GL_DEBUG_SOURCE_APPLICATION     ? "Application"
+         : source == GL_DEBUG_SOURCE_OTHER           ? "Other"
+                                                     : "");
     char const *type_string =
-        ((type == GL_DEBUG_TYPE_ERROR)                 ? "Error"
-         : (type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) ? "Deprecated Behaviour"
-         : (type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR)  ? "Undefined Behaviour"
-         : (type == GL_DEBUG_TYPE_PORTABILITY)         ? "Portability"
-         : (type == GL_DEBUG_TYPE_PERFORMANCE)         ? "Performance"
-         : (type == GL_DEBUG_TYPE_MARKER)              ? "Marker"
-         : (type == GL_DEBUG_TYPE_PUSH_GROUP)          ? "Push Group"
-         : (type == GL_DEBUG_TYPE_POP_GROUP)           ? "Pop Group"
-         : (type == GL_DEBUG_TYPE_OTHER)               ? "Other"
-                                                       : "");
+        (type == GL_DEBUG_TYPE_ERROR                 ? "Error"
+         : type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR ? "Deprecated Behaviour"
+         : type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR  ? "Undefined Behaviour"
+         : type == GL_DEBUG_TYPE_PORTABILITY         ? "Portability"
+         : type == GL_DEBUG_TYPE_PERFORMANCE         ? "Performance"
+         : type == GL_DEBUG_TYPE_MARKER              ? "Marker"
+         : type == GL_DEBUG_TYPE_PUSH_GROUP          ? "Push Group"
+         : type == GL_DEBUG_TYPE_POP_GROUP           ? "Pop Group"
+         : type == GL_DEBUG_TYPE_OTHER               ? "Other"
+                                                     : "");
     char const *severity_string =
-        ((severity == GL_DEBUG_SEVERITY_HIGH)           ? "High"
-         : (severity == GL_DEBUG_SEVERITY_MEDIUM)       ? "Medium"
-         : (severity == GL_DEBUG_SEVERITY_LOW)          ? "Low"
-         : (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? "Notification"
-                                                        : "");
+        (severity == GL_DEBUG_SEVERITY_HIGH           ? "High"
+         : severity == GL_DEBUG_SEVERITY_MEDIUM       ? "Medium"
+         : severity == GL_DEBUG_SEVERITY_LOW          ? "Low"
+         : severity == GL_DEBUG_SEVERITY_NOTIFICATION ? "Notification"
+                                                      : "");
     GLOW_WARNING(
         "OpenGL debug message %u: raised from '%s' with type '%s' and '%s' severity: `%s`",
         id,
@@ -138,16 +142,16 @@ bool check_bound_framebuffer_is_complete(void) {
     GLOW_WARNING(
         "framebuffer is incomplete, status: `0x%x` (%s)",
         status,
-        ((status == GL_FRAMEBUFFER_UNDEFINED)                       ? "GL_FRAMEBUFFER_UNDEFINED"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)         ? "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT) ? "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER)        ? "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER)        ? "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"
-        : (status == GL_FRAMEBUFFER_UNSUPPORTED)                   ? "GL_FRAMEBUFFER_UNSUPPORTED"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE)        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE)        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
-        : (status == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)      ? "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"
-                                                                    : ""));
+        (status == GL_FRAMEBUFFER_UNDEFINED                      ? "GL_FRAMEBUFFER_UNDEFINED"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT         ? "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT ? "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER        ? "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER        ? "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"
+        : status == GL_FRAMEBUFFER_UNSUPPORTED                   ? "GL_FRAMEBUFFER_UNSUPPORTED"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE        ? "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"
+        : status == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS      ? "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"
+                                                                 : ""));
     /* clang-format on */
 
     assert(false);

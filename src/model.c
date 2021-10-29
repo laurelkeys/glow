@@ -3,21 +3,21 @@
 #include "console.h"
 #include "mesh.h"
 
-Model alloc_new_model_from_filepath_using_assimp(char const *path, Err *err);
-/* Model alloc_new_model_from_filepath_using_cgltf(char const *path, Err *err);
-Model alloc_new_model_from_filepath_using_fast_obj(char const *path, Err *err); */
+Model alloc_model_from_filepath_using_assimp(char const *path, Err *err);
+/* Model alloc_model_from_filepath_using_cgltf(char const *path, Err *err);
+Model alloc_model_from_filepath_using_fast_obj(char const *path, Err *err); */
 
 #include "model_assimp.inl"
 /* #include "model_cgltf.inl"
 #include "model_fast_obj.inl" */
 
-Model alloc_new_model_from_filepath(char const *path, Err *err) {
+Model alloc_model_from_filepath(char const *path, Err *err) {
     if (*err) { return (Model) { 0 }; }
 
     GLOW_LOG("Loading model: `%s`", path);
 
     // @Todo: depending on the path extension, choose cgltf/fast_obj instead.
-    Model const model = alloc_new_model_from_filepath_using_assimp(path, err);
+    Model const model = alloc_model_from_filepath_using_assimp(path, err);
 
     if (*err) {
         GLOW_WARNING("failed to load `%s` model", point_at_last_path_component(model.path));

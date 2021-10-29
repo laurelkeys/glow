@@ -107,7 +107,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
     ssao.shader = new_shader_from_filepath(ssao.paths, err);
 
     stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
-    backpack = alloc_new_model_from_filepath(choose_model[BACKPACK].path, err);
+    backpack = alloc_model_from_filepath(choose_model[BACKPACK].path, err);
 
 #if 0
     skybox.paths.vertex = GLOW_SHADERS_ "simple_skybox.vs";
