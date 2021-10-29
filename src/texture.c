@@ -38,6 +38,8 @@ STATIC_ASSERT(TextureFormat_Rg == 2 /* components */);
 STATIC_ASSERT(TextureFormat_Rgb == 3 /* components */);
 STATIC_ASSERT(TextureFormat_Rgba == 4 /* components */);
 
+// @Todo: maybe splitting Texture into Texture2D and TextureCubemap would be
+// better as, this way, we wouldn't need to store the target type within it.
 static int const TARGET[] = {
     [TextureTarget_2D  ] = GL_TEXTURE_2D,
     [TextureTarget_Cube] = GL_TEXTURE_CUBE_MAP,

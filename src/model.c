@@ -69,7 +69,7 @@ static void store_textures_with_assimp_texture_type(
             assert(texture_store->len < texture_store->capacity);
             usize const len = texture_store->len;
             texture_store->len += 1;
-            texture_store->paths[len] = alloc_str_copy(&path.data[0]);
+            texture_store->paths[len] = alloc_str_copy(&path.data[0], err);
             texture_store->textures[len] = new_texture_from_filepath(
                 full_path, (TextureSettings) { .generate_mipmap = true }, err);
             texture_store->textures[len].material_type =
@@ -134,10 +134,24 @@ static usize count_assimp_material_textures_with_assimp_texture_types(
     return count;
 }
 
+static void dealloc_texture_store(TextureStore *texture_store) {
+    if (texture_store->paths) {
+        for (usize i = 0; i < texture_store->len; ++i) { free(texture_store->paths[i]); }
+        free(texture_store->paths);
+        texture_store->paths = NULL;
+    }
+
+    free(texture_store->textures);
+    texture_store->textures = NULL;
+}
+
 static TextureStore alloc_texture_store_for_assimp_texture_types(
     struct aiScene const *ai_scene,
     enum aiTextureType const ai_texture_types[],
-    usize ai_texture_types_len) {
+    usize ai_texture_types_len,
+    Err *err) {
+    if (*err) { return (TextureStore) { 0 }; }
+
     usize texture_store_capacity = 0;
     for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
         struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
@@ -145,21 +159,19 @@ static TextureStore alloc_texture_store_for_assimp_texture_types(
             ai_material, ai_texture_types, ai_texture_types_len);
     }
 
-    return (TextureStore) {
+    TextureStore const texture_store = {
         .paths = calloc(texture_store_capacity, sizeof(char *)),
         .textures = calloc(texture_store_capacity, sizeof(Texture)),
         .len = 0,
         .capacity = texture_store_capacity,
     };
-}
 
-static void dealloc_texture_store(TextureStore *texture_store) {
-    for (usize i = 0; i < texture_store->len; ++i) { free(texture_store->paths[i]); }
-    free(texture_store->textures);
-    texture_store->textures = NULL;
+    if (!texture_store.paths || !texture_store.textures) {
+        dealloc_texture_store(&texture_store);
+        *err = Err_Calloc;
+    }
 
-    free(texture_store->paths);
-    texture_store->paths = NULL;
+    return texture_store;
 }
 
 static Mesh alloc_mesh_from_assimp_mesh(
@@ -170,6 +182,7 @@ static Mesh alloc_mesh_from_assimp_mesh(
     if (*err) { return (Mesh) { 0 }; }
 
     struct aiMaterial *ai_material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
+    assert(ai_material != NULL); // @Todo: can this be null? leaving a sanity check...
 
     usize const textures_capacity = count_assimp_material_textures_with_assimp_texture_types(
         ai_material, STORED_ASSIMP_TEXTURE_TYPES, ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES));
@@ -183,7 +196,6 @@ static Mesh alloc_mesh_from_assimp_mesh(
     };
 
     if (!mesh.vertices || !mesh.indices || !mesh.textures) {
-        // @Todo: make sure it's ok to call this when vao = 0.
         dealloc_mesh(&mesh);
         *err = Err_Calloc;
         return (Mesh) { 0 };
@@ -193,7 +205,7 @@ static Mesh alloc_mesh_from_assimp_mesh(
     // Mesh vertices.
     //
 
-    bool const has_texcoord = (ai_mesh->mTextureCoords[0] != NULL);
+    bool const has_texcoord = ai_mesh->mTextureCoords[0] != NULL;
     for (uint i = 0; i < ai_mesh->mNumVertices; ++i) {
         struct aiVector3D position = ai_mesh->mVertices[i];
         struct aiVector3D normal = ai_mesh->mNormals[i];
@@ -236,12 +248,16 @@ static Mesh alloc_mesh_from_assimp_mesh(
     }
     assert(mesh.textures_len == textures_capacity);
 
+    //
+    // Mesh VAO.
+    //
+
     mesh.vao = make_mesh_vao(mesh.vertices, mesh.vertices_len, mesh.indices, mesh.indices_len);
 
     return mesh;
 }
 
-static void alloc_into_model_meshes_from_assimp_node(
+static void alloc_assimp_node_into_model_meshes(
     Model *model,
     TextureStore const *texture_store,
     struct aiNode const *ai_node,
@@ -259,7 +275,7 @@ static void alloc_into_model_meshes_from_assimp_node(
 
     // Recursively process node's children.
     for (uint i = 0; i < ai_node->mNumChildren; ++i) {
-        alloc_into_model_meshes_from_assimp_node(
+        alloc_assimp_node_into_model_meshes(
             model, texture_store, ai_node->mChildren[i], ai_scene, err);
     }
 }
@@ -316,10 +332,10 @@ static usize count_assimp_nodes(struct aiNode const *ai_node) {
     return count;
 }
 
-Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
+Model alloc_new_model_from_filepath(char const *path, Err *err) {
     if (*err) { return (Model) { 0 }; }
 
-    struct aiScene const *ai_scene = aiImportFile(model_path, POST_PROCESS_FLAGS);
+    struct aiScene const *ai_scene = aiImportFile(path, POST_PROCESS_FLAGS);
 
     if (!ai_scene || !ai_scene->mRootNode || (ai_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)) {
         GLOW_WARNING("assimp import failed with: `%s`", aiGetErrorString());
@@ -327,9 +343,7 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
         return (Model) { 0 };
     }
 
-    GLOW_LOG("Loading model: `%s`", model_path);
-    assert(ai_scene->mNumMeshes > 0 && ai_scene->mNumMaterials > 0);
-    assert(ai_scene->mNumMeshes == count_assimp_nodes(ai_scene->mRootNode) - 1);
+    GLOW_LOG("Loading model: `%s`", path);
 
 #ifndef NDEBUG
     SceneCount const scene_count = count_assimp_scene(ai_scene, ai_scene->mRootNode);
@@ -337,7 +351,7 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
 #endif
 
     Model model = {
-        .path = model_path,
+        .path = path,
         .meshes = calloc(ai_scene->mNumMeshes, sizeof(Mesh)),
         .meshes_len = 0,
         .meshes_capacity = ai_scene->mNumMeshes,
@@ -396,18 +410,20 @@ Model alloc_new_model_from_filepath(char const *model_path, Err *err) {
     aiReleaseImport(ai_scene);
 
     if (*err) {
-        GLOW_WARNING("failed to load `%s` model", point_at_last_path_component(model_path));
+        GLOW_WARNING("failed to load `%s` model", point_at_last_path_component(model.path));
     } else {
-        GLOW_LOG("Finished loading `%s` model", point_at_last_path_component(model_path));
+        GLOW_LOG("Finished loading `%s` model", point_at_last_path_component(model.path));
     }
 
     return model;
 }
 
 void dealloc_model(Model *model) {
-    for (usize i = 0; i < model->meshes_len; ++i) { dealloc_mesh(&model->meshes[i]); }
-    free(model->meshes);
-    model->meshes = NULL;
+    if (model->meshes) {
+        for (usize i = 0; i < model->meshes_len; ++i) { dealloc_mesh(&model->meshes[i]); }
+        free(model->meshes);
+        model->meshes = NULL;
+    }
 }
 
 void draw_model_direct(Model const *model) {

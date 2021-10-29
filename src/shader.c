@@ -90,12 +90,10 @@ static Err try_reload_shader(
     return err;
 }
 bool try_reload_shader_from_source(Shader *shader, ShaderSources const source) {
-    Err const err = try_reload_shader(shader, new_shader_from_source, source);
-    return err == Err_None;
+    return Err_None == try_reload_shader(shader, new_shader_from_source, source);
 }
 bool try_reload_shader_from_filepath(Shader *shader, ShaderFilepaths const path) {
-    Err const err = try_reload_shader(shader, new_shader_from_filepath, path);
-    return err == Err_None;
+    return Err_None == try_reload_shader(shader, new_shader_from_filepath, path);
 }
 
 void use_shader(Shader const shader) {

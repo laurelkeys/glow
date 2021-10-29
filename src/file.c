@@ -11,7 +11,9 @@ usize file_size_in_bytes(FILE *fp) {
     return (usize) fsize;
 }
 
-char *alloc_human_readable_size_str(usize size_in_bytes) {
+char *alloc_human_readable_size_str(usize size_in_bytes, Err *err) {
+    if (*err) { return NULL; }
+
     // Reference: https://github.com/vkoskiv/c-ray/blob/master/src/utils/fileio.c
 
     f64 const size_in_kilobytes = size_in_bytes / 1000.0;
@@ -22,6 +24,10 @@ char *alloc_human_readable_size_str(usize size_in_bytes) {
 
     usize const buf_size = 64; // 64 seems large enough..
     char *buf = calloc(buf_size, sizeof(char));
+    if (!buf) {
+        *err = Err_Calloc;
+        return NULL;
+    }
 
     if (size_in_terabytes >= 1000) {
         snprintf(buf, buf_size, "%.02fPB", size_in_petabytes); // PB
@@ -62,10 +68,14 @@ char *alloc_data_from_filepath(char const *path, Err *err) {
     return data;
 }
 
-char *alloc_str_copy(char const *str) {
+char *alloc_str_copy(char const *str, Err *err) {
+    if (*err || !str) { return NULL; }
     usize const len = strlen(str);
     char *str_copy = calloc(len + 1, sizeof(char));
-    if (!str_copy) { return NULL; }
+    if (!str_copy) {
+        *err = Err_Calloc;
+        return NULL;
+    }
     return memcpy(str_copy, str, len + 1);
 }
 
@@ -86,27 +96,10 @@ void replace_back_with_forward_slashes_inplace(char *path) {
 #define SLASH_EQ(chr) ('/' == chr)
 #endif
 
-void terminate_at_last_path_component_inplace(char *path) {
-    usize const len = strlen(path);
-    if (len == 0) { return; }
-    char *last = &path[len - 1]; // @Robustness: handle drive letter
-
-    // Skip trailing slashes.
-    while (last != path && SLASH_EQ(*last)) { last -= 1; }
-
-    // Find the first non-trailing slash.
-    while (last != path && SLASH_NEQ(*last)) { last -= 1; }
-
-    if (last == path && SLASH_EQ(*path)) {
-        *(last + 1) = '\0';
-    } else {
-        *last = '\0';
-    }
-}
-
 char const *point_at_last_path_component(char const *path) {
-    usize const len = strlen(path);
+    usize const len = !path ? 0 : strlen(path);
     if (len == 0) { return path; }
+
     char const *last = &path[len - 1]; // @Robustness: handle drive letter
 
     // Skip trailing slashes.
@@ -118,7 +111,13 @@ char const *point_at_last_path_component(char const *path) {
     // Find the first non-trailing slash.
     while (first != path && SLASH_NEQ(*first)) { first -= 1; }
 
-    return (first == path) ? path : (first + 1);
+    return first + (path == first ? 0 : 1);
+}
+
+void terminate_at_last_path_component_inplace(char *path) {
+    char *p = (char *) point_at_last_path_component(path);
+    if (p == path && SLASH_EQ(*path)) { ++p; }
+    *p = '\0';
 }
 
 #undef SLASH_EQ

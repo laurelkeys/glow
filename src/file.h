@@ -14,14 +14,14 @@
 
 usize file_size_in_bytes(FILE *fp);
 
-char *alloc_human_readable_size_str(usize size_in_bytes);
+char *alloc_human_readable_size_str(usize size_in_bytes, Err *err);
 
 char *alloc_data_from_filepath(char const *path, Err *err);
 
-char *alloc_str_copy(char const *str);
+char *alloc_str_copy(char const *str, Err *err);
 
 void replace_back_with_forward_slashes_inplace(char *path);
 
-void terminate_at_last_path_component_inplace(char *path);
-
 char const *point_at_last_path_component(char const *path);
+
+void terminate_at_last_path_component_inplace(char *path);

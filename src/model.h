@@ -13,7 +13,7 @@ typedef struct Model {
     usize meshes_capacity;
 } Model;
 
-Model alloc_new_model_from_filepath(char const *model_path, Err *err);
+Model alloc_new_model_from_filepath(char const *path, Err *err);
 void dealloc_model(Model *model);
 
 void draw_model_direct(Model const *model);
