@@ -8,7 +8,8 @@
 
 #include <glad/glad.h>
 
-static uint make_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
+static uint
+create_shader(uint type, char const *source, char info_log[INFO_LOG_LENGTH], Err *err) {
     if (*err) { return 0; }
 
     uint const id = glCreateShader(type);
@@ -31,17 +32,17 @@ Shader new_shader_from_source(ShaderSources const source, Err *err) {
 
     char info_log[INFO_LOG_LENGTH] = { 0 };
 
-    bool const has_geometry_shader = source.geometry != NULL;
+    bool const has_geometry = source.geometry != NULL;
 
-    uint const vertex_id = make_shader(GL_VERTEX_SHADER, source.vertex, info_log, err);
-    uint const fragment_id = make_shader(GL_FRAGMENT_SHADER, source.fragment, info_log, err);
+    uint const vertex_id = create_shader(GL_VERTEX_SHADER, source.vertex, info_log, err);
+    uint const fragment_id = create_shader(GL_FRAGMENT_SHADER, source.fragment, info_log, err);
     uint const geometry_id =
-        has_geometry_shader ? make_shader(GL_GEOMETRY_SHADER, source.geometry, info_log, err) : 0;
+        has_geometry ? create_shader(GL_GEOMETRY_SHADER, source.geometry, info_log, err) : 0;
 
     uint const program_id = glCreateProgram();
     glAttachShader(program_id, vertex_id);
     glAttachShader(program_id, fragment_id);
-    if (has_geometry_shader) { glAttachShader(program_id, geometry_id); }
+    if (has_geometry) { glAttachShader(program_id, geometry_id); }
 
     glLinkProgram(program_id);
     if (!is_program_link_success(program_id, info_log, err)) {
@@ -58,12 +59,11 @@ Shader new_shader_from_source(ShaderSources const source, Err *err) {
 Shader new_shader_from_filepath(ShaderFilepaths const path, Err *err) {
     if (*err) { return (Shader) { 0 }; }
 
-    bool const has_geometry_shader = path.geometry != NULL;
+    bool const has_geometry = path.geometry != NULL;
 
     char *vertex_source = alloc_data_from_filepath(path.vertex, err);
     char *fragment_source = alloc_data_from_filepath(path.fragment, err);
-    char *geometry_source =
-        has_geometry_shader ? alloc_data_from_filepath(path.geometry, err) : NULL;
+    char *geometry_source = has_geometry ? alloc_data_from_filepath(path.geometry, err) : NULL;
 
     Shader const shader = new_shader_from_source(
         (ShaderSources) { vertex_source, fragment_source, geometry_source }, err);

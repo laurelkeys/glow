@@ -23,11 +23,14 @@ set(FILE_SOURCES
     src/imgui_facade.cpp
     src/maths.c
     src/mesh.c
+    src/model_assimp.inl
     src/model.c
     src/opengl.c
     src/options.c
     src/shader.c
     src/texture.c
+    src/window.inl
+    src/main.inl
     src/main.c)
 
 set(FILE_HEADERS
@@ -38,10 +41,12 @@ set(FILE_HEADERS
     src/file.h
     src/fullscreen_quad.h
     src/imgui_facade.h
+    src/maths_types.h
     src/maths.h
     src/mesh.h
     src/model.h
     src/opengl.h
+    src/options.inc
     src/options.h
     src/shader.h
     src/texture.h

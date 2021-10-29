@@ -9,7 +9,8 @@
 
 #include <glad/glad.h>
 
-uint make_mesh_vao(Vertex const *vertices, usize vertices_len, uint *indices, usize indices_len) {
+uint create_mesh_vao(
+    Vertex const *vertices, usize vertices_len, uint *indices, usize indices_len) {
     uint vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -43,10 +44,12 @@ uint make_mesh_vao(Vertex const *vertices, usize vertices_len, uint *indices, us
     return vao;
 }
 
+void destroy_mesh_vao(Mesh *mesh) {
+    glDeleteVertexArrays(1, &mesh->vao);
+}
+
 void dealloc_mesh(Mesh *mesh) {
     // @Note: we are not calling glDeleteTextures.
-    glDeleteVertexArrays(1, &mesh->vao);
-
     free(mesh->textures);
     mesh->textures = NULL;
 

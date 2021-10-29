@@ -34,7 +34,9 @@ typedef struct Mesh {
     uint vao;
 } Mesh;
 
-uint make_mesh_vao(Vertex const *vertices, usize vertices_len, uint *indices, usize indices_len);
+uint create_mesh_vao(
+    Vertex const *vertices, usize vertices_len, uint *indices, usize indices_len);
+void destroy_mesh_vao(Mesh *mesh);
 
 void dealloc_mesh(Mesh *mesh);
 
