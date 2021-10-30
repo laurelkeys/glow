@@ -58,7 +58,6 @@ static TextureStore alloc_texture_store_for_assimp_texture_types(
         .len = 0,
         .capacity = texture_store_capacity,
     };
-
     if (!texture_store.paths || !texture_store.textures) {
         dealloc_texture_store(&texture_store);
         *err = Err_Calloc;
@@ -66,14 +65,6 @@ static TextureStore alloc_texture_store_for_assimp_texture_types(
 
     return texture_store;
 }
-
-static TextureSettings const SETTINGS_FOR_TEXTURE_STORE = {
-    .format = TextureFormat_Default,
-    .apply_srgb_eotf = true, // @Fixme: this should only be set for color textures!
-    .highp_bitdepth = false,
-    .floating_point = false,
-    .generate_mipmap = true,
-};
 
 static void store_texture_with_assimp_material_texture_type_index(
     TextureStore *texture_store,
@@ -83,6 +74,40 @@ static void store_texture_with_assimp_material_texture_type_index(
     uint index,
     Err *err) {
     if (*err) { return; }
+
+    //
+    // Convert aiTextureType to TextureMaterialType.
+    //
+
+    // @Volatile: keep in sync with TextureMaterialType.
+    TextureMaterialType const texture_material_type =
+        (ai_texture_type == aiTextureType_DIFFUSE    ? TextureMaterialType_Diffuse
+         : ai_texture_type == aiTextureType_SPECULAR ? TextureMaterialType_Specular
+         : ai_texture_type == aiTextureType_AMBIENT  ? TextureMaterialType_Ambient
+         : ai_texture_type == aiTextureType_NORMALS  ? TextureMaterialType_Normal
+         : ai_texture_type == aiTextureType_HEIGHT   ? TextureMaterialType_Height
+                                                     : TextureMaterialType_None);
+
+    bool const is_non_color_texture =
+        (texture_material_type == TextureMaterialType_Specular
+         || texture_material_type == TextureMaterialType_Normal
+         || texture_material_type == TextureMaterialType_Height);
+
+    if (texture_material_type == TextureMaterialType_None) {
+        GLOW_WARNING("unhandled assimp aiTextureType: `%d`", ai_texture_type);
+    }
+
+    TextureSettings const texture_settings = {
+        .format = TextureFormat_Default,
+        .apply_srgb_eotf = !is_non_color_texture,
+        .highp_bitdepth = false,
+        .floating_point = false,
+        .generate_mipmap = true,
+    };
+
+    //
+    // Load the texture image using the full path to it.
+    //
 
     struct aiString path = { 0 };
     if (aiGetMaterialTexture(
@@ -101,24 +126,16 @@ static void store_texture_with_assimp_material_texture_type_index(
 
     // @Note: we assume all texture paths are relative to dir_path_str.
     snprintf(full_path, full_path_len + 1, "%s" SLASH "%s", dir_path_str.data, &path.data[0]);
+    Texture texture = new_texture_from_filepath(full_path, texture_settings, err);
+    texture.material_type = texture_material_type;
 
-    // @Todo: first compute the material type and then, based on it, set apply_srgb_eotf.
-    Texture texture = new_texture_from_filepath(full_path, SETTINGS_FOR_TEXTURE_STORE, err);
-    texture.material_type =
-        (ai_texture_type == aiTextureType_DIFFUSE    ? TextureMaterialType_Diffuse
-         : ai_texture_type == aiTextureType_SPECULAR ? TextureMaterialType_Specular
-         : ai_texture_type == aiTextureType_AMBIENT  ? TextureMaterialType_Ambient
-         : ai_texture_type == aiTextureType_NORMALS  ? TextureMaterialType_Normal
-         : ai_texture_type == aiTextureType_HEIGHT   ? TextureMaterialType_Height
-                                                     : TextureMaterialType_None);
-
-    // @Volatile: keep in sync with TextureMaterialType.
-    if (texture.material_type == TextureMaterialType_None) {
-        GLOW_WARNING("unhandled assimp aiTextureType: `%d`", ai_texture_type);
-    }
+    //
+    // Store the loaded texture image in the texture store.
+    //
 
     usize const len = texture_store->len;
     assert(len < texture_store->capacity);
+
     texture_store->len += 1;
     texture_store->paths[len] = alloc_str_copy(&path.data[0], err);
     texture_store->textures[len] = texture;
@@ -145,13 +162,13 @@ static TextureStore create_texture_store_for_assimp_texture_types(
 
     // Load material textures with the queried types.
     for (uint i = 0; i < ai_scene->mNumMaterials; ++i) {
+        struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
         for (usize j = 0; j < ai_texture_types_len; ++j) {
-            struct aiMaterial const *ai_material = ai_scene->mMaterials[i];
             enum aiTextureType const ai_texture_type = ai_texture_types[j];
             uint const count = aiGetMaterialTextureCount(ai_material, ai_texture_type);
-            for (uint k = 0; k < count; ++k) {
+            for (uint index = 0; index < count; ++index) {
                 store_texture_with_assimp_material_texture_type_index(
-                    &texture_store, dir_path_str, ai_material, ai_texture_type, k, err);
+                    &texture_store, dir_path_str, ai_material, ai_texture_type, index, err);
             }
         }
     }
@@ -207,7 +224,7 @@ static Mesh alloc_mesh_from_assimp_mesh(
 
     // @Note: in assimp each mesh uses a single material (so because of this,
     // models that have multiple materials get split up into multiple meshes).
-    struct aiMaterial *ai_material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
+    struct aiMaterial const *ai_material = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
     GLOW_DEBUG("mMaterialIndex = %d", ai_mesh->mMaterialIndex);
 
     usize const textures_capacity = count_assimp_material_textures_with_types(
@@ -219,12 +236,26 @@ static Mesh alloc_mesh_from_assimp_mesh(
         .indices = calloc(3 * ai_mesh->mNumFaces, sizeof(uint)),
         .textures = calloc(textures_capacity, sizeof(Texture)),
     };
-
     if (!mesh.vertices || !mesh.indices || !mesh.textures) {
         dealloc_mesh(&mesh);
         *err = Err_Calloc;
         return (Mesh) { 0 };
     }
+
+    //
+    // Mesh textures.
+    //
+
+    for (usize i = 0; i < ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES); ++i) {
+        enum aiTextureType const ai_texture_type = STORED_ASSIMP_TEXTURE_TYPES[i];
+        uint const count = aiGetMaterialTextureCount(ai_material, ai_texture_type);
+        for (uint index = 0; index < count; ++index) {
+            mesh.textures[mesh.textures_len++] =
+                *load_stored_texture_with_assimp_material_texture_type_index(
+                    texture_store, ai_material, ai_texture_type, index, err);
+        }
+    }
+    assert(mesh.textures_len == textures_capacity);
 
     //
     // Mesh vertices.
@@ -244,7 +275,6 @@ static Mesh alloc_mesh_from_assimp_mesh(
             { texcoord.x, texcoord.y },
         };
     }
-    assert(mesh.vertices_len == ai_mesh->mNumVertices);
 
     //
     // Mesh indices.
@@ -257,22 +287,6 @@ static Mesh alloc_mesh_from_assimp_mesh(
         mesh.indices[mesh.indices_len++] = ai_mesh->mFaces[i].mIndices[1];
         mesh.indices[mesh.indices_len++] = ai_mesh->mFaces[i].mIndices[2];
     }
-    assert(mesh.indices_len == 3 * ai_mesh->mNumFaces);
-
-    //
-    // Mesh textures.
-    //
-
-    for (usize j = 0; j < ARRAY_LEN(STORED_ASSIMP_TEXTURE_TYPES); ++j) {
-        enum aiTextureType const ai_texture_type = STORED_ASSIMP_TEXTURE_TYPES[j];
-        uint const count = aiGetMaterialTextureCount(ai_material, ai_texture_type);
-        for (uint k = 0; k < count; ++k) {
-            mesh.textures[mesh.textures_len++] =
-                *load_stored_texture_with_assimp_material_texture_type_index(
-                    texture_store, ai_material, ai_texture_type, k, err);
-        }
-    }
-    assert(mesh.textures_len == textures_capacity);
 
     //
     // Mesh VAO.
@@ -295,7 +309,7 @@ static void alloc_into_model_meshes_from_assimp_node(
     for (uint i = 0; i < ai_node->mNumMeshes; ++i) {
         model->meshes[model->meshes_len++] = alloc_mesh_from_assimp_mesh(
             texture_store, ai_scene, ai_scene->mMeshes[ai_node->mMeshes[i]], err);
-        assert(model->meshes_len < model->meshes_capacity);
+        assert(model->meshes_len <= model->meshes_capacity);
     }
 
     // Recursively process ai_node's children.
@@ -431,7 +445,7 @@ Model alloc_model_from_filepath_using_assimp(char const *path, Err *err) {
             != aiReturn_SUCCESS) {
             assert(false);
         }
-        GLOW_LOG("Material name: `%s`", name.data);
+        GLOW_DEBUG("material name: `%s`", name.data);
     }
 
     Model const model = alloc_model_from_assimp_scene(path, ai_scene, err);
@@ -439,20 +453,19 @@ Model alloc_model_from_filepath_using_assimp(char const *path, Err *err) {
 #ifndef NDEBUG
     {
         CountOfAssimpScene const count_of = count_assimp_scene(ai_scene, ai_scene->mRootNode);
-        GLOW_LOG(
-            "(aiScene) meshes, indices, vertices, textures, materials, nodes = %d",
+        GLOW_DEBUG(
+            "(aiScene) meshes, indices, vertices, textures, materials, nodes = %d, %d, %d, %d, %d, %d",
             ai_scene->mNumMeshes,
             count_of.indices,
             count_of.vertices,
             ai_scene->mNumTextures,
             ai_scene->mNumMaterials,
             count_of.nodes);
-        assert(ai_scene->mNumMeshes == count_of.nodes - 1);
     }
     {
         CountOfModel const count_of = count_model(&model);
-        GLOW_LOG(
-            "(Model) meshes, indices, vertices, textures, materials = %d",
+        GLOW_DEBUG(
+            "( Model ) meshes, indices, vertices, textures, materials        = %d, %d, %d, %d, %d",
             count_of.meshes,
             count_of.indices,
             count_of.vertices,
