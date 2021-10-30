@@ -101,6 +101,8 @@ typedef enum Err {
     Err_Assimp_Import,
     Err_Assimp_Get_Texture,
 
+    Err_Model_Load_Stored_Texture,
+
     Err_Fopen,
     Err_Malloc,
     Err_Calloc,
