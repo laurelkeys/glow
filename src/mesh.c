@@ -17,7 +17,7 @@ uint create_mesh_vao(
     glGenBuffers(1, &ebo);
 
     glBindVertexArray(vao);
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(
             GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_len, &vertices[0], GL_STATIC_DRAW);
@@ -62,7 +62,7 @@ void dealloc_mesh(Mesh *mesh) {
 
 void draw_mesh_direct(Mesh const *mesh) {
     glBindVertexArray(mesh->vao);
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
     }
 }

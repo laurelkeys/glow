@@ -98,14 +98,10 @@ static inline Resources create_resources(Err *err, int width, int height) {
     light_box.paths.vertex = GLOW_SHADERS_ "deferred_light_box.vs";
     light_box.paths.fragment = GLOW_SHADERS_ "deferred_light_box.fs";
 
-    ssao.paths.vertex = GLOW_SHADERS_ "gbuffer.vs";
-    ssao.paths.fragment = GLOW_SHADERS_ "gbuffer_ssao.fs";
-
     // @Volatile: use the same shaders as in `process_input`.
     geometry_pass.shader = new_shader_from_filepath(geometry_pass.paths, err);
     lighting_pass.shader = new_shader_from_filepath(lighting_pass.paths, err);
     light_box.shader = new_shader_from_filepath(light_box.paths, err);
-    ssao.shader = new_shader_from_filepath(ssao.paths, err);
 
     stbi_set_flip_vertically_on_load(choose_model[BACKPACK].flip_on_load);
     backpack = alloc_model_from_filepath(choose_model[BACKPACK].path, err);
@@ -178,69 +174,13 @@ static inline Resources create_resources(Err *err, int width, int height) {
     }
 
     //
-    // SSAO - Screen-space ambient occlusion (ssao_sample_kernel, ssao_noise,
-    // tex_noise, fbo_ssao, tex_ssao, fbo_ssao_blur, tex_ssao_blur).
-    //
-
-    for (usize i = 0; i < ARRAY_LEN(ssao_sample_kernel); ++i) {
-        // @Note: vary z only in [0.0, 1.0] in tangent space so that we sample from a hemisphere.
-        ssao_sample_kernel[i] = vec3_scl(
-            vec3_normalize((vec3) { RANDOM(-1, 1), RANDOM(-1, 1), RANDOM(0, 1) }), RANDOM(0, 1));
-        // @Note: by normalizing the vector we push it to the hemisphere's surface. So, to sample
-        // within it, we multiply by a random value and then `scale` biases it towards the center.
-        f32 const scale = (f32) i / (f32) ARRAY_LEN(ssao_sample_kernel);
-        ssao_sample_kernel[i] = vec3_scl(ssao_sample_kernel[i], lerp(0.1f, 1.0f, scale * scale));
-    }
-
-    for (usize i = 0; i < ARRAY_LEN(ssao_noise); ++i) {
-        ssao_noise[i] = (vec3) { .x = RANDOM(-1, 1), .y = RANDOM(-1, 1), .z = 0 };
-    }
-
-    glGenTextures(1, &r.tex_noise);
-    glBindTexture(GL_TEXTURE_2D, r.tex_noise);
-    STATIC_ASSERT(ARRAY_LEN(ssao_noise) == 4 * 4);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssao_noise[0]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    /* clang-format off */
-
-    #define SSAO_COLOR_BUFFER(gl_handle)                                                  \
-        glGenTextures(1, &gl_handle);                                                     \
-        glBindTexture(GL_TEXTURE_2D, gl_handle);                                          \
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, NULL); \
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);                \
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);                \
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gl_handle, 0);
-
-    glGenFramebuffers(1, &r.fbo_ssao);
-    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_ssao);
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        SSAO_COLOR_BUFFER(r.tex_ssao);
-        // check_bound_framebuffer_is_complete();
-    }
-
-    glGenFramebuffers(1, &r.fbo_ssao_blur);
-    glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_ssao_blur);
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        SSAO_COLOR_BUFFER(r.tex_ssao_blur);
-        // check_bound_framebuffer_is_complete();
-    }
-
-    #undef SSAO_COLOR_BUFFER
-
-    /* clang-format on */
-
-    //
     // Configure the g-buffer (gbuffer, gtex_position, gtex_normal, gtex_albedo_spec,
     // grbo_depth).
     //
 
     glGenFramebuffers(1, &r.gbuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, r.gbuffer);
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+    DEFER (glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
         /* clang-format off */
 
         #define COLOR_BUFFER(                                                                               \
@@ -288,9 +228,9 @@ static inline Resources create_resources(Err *err, int width, int height) {
     {
         uint vbo;
         glGenBuffers(1, &vbo);
-        DEFER(glDeleteBuffers(1, &vbo)) {
+        DEFER (glDeleteBuffers(1, &vbo)) {
             glBindVertexArray(r.vao_skybox);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
                 glBufferData(
                     GL_ARRAY_BUFFER, sizeof(SKYBOX_VERTICES), SKYBOX_VERTICES, GL_STATIC_DRAW);
@@ -311,9 +251,9 @@ static inline Resources create_resources(Err *err, int width, int height) {
     {
         uint vbo;
         glGenBuffers(1, &vbo);
-        DEFER(glDeleteBuffers(1, &vbo)) {
+        DEFER (glDeleteBuffers(1, &vbo)) {
             glBindVertexArray(r.vao_plane);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
                 glBufferData(
                     GL_ARRAY_BUFFER, sizeof(PLANE_VERTICES), PLANE_VERTICES, GL_STATIC_DRAW);
@@ -336,9 +276,9 @@ static inline Resources create_resources(Err *err, int width, int height) {
     {
         uint vbo;
         glGenBuffers(1, &vbo);
-        DEFER(glDeleteBuffers(1, &vbo)) {
+        DEFER (glDeleteBuffers(1, &vbo)) {
             glBindVertexArray(r.vao_cube);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 f32 cube_vertices_ndc[ARRAY_LEN(CUBE_VERTICES)];
                 memcpy(cube_vertices_ndc, CUBE_VERTICES, sizeof(CUBE_VERTICES));
                 for (usize i = 0; i < ARRAY_LEN(CUBE_VERTICES); i += 8) {
@@ -377,9 +317,9 @@ static inline Resources create_resources(Err *err, int width, int height) {
     {
         uint vbo;
         glGenBuffers(1, &vbo);
-        DEFER(glDeleteBuffers(1, &vbo)) {
+        DEFER (glDeleteBuffers(1, &vbo)) {
             glBindVertexArray(r.vao_debug_quad);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 // @Note: use GL_TRIANGLE_STRIP to draw it.
                 f32 const quad_vertices_ndc[] = {
                     -1, 1, 0, 1, -1, -1, 0, 0, 1, 1, 1, 1, 1, -1, 1, 0,
@@ -406,7 +346,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
     // Create a depth texture to be rendered from the lights' point of view.
     glGenTextures(1, &r.tex_depth_map);
     glBindTexture(GL_TEXTURE_2D, r.tex_depth_map);
-    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+    DEFER (glBindTexture(GL_TEXTURE_2D, 0)) {
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
@@ -428,7 +368,7 @@ static inline Resources create_resources(Err *err, int width, int height) {
     // Attach it to the fbo's depth buffer.
     glGenFramebuffers(1, &r.fbo_depth_map);
     glBindFramebuffer(GL_FRAMEBUFFER, r.fbo_depth_map);
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+    DEFER (glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
         glFramebufferTexture2D(
             /*target*/ GL_FRAMEBUFFER,
             /*attachment*/ GL_DEPTH_ATTACHMENT,
@@ -451,10 +391,6 @@ static inline Resources create_resources(Err *err, int width, int height) {
 static inline void destroy_resources(Resources *r, int width, int height) {
     UNUSED(width);
     UNUSED(height);
-
-    glDeleteTextures(1, &r->tex_noise);
-    glDeleteTextures(1, &r->tex_ssao);
-    glDeleteFramebuffers(1, &r->fbo_ssao);
 
     glDeleteRenderbuffers(1, &r->grbo_depth);
     glDeleteTextures(1, &r->gtex_albedo_spec);
@@ -484,7 +420,6 @@ static inline void destroy_resources(Resources *r, int width, int height) {
     glDeleteProgram(skybox.shader.program_id);
 #endif
 
-    glDeleteProgram(ssao.shader.program_id);
     glDeleteProgram(light_box.shader.program_id);
     glDeleteProgram(lighting_pass.shader.program_id);
     glDeleteProgram(geometry_pass.shader.program_id);
@@ -535,7 +470,7 @@ static inline void end_frame(GLFWwindow *window, int width, int height) {
 
 #if 0
 static inline void render_scene_with_shader(Shader const shader, Resources const *r) {
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         mat4 model = mat4_id();
         set_shader_mat4(shader, "local_to_world", model);
         glBindVertexArray(r->vao_plane);
@@ -570,9 +505,9 @@ static inline void render_quad(void) {
 
         uint vbo;
         glGenBuffers(1, &vbo);
-        DEFER(glDeleteBuffers(1, &vbo)) {
+        DEFER (glDeleteBuffers(1, &vbo)) {
             glBindVertexArray(vao_quad);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 f32 const quad_vertices_ndc[] = { -1, 1, 0, 0, 1, -1, -1, 0, 0, 0, 1, 1, 0, 1, 1, 1, -1, 0, 1, 0 };
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
                 glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices_ndc), quad_vertices_ndc, GL_STATIC_DRAW);
@@ -587,7 +522,7 @@ static inline void render_quad(void) {
     }
     /* clang-format on */
 
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         glBindVertexArray(vao_quad);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
@@ -602,9 +537,9 @@ static inline void render_cube(void) {
 
         uint vbo;
         glGenBuffers(1, &vbo);
-        DEFER(glDeleteBuffers(1, &vbo)) {
+        DEFER (glDeleteBuffers(1, &vbo)) {
             glBindVertexArray(vao_cube);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 static f32 const cube_vertices_ndc[] = { -1, -1, -1, 0, 0, -1, 0, 0, 1, 1, -1, 0, 0, -1, 1, 1, 1, -1, -1, 0, 0, -1, 1, 0, 1, 1, -1, 0, 0, -1, 1, 1, -1, -1, -1, 0, 0, -1, 0, 0, -1, 1, -1, 0, 0, -1, 0, 1, -1, -1, 1, 0, 0, 1, 0, 0, 1, -1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, -1, 1, 1, 0, 0, 1, 0, 1, -1, -1, 1, 0, 0, 1, 0, 0, -1, 1, 1, -1, 0, 0, 1, 0, -1, 1, -1, -1, 0, 0, 1, 1, -1, -1, -1, -1, 0, 0, 0, 1, -1, -1, -1, -1, 0, 0, 0, 1, -1, -1, 1, -1, 0, 0, 0, 0, -1, 1, 1, -1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, -1, -1, 1, 0, 0, 0, 1, 1, 1, -1, 1, 0, 0, 1, 1, 1, -1, -1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, -1, 1, 1, 0, 0, 0, 0, -1, -1, -1, 0, -1, 0, 0, 1, 1, -1, -1, 0, -1, 0, 1, 1, 1, -1, 1, 0, -1, 0, 1, 0, 1, -1, 1, 0, -1, 0, 1, 0, -1, -1, 1, 0, -1, 0, 0, 0, -1, -1, -1, 0, -1, 0, 0, 1, -1, 1, -1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, -1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, -1, 1, -1, 0, 1, 0, 0, 1, -1, 1, 1, 0, 1, 0, 0, 0 };
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
                 glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices_ndc), cube_vertices_ndc, GL_STATIC_DRAW);
@@ -621,7 +556,7 @@ static inline void render_cube(void) {
     }
     /* clang-format on */
 
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         glBindVertexArray(vao_cube);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
@@ -639,7 +574,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     // Geometry pass (render all geometric and color data to the g-buffer).
     //
 
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+    DEFER (glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
         glBindFramebuffer(GL_FRAMEBUFFER, r->gbuffer);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -656,31 +591,6 @@ static inline void draw_frame(Resources const *r, int width, int height) {
 
                 draw_model_with_shader(&backpack, &geometry_pass.shader);
             }
-        }
-    }
-
-    //
-    // Use the g-buffer to render SSAO texture.
-    //
-
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
-        glBindFramebuffer(GL_FRAMEBUFFER, r->fbo_ssao);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        use_shader(ssao.shader);
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, r->gtex_position);
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, r->gtex_normal);
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, r->tex_noise);
-
-            // @Todo: send kernel samples to shader.
-
-            set_shader_mat4(ssao.shader, "view_to_clip", projection);
-
-            render_quad();
         }
     }
 
@@ -710,8 +620,6 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         glBindTexture(GL_TEXTURE_2D, r->gtex_normal);
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, r->gtex_albedo_spec);
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, r->tex_ssao);
 
         char uniform_string[32]; // 32 seems large enough..
         for (usize i = 0; i < LIGHT_COUNT; ++i) {
@@ -756,7 +664,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     // Forward rendering pass (to render all light cubes).
     //
 
-    DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+    DEFER (glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
         // @Note: copy the depth values from the g-buffer into the default framebuffer,
         // this way the lights don't end up getting rendered on top of everything else.
         glBindFramebuffer(GL_READ_FRAMEBUFFER, r->gbuffer);
@@ -793,9 +701,9 @@ static inline void draw_frame(Resources const *r, int width, int height) {
     // @Note: first render depth values to a texture, from the light's perspective,
     // then render the scene as normal with shadow mapping (by using the depth map).
     glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
-    DEFER(glViewport(0, 0, width, height)) {
+    DEFER (glViewport(0, 0, width, height)) {
         glBindFramebuffer(GL_FRAMEBUFFER, r->fbo_depth_map);
-        DEFER(glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
+        DEFER (glBindFramebuffer(GL_FRAMEBUFFER, 0)) {
             glClear(GL_DEPTH_BUFFER_BIT);
 
             use_shader(shadow_mapping.shader);
@@ -821,7 +729,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
             set_shader_float(debug_quad.shader, "far_plane", FAR_PLANE);
 
             glBindVertexArray(r->vao_debug_quad);
-            DEFER(glBindVertexArray(0)) {
+            DEFER (glBindVertexArray(0)) {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, r->tex_depth_map);
 
@@ -861,7 +769,7 @@ static inline void draw_frame(Resources const *r, int width, int height) {
         set_shader_mat4(skybox.shader, "view_to_clip", projection);
 
         glBindVertexArray(r->vao_skybox);
-        DEFER(glBindVertexArray(0)) {
+        DEFER (glBindVertexArray(0)) {
             bind_texture_to_unit(skybox_texture, GL_TEXTURE0);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -978,7 +886,7 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     Resources *r = glfwGetWindowUserPointer(window);
 
     // Resize buffers.
-    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+    DEFER (glBindTexture(GL_TEXTURE_2D, 0)) {
         /* clang-format off */
         glBindTexture(GL_TEXTURE_2D, r->gtex_position);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -992,7 +900,7 @@ static void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     }
 
     glBindRenderbuffer(GL_RENDERBUFFER, r->grbo_depth);
-    DEFER(glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
+    DEFER (glBindRenderbuffer(GL_RENDERBUFFER, 0)) {
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
     }
 }

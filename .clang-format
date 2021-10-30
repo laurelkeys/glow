@@ -79,6 +79,8 @@ Cpp11BracedListStyle: false
 ## EmptyLineAfterAccessModifier: Leave
 EmptyLineBeforeAccessModifier: Leave
 
+ForEachMacros: ['DEFER']
+
 IncludeBlocks: Preserve
 
 ## IndentAccessModifiers: false

@@ -12,7 +12,7 @@ FullscreenQuad create_fullscreen_quad(void) {
     glGenBuffers(1, &vbo);
 
     glBindVertexArray(vao);
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(
             GL_ARRAY_BUFFER, sizeof(QUAD_VERTICES_NDC), QUAD_VERTICES_NDC, GL_STATIC_DRAW);
@@ -36,7 +36,7 @@ void destroy_fullscreen_quad(FullscreenQuad *quad) {
 }
 
 void draw_fullscreen_quad(FullscreenQuad const *quad) {
-    DEFER(glBindVertexArray(0)) {
+    DEFER (glBindVertexArray(0)) {
         glBindVertexArray(quad->vao);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }

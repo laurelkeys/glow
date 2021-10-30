@@ -174,7 +174,7 @@ Texture new_texture_from_image(TextureImage const image, TextureSettings const s
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    DEFER(glBindTexture(GL_TEXTURE_2D, 0)) {
+    DEFER (glBindTexture(GL_TEXTURE_2D, 0)) {
         glTexImage2D(
             /*target*/ GL_TEXTURE_2D,
             /*level*/ 0,
@@ -228,7 +228,7 @@ new_cubemap_texture_from_images(TextureImage const images[6], TextureSettings co
     uint texture_id;
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture_id);
-    DEFER(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)) {
+    DEFER (glBindTexture(GL_TEXTURE_CUBE_MAP, 0)) {
         for (usize i = 0; i < 6; ++i) {
             glTexImage2D(
                 /*target*/ TARGET_CUBE_FACE[i],

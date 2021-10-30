@@ -104,16 +104,12 @@ static Texture wood_texture;
 static PathsToShader geometry_pass;
 static PathsToShader lighting_pass;
 static PathsToShader light_box;
-static PathsToShader ssao;
 #if 0
 static PathsToShader skybox;
 static PathsToShader debug_quad;
 static PathsToShader test_scene;
 static PathsToShader shadow_mapping;
 #endif
-
-static vec3 ssao_sample_kernel[8 * 8];
-static vec3 ssao_noise[4 * 4];
 
 #define SHADOW_MAP_RESOLUTION 512
 

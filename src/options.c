@@ -43,7 +43,7 @@ Options parse_args(int argc, char *argv[]) {
         buf_len += strlen(argv[i]) + 4; // ", ``"
     }
     char *buf = calloc(buf_len + 1, sizeof(char));
-    DEFER(free(buf)) {
+    DEFER (free(buf)) {
         int offset = snprintf(buf, buf_len + 1, "`%s`", argv[0]);
         for (usize i = 1; i <= positional_arguments; ++i) {
             offset += snprintf(buf + offset, buf_len + 1 - offset, ", `%s`", argv[i]);
