@@ -40,7 +40,7 @@
 ### `assimp/`
 - URL: https://github.com/assimp/assimp
 - License: [BSD-3-Clause](https://github.com/assimp/assimp/blob/master/LICENSE)
-- Upstream version: 8748f85
+- Upstream version: 3664fe2
 - Local modifications: None
 
 ### `cgltf/`

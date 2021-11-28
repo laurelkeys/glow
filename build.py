@@ -3,12 +3,13 @@ import time
 import shutil
 import argparse
 
+NAME = "glow"
 BUILD_DIR = f"build{os.sep}"
 
 CCXX_COMPILER = {"cl":"cl", "gcc":"g++", "clang":"clang++"}
 
 BUILD_CONFIGS = ["Debug", "Release", "RelWithDebInfo"]
-CMAKE_GENERATOR = None  # "Ninja Multi-Config"
+CMAKE_GENERATOR = None  # "Ninja"
 CMAKE_C_COMPILER = None  # "clang"
 CMAKE_CXX_COMPILER = None  # "clang++"
 
@@ -24,7 +25,7 @@ def debug_print(*args, **kwargs):
         print(f"\033[92mΔt: {(time.time() - start):.4f}s\033[0m")
 
 
-def main(cmake, make, run, config, generator, warnings, args):
+def main(cmake, make, run, config, generator, warnings, prog_args):
     if generator is not None:
         global CMAKE_GENERATOR
         CMAKE_GENERATOR = generator
@@ -36,7 +37,7 @@ def main(cmake, make, run, config, generator, warnings, args):
         cmake_cmd += " " if CMAKE_GENERATOR is None else f' -G "{CMAKE_GENERATOR}"'
         cmake_cmd += " " if CMAKE_C_COMPILER is None else f" -DCMAKE_C_COMPILER={CMAKE_C_COMPILER}"
         cmake_cmd += " " if CMAKE_CXX_COMPILER is None else f" -DCMAKE_CXX_COMPILER={CMAKE_CXX_COMPILER}"
-        cmake_cmd += f" -DGLOW_WARNINGS={'ON' if warnings else 'OFF'}"
+        cmake_cmd += f" -D{NAME.upper()}_ENABLE_WARNINGS={'ON' if warnings else 'OFF'}"
 
         debug_print(f"Running CMake inside {BUILD_DIR} with {generator}")
         shutil.rmtree(BUILD_DIR, ignore_errors=True)
@@ -45,19 +46,22 @@ def main(cmake, make, run, config, generator, warnings, args):
             raise Exception(f"error code = {err}")
 
     if make:
-        debug_print(f"Building glow with {config} config")
+        debug_print(f"Building {NAME} with {config} config")
         if (err := os.system(f"cmake --build {BUILD_DIR} --config {config}")):
             raise Exception(f"error code = {err}")
 
     if run:
         def exec(exe):
             debug_print(f"Running {exe}")
-            if (err := os.system(f"{exe} {' '.join(args)}")):
+            if (err := os.system(f"{exe} {' '.join(prog_args)}")):
                 raise Exception(f"error code = {err}")
-        try:
-            exec(f".{os.sep}{BUILD_DIR}{config}{os.sep}glow.exe")
-        except:
-            exec(f".{os.sep}{BUILD_DIR}glow.exe")
+        for build_dir in [f"bin{os.sep}{config}{os.sep}", f"{config}{os.sep}", f"bin{os.sep}", ""]:
+            exe = f".{os.sep}{BUILD_DIR}{build_dir}{NAME}.exe"
+            if os.path.exists(exe):
+                exec(exe)
+                break
+        else:
+            raise Exception(f"could not find {NAME}.exe file location")
     else:
         debug_print()
 
@@ -72,12 +76,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--make", "-m",
         action="store_true",
-        help="Build a glow executable",
+        help=f"Build a {NAME} executable",
     )
     parser.add_argument(
         "--run", "-r",
         action="store_true",
-        help="Run a glow executable",
+        help=f"Run a {NAME} executable",
     )
     parser.add_argument(
         "--config", "-cfg",
@@ -97,13 +101,13 @@ if __name__ == "__main__":
         help="Enable compiler warnings",
     )
     parser.add_argument(
-        "--compiler",
+        "--compiler", "-cc",
         type=str,
         choices=CCXX_COMPILER.keys(),
         help="Specify a C/C++ compiler",
     )
 
-    args, glow_args = parser.parse_known_args()
+    args, prog_args = parser.parse_known_args()
 
     if not args.cmake and not args.make and not args.run:
         debug_print("Doing nothing, no options passed (try using --help).")
@@ -112,8 +116,8 @@ if __name__ == "__main__":
         CMAKE_C_COMPILER = args.compiler
         CMAKE_CXX_COMPILER = CCXX_COMPILER[args.compiler]
 
-    if glow_args:
-        debug_print(f"glow args: {glow_args}")
+    if prog_args:
+        debug_print(f"{NAME} args: {prog_args}")
 
     main(
         args.cmake,
@@ -122,5 +126,5 @@ if __name__ == "__main__":
         args.config,
         args.generator,
         args.warnings,
-        glow_args,
+        prog_args,
     )

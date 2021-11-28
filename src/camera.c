@@ -28,12 +28,13 @@ mat4 compute_camera_view_matrix(Camera const *camera) {
     return mat4_lookat(camera->position, vec3_add(camera->position, camera->forward), camera->up);
 }
 mat4 compute_camera_projection_matrix(Camera const *camera) {
-    return mat4_perspective(RADIANS(camera->fovy), camera->aspect, camera->near, camera->far);
+    return mat4_perspective(
+        RADIANS_FROM_DEGREES(camera->fovy), camera->aspect, camera->near, camera->far);
 }
 
 static void update_camera_coordinate_system(Camera *camera) {
-    f32 const yaw = RADIANS(camera->yaw);
-    f32 const pitch = RADIANS(camera->pitch);
+    f32 const yaw = RADIANS_FROM_DEGREES(camera->yaw);
+    f32 const pitch = RADIANS_FROM_DEGREES(camera->pitch);
     camera->forward = vec3_normalize((vec3) {
         .x = cosf(yaw) * cosf(pitch),
         .y = sinf(pitch),

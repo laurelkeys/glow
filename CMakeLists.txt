@@ -26,6 +26,7 @@ set(FILE_SOURCES
     src/model_assimp.inl
     src/model.c
     src/opengl.c
+    src/options.inc
     src/options.c
     src/shader.c
     src/texture.c
@@ -46,7 +47,6 @@ set(FILE_HEADERS
     src/mesh.h
     src/model.h
     src/opengl.h
-    src/options.inc
     src/options.h
     src/shader.h
     src/texture.h
@@ -74,17 +74,20 @@ target_compile_definitions(${PROJECT_NAME}
 
     PUBLIC  _CRT_SECURE_NO_WARNINGS)
 
-target_link_libraries(${PROJECT_NAME} glfw glad stb assimp imgui)
+target_link_libraries(${PROJECT_NAME} PUBLIC glfw glad stb assimp imgui)
 
 # ----------------------------------------------------------------------------------------
 
-option(GLOW_WARNINGS "GLOW_WARNINGS" OFF)
+option(GLOW_ENABLE_WARNINGS "Enable compiler warnings" OFF)
 
-if(GLOW_WARNINGS)
+if(GLOW_ENABLE_WARNINGS)
     if(MSVC)
-        target_compile_options(${PROJECT_NAME} PRIVATE /W4) # /WX
+        target_compile_options(${PROJECT_NAME}
+            PRIVATE /W4 /wd4100) # /WX
     else()
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic) # -Werror
+        target_compile_options(${PROJECT_NAME}
+            # PRIVATE -Wconversion -Wsign-conversion
+            PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter) # -Werror
     endif()
 endif()
 

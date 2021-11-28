@@ -7,7 +7,7 @@ typedef struct Clock {
     f64 time_increment; // time between consecutive ticks
 } Clock;
 
-inline f64 clock_tick(Clock *clock, f64 time);
+static inline f64 clock_tick(Clock *clock, f64 time);
 
 typedef struct FrameCounter {
     int counter;
@@ -15,6 +15,6 @@ typedef struct FrameCounter {
     f64 last_update_time; // (in seconds)
 } FrameCounter;
 
-inline void update_frame_counter(FrameCounter *frame_counter, f64 time);
+static inline void update_frame_counter(FrameCounter *frame_counter, f64 time);
 
 #include "window.inl"

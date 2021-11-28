@@ -42,8 +42,8 @@
 #define COMPARE(a, b) (((b) < (a)) - ((a) < (b)))
 #define SIGN_OF(a) COMPARE((a), 0)
 
-#define RADIANS(degrees) ((degrees) * (M_TAU / 360.0))
-#define DEGREES(radians) ((radians) * (360.0 / M_TAU))
+#define RADIANS_FROM_DEGREES(degrees) ((degrees) * (M_TAU / 360.0))
+#define DEGREES_FROM_RADIANS(radians) ((radians) * (360.0 / M_TAU))
 
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
