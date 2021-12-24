@@ -1,5 +1,23 @@
 #include "imgui_facade.h"
 
+#if 1
+// @Temporary: disable Dear ImGui.
+
+void init_imgui(GLFWwindow *window) {}
+void deinit_imgui(void) {}
+
+void begin_imgui_frame(void) {}
+void end_imgui_frame(void) {}
+
+void show_imgui_demo_window(void) {}
+
+void imgui_config_mouse(bool should_capture) {}
+
+void imgui_slider_int(char const *label, int *v, int v_min, int v_max) {}
+void imgui_slider_float(char const *label, float *v, float v_min, float v_max) {}
+
+#else
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -7,15 +25,15 @@
 #define USE_CUSTOM_STYLE_COLORS true
 static void setup_style_colors(void);
 
-void init_imgui(GLFWwindow* window) {
+void init_imgui(GLFWwindow *window) {
     assert(window != nullptr);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     setup_style_colors();
 
@@ -45,7 +63,7 @@ void show_imgui_demo_window(void) {
 }
 
 void imgui_config_mouse(bool should_capture) {
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     if (should_capture) {
         io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
     } else {
@@ -53,11 +71,11 @@ void imgui_config_mouse(bool should_capture) {
     }
 }
 
-void imgui_slider_int(char const* label, int* v, int v_min, int v_max) {
+void imgui_slider_int(char const *label, int *v, int v_min, int v_max) {
     ImGui::SliderInt(label, v, v_min, v_max);
 }
 
-void imgui_slider_float(char const* label, float* v, float v_min, float v_max) {
+void imgui_slider_float(char const *label, float *v, float v_min, float v_max) {
     ImGui::SliderFloat(label, v, v_min, v_max);
 }
 
@@ -82,9 +100,9 @@ static void setup_style_colors(void) {
     colors[ImGuiCol_TabHovered          ] = XHI(1.0f);
     colors[ImGuiCol_TabUnfocused        ] = LOW(1.00f);
     colors[ImGuiCol_TabUnfocusedActive  ] = MED(0.60f);
-    colors[ImGuiCol_DockingPreview      ] = HI(1.00f);
+    // colors[ImGuiCol_DockingPreview      ] = HI(1.00f);
     colors[ImGuiCol_DragDropTarget      ] = BKGD(1.00f);
-    colors[ImGuiCol_DockingEmptyBg      ] = BKGD(1.00f);
+    // colors[ImGuiCol_DockingEmptyBg      ] = BKGD(1.00f);
     colors[ImGuiCol_Text                ] = TEXT(0.78f);
     colors[ImGuiCol_TextDisabled        ] = TEXT(0.28f);
     colors[ImGuiCol_WindowBg            ] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
@@ -132,3 +150,5 @@ static void setup_style_colors(void) {
     /* clang-format on */
 #endif
 }
+
+#endif

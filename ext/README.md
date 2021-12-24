@@ -3,10 +3,10 @@
 ## External dependencies
 
 ### `stb/`
-- URL: https://github.com/nothings/stb/
+- URL: https://github.com/nothings/stb
 - License: [MIT, Unlicense](https://github.com/nothings/stb/blob/master/LICENSE)
 - Upstream version: 5ba0baa
-  - `stb_image.h`: v2.27
+  - `stb_image.h`: 2.27
 - Local modifications:
   - Added a `stb_impl.c` file:
     ```c
@@ -19,16 +19,15 @@
     ```
 
 ### `imgui/`
-- URL: https://github.com/ocornut/imgui/
+- URL: https://github.com/ocornut/imgui
 - License: [MIT](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)
-- Upstream version: 7bfc379
-  - branch: `docking`
+- Upstream version: 1.86
 - Local modifications: None
 
 ### `glfw/`
-- URL: https://www.glfw.org/
+- URL: https://github.com/glfw/glfw
 - License: [Zlib](https://github.com/glfw/glfw/blob/master/LICENSE.md)
-- Upstream version: 3.3.4
+- Upstream version: 3.3.6
 - Local modifications: None
 
 ### `glad/`
@@ -40,24 +39,5 @@
 ### `assimp/`
 - URL: https://github.com/assimp/assimp
 - License: [BSD-3-Clause](https://github.com/assimp/assimp/blob/master/LICENSE)
-- Upstream version: 3664fe2
-- Local modifications: None
-
-### `cgltf/`
-- URL: https://github.com/jkuhlmann/cgltf
-- License: [MIT](https://github.com/jkuhlmann/cgltf/blob/master/LICENSE)
-- Upstream version: 504f823
-- Local modifications:
-  - Added a `cgltf_impl.c` file:
-    ```c
-    // Implementation file for cgltf headers.
-
-    #define CGLTF_IMPLEMENTATION
-    #include "cgltf.h"
-    ```
-
-### `fast_obj/`
-- URL: https://github.com/thisistherk/fast_obj
-- License: [MIT](https://github.com/thisistherk/fast_obj/blob/master/LICENSE)
-- Upstream version: d2c2732
+- Upstream version: 5.1.4
 - Local modifications: None

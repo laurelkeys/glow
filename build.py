@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import shutil
 import argparse
@@ -6,12 +7,14 @@ import argparse
 NAME = "glow"
 BUILD_DIR = f"build{os.sep}"
 
-CCXX_COMPILER = {"cl":"cl", "gcc":"g++", "clang":"clang++"}
+CMD, EXE = (".bat", ".exe") if sys.platform == "win32" else (".sh", "")
+
+CCXX_COMPILER = {"cl":"cl", "gcc":"g++", "clang":"clang++", "zigcc":"zigc++"}
 
 BUILD_CONFIGS = ["Debug", "Release", "RelWithDebInfo"]
-CMAKE_GENERATOR = None  # "Ninja"
-CMAKE_C_COMPILER = None  # "clang"
-CMAKE_CXX_COMPILER = None  # "clang++"
+CMAKE_GENERATOR = None
+CMAKE_C_COMPILER = None
+CMAKE_CXX_COMPILER = None
 
 
 start = time.time()
@@ -56,12 +59,12 @@ def main(cmake, make, run, config, generator, warnings, prog_args):
             if (err := os.system(f"{exe} {' '.join(prog_args)}")):
                 raise Exception(f"error code = {err}")
         for build_dir in [f"bin{os.sep}{config}{os.sep}", f"{config}{os.sep}", f"bin{os.sep}", ""]:
-            exe = f".{os.sep}{BUILD_DIR}{build_dir}{NAME}.exe"
+            exe = f".{os.sep}{BUILD_DIR}{build_dir}{NAME}{EXE}"
             if os.path.exists(exe):
                 exec(exe)
                 break
         else:
-            raise Exception(f"could not find {NAME}.exe file location")
+            raise Exception(f"could not find {NAME}{EXE} file location")
     else:
         debug_print()
 
@@ -115,6 +118,14 @@ if __name__ == "__main__":
     if args.compiler:
         CMAKE_C_COMPILER = args.compiler
         CMAKE_CXX_COMPILER = CCXX_COMPILER[args.compiler]
+
+        if args.compiler == "zigcc":
+            CMAKE_C_COMPILER += CMD
+            CMAKE_CXX_COMPILER += CMD
+
+        if args.compiler != "cl" and sys.platform == "win32":
+            if CMAKE_GENERATOR is None:
+                CMAKE_GENERATOR = "Ninja"
 
     if prog_args:
         debug_print(f"{NAME} args: {prog_args}")
